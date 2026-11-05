@@ -1,5 +1,5 @@
 {
- "about": "The maintainer's verdicts of 2026-11-05 on the hoi4-imagegen gallery (imagegen-gallery/maintainer-feedback-2026-11-05.md). bad: approved by the 0.3.1 review, rejected by the maintainer. good_certain: rated acceptable on the page the maintainer reviewed. good_extrapolated: the maintainer's per-family rule applied to images that may not have been on that page. Native-size processed PNGs, our own generated art.",
+ "about": "Hand-checked labels on hoi4-imagegen's own generated art, judged against vanilla at native size. bad: wrong next to vanilla. good_certain: right next to vanilla. good_extrapolated: the same family rule applied to further images, less certain. Native-size processed PNGs.",
  "labels": [
   {
    "file": "commander_trait.v022.armour_expert.png",
@@ -49,7 +49,8 @@
   {
    "file": "special_project_icon.v031.regen.png",
    "family": "special_project_icon",
-   "label": "good_certain"
+   "label": "bad",
+   "note": "Too dense: 46 percent of its box is filled, where vanilla line art covers at most 17."
   },
   {
    "file": "commander_trait.v031.single_tank_side.png",

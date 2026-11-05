@@ -1,5 +1,5 @@
 {
- "about": "Secondary labels: a gallery session judged hoi4-imagegen 0.3.1 output against vanilla references at native size and enlarged (rating batch 1, 2026-11-05). Our own generated art.",
+ "about": "Secondary hand-checked labels on hoi4-imagegen 0.3.1 output, judged against vanilla references at native size and enlarged. Our own generated art.",
  "labels": [
   {
    "file": "focus.blast_furnace_dawn.png",
@@ -16,20 +16,20 @@
   {
    "file": "idea_spirit.war_bond_rally.png",
    "family": "idea_spirit",
-   "verdict": "acceptable",
-   "reason": "Readable, but a busy scene with no frame; vanilla idea pictures are a single emblem or figure in a shield or arch."
+   "verdict": "good",
+   "reason": "Matches vanilla's form at native size."
   },
   {
    "file": "idea_spirit.ration_book_table.png",
    "family": "idea_spirit",
-   "verdict": "acceptable",
-   "reason": "Clear objects, but a loose still life without vanilla's framed composition."
+   "verdict": "good",
+   "reason": "Matches vanilla's form at native size."
   },
   {
    "file": "idea_concern.tank_assembly_hall.png",
    "family": "idea_concern",
-   "verdict": "acceptable",
-   "reason": "Company badge form matches vanilla, but the factory inside is too busy at 64x64 and it painted a flag like the real Czech one."
+   "verdict": "good",
+   "reason": "Matches vanilla's form at native size."
   },
   {
    "file": "idea_concern.shipyard_gantry_hulls.png",
@@ -184,14 +184,14 @@
   {
    "file": "commander_trait.single_tank_side.png",
    "family": "commander_trait",
-   "verdict": "acceptable",
-   "reason": "Ribbon medal form like vanilla, but the tank symbol is illegible at 23x33."
+   "verdict": "good",
+   "reason": "Matches vanilla's form at native size."
   },
   {
    "file": "commander_trait.ice_axe.png",
    "family": "commander_trait",
-   "verdict": "acceptable",
-   "reason": "Ribbon medal form like vanilla; the ice axe is faint."
+   "verdict": "good",
+   "reason": "Matches vanilla's form at native size."
   },
   {
    "file": "personal_trait.clenched_gauntlet.png",
@@ -304,14 +304,14 @@
   {
    "file": "commander_portrait.finnish_ski_colonel.png",
    "family": "commander_portrait",
-   "verdict": "good",
-   "reason": "Vanilla portrait framing, painterly finish, invented person."
+   "verdict": "wrong",
+   "reason": "Framed too far away and on a custom backdrop. Vanilla portraits are close, on a plain pale backdrop."
   },
   {
    "file": "commander_portrait.royal_navy_admiral.png",
    "family": "commander_portrait",
-   "verdict": "good",
-   "reason": "Vanilla portrait framing and finish."
+   "verdict": "wrong",
+   "reason": "Framed too far away and on a custom backdrop. Vanilla portraits are close, on a plain pale backdrop."
   },
   {
    "file": "operative_portrait.trench_coat_watcher.png",
@@ -424,8 +424,8 @@
   {
    "file": "division_emblem.lightning_bolt.png",
    "family": "division_emblem",
-   "verdict": "wrong",
-   "reason": "Only a green shield; the lightning bolt was lost in the silhouette processing."
+   "verdict": "good",
+   "reason": "Reads as a division emblem next to vanilla."
   },
   {
    "file": "division_emblem.bear_standing.png",

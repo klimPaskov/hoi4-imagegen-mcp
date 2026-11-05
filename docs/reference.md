@@ -96,7 +96,7 @@ A chain is the caller's optional pre-steps followed by the family's mandatory fi
 | `phase_card` | `operation_picture` | flatten, then the report card on vanilla's phase picture mask: tilted clockwise and 4 px lower | one DDS |
 | `achievement` | `achievement` | fit the subject, then the grey state and the not-eligible state on the mod's template backgrounds | three DDS: `<key>`, `<key>_grey`, `<key>_not_eligible` |
 | `advisor_card` | `advisor_card` | flatten, then the portrait is composited into the mod's advisor template, with an alpha-coverage audit that fails closed | one 65x67 DDS |
-| `portrait` | the four portraits | flatten, then a head-and-shoulders crop to 156x210 found with YuNet face detection (pure-Rust `tract-onnx`, model from the mod's skill copy). `portrait_crop` sets the crop by hand | one opaque DDS |
+| `portrait` | the four portraits | flatten, then a close head-and-shoulders crop to 156x210 around the face YuNet finds (pure-Rust `tract-onnx`, model from the mod's skill copy). The crop is framed like vanilla's leader portraits: the face box is 0.543 of the height with its top at 0.181, measured on 70 vanilla files. The advisor card keeps the kit's looser framing. `portrait_crop` sets the crop by hand | one opaque DDS |
 | `flag` | `flag` | flatten, then the 82x52, 41x26 and 10x7 ladder | three TGA, bottom-left origin |
 | `selected_strip` | `faction_logo`, `agency_logo` | fit with a margin, then frame 2 as the selected state. A faction logo also gets its 32x32 `_miniature` | one two-frame DDS, plus the miniature for a faction logo |
 | `landmark_strip` | `building` | fit, then frame 2 as the ruined landmark, made from a second candidate of the same asset (`hoi4.image_edit` on the first, passed as `second_frame_candidate`). A 64x64 landmark also gets the 32x32 `_small` strip, a flat orange pictogram like vanilla's small landmarks | one or two two-frame DDS |
@@ -188,7 +188,7 @@ Deterministic checks are not a style verdict. Composition and readability at gam
 
 ## Review and the vanilla-match check
 
-Until 0.3.1 an approval needed only every rubric answer `true`, so a caller that sent blanket `true` answers approved anything. The maintainer's look at the gallery on 2026-11-05 found that the approved images were the bad ones. Since 0.3.2 the answers alone never approve.
+Until 0.3.1 an approval needed only every rubric answer `true`, so a caller that sent blanket `true` answers approved anything. Checked against vanilla, several approved gallery images were wrong. Since 0.3.2 the answers alone never approve.
 
 An approval needs all of these, in this order:
 
@@ -201,7 +201,7 @@ An approval needs all of these, in this order:
 
 **The vanilla-match check.** The family's vanilla art is read from the installed game, through the same folders and name rules as the vanilla style tier, at the family's vanilla sizes (large medals are cut out of their strips). Each image is measured: palette (lightness, saturation, value, their spread, dark, bright and middle shares, colours, gold tones), outline share, edge density, alpha coverage, soft alpha, background fill, and form (the subject's size, position and aspect, how much of its box, convex hull and inscribed ellipse it fills, left-right symmetry, the saturation of its top band where a ribbon sits). Each family gets an accepted range per feature from its own vanilla files: the 1st to 99th percentile, widened on each side by half of that width.
 
-Thirteen features can fail a candidate: the form features and the two medium features that separate painted, line and grey art (the middle-value share and the saturation). The others are measured and reported only, because the art the maintainer accepted differs from vanilla in them as much as the rejected art does. A failure names each feature with its value, vanilla's range and vanilla's median. On HOI4 1.19.4.1 between 97.6 and 100 percent of each family's own vanilla files pass its check. The check is version `vanilla_match_v1`, recorded with every result.
+Thirteen features can fail a candidate: the form features and the two medium features that separate painted, line and grey art (the middle-value share and the saturation). The others are measured and reported only, because the art labelled good differs from vanilla in them as much as the rejected art does. A failure names each feature with its value, vanilla's range and vanilla's median. On HOI4 1.19.4.1 between 97.6 and 100 percent of each family's own vanilla files pass its check. The check is version `vanilla_match_v1`, recorded with every result.
 
 The check is a gate, not a verdict. Art that looks wrong in a way these features cannot see still passes it, and must then fail the rubric. For example, on the gallery the loose steel gate (focus), the war economy cluster (idea spirit) and the bread basket (industrial concern) measure inside vanilla's own spread. The v3 rubric questions are asked against the vanilla sheet for that reason.
 

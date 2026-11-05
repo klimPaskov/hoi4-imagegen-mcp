@@ -1,4 +1,4 @@
-//! The vanilla form of the families the maintainer reviewed on 2026-11-05 (agency_upgrade, building, commander_trait,
+//! The vanilla form of the families whose output drifted from it (agency_upgrade, building, commander_trait,
 //! division_emblem, mio_trait, operation_icon, operation_picture, gui_texture): the plan prompt states it, and the
 //! automatic vanilla references (tier 4) are vanilla files of that form.
 //!

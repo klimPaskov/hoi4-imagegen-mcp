@@ -7,7 +7,7 @@
 //!   luminance is 0 (75th percentile 27), and its edge pixels are a little lighter (median 31). In the median icon 36
 //!   percent of the opaque pixels are black.
 //! * Accents (arrows, chevrons, flags, bursts) are warm orange and yellow, and some families paint aircraft and ships
-//!   blue or teal. The maintainer's rule for generated doctrine icons is the black form: units black, warm accents kept.
+//!   blue or teal. The rule for generated doctrine icons is the black form: units black, warm accents kept.
 //! * Around a black shape lies a pale outline and glow: one pixel out the median is luminance 180 (light grey to
 //!   white, up to 214) at alpha 136, two pixels out luminance 214 at alpha 37, three pixels out nothing.
 //! * Around a coloured shape lies a soft dark shadow instead: luminance 62 at alpha 140 one pixel out, 57 at 65,

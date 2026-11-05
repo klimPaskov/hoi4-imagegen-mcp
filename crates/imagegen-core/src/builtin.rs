@@ -73,10 +73,19 @@ const ICON_RULES: &[&str] = &[
 // form so the model draws it, and those families drop "a frame or border" from the negative list.
 const FOCUS_RULES: &[&str] = &[
     "The Hearts of Iron IV national focus emblem form: the subject sits inside a round or shield-shaped metal plaque or medallion, often with a laurel wreath, ribbons or flags around it.",
+    "Flags and ribbons use invented colours, never a real country's flag, unless the brief names that country.",
     "The subject is large: it fills most of the plaque's face and may overlap its rim, never a small figure inside a wide empty plaque.",
     "A strong central symbol that supports the focus's story, aged painterly metal and enamel, readable contrast at {w}x{h} pixels.",
     "Real transparent background outside the plaque: no backdrop behind it.",
     "Leave a small empty margin around the plaque.",
+];
+/// National spirits may be emblems, figures, objects or small scenes, so the form stays open and only readability at
+/// the native size is required.
+const IDEA_SPIRIT_RULES: &[&str] = &[
+    "One centred subject, an emblem, a figure, an object or a small scene, readable at {w}x{h} pixels: a few large, clear shapes with readable contrast and no fine detail that disappears at that size.",
+    "Painterly, slightly aged texture in the style of Hearts of Iron IV interface art.",
+    "Real transparent background: no backdrop, no frame, no border, no plate behind the subject.",
+    "Leave a small empty margin around the subject.",
 ];
 const CONCERN_RULES: &[&str] = &[
     "The Hearts of Iron IV industrial concern form: a company badge or logo emblem, such as a shield, roundel or winged badge with the company's symbol.",
@@ -312,9 +321,13 @@ const NEWS_RULES: &[&str] = &[
 ];
 const PICTURE_NEGATIVE: &[&str] = &["text, captions or headlines", "watermark or signature", "a frame or border"];
 
+/// Vanilla leader portraits (gfx/leaders, 1.19.4.1): a close head-and-shoulders crop (the face is about half the
+/// height) on a plain pale backdrop. Generated portraits use that crop and backdrop. A custom backdrop is only for
+/// council or otherwise unusual portraits.
 const PORTRAIT_RULES: &[&str] = &[
-    "A head-and-shoulders portrait in the painterly style of Hearts of Iron IV portraits, composed for a tall {w}x{h} crop.",
-    "Period-appropriate clothing and a plain, slightly textured backdrop.",
+    "A close head-and-shoulders portrait in the painterly style of Hearts of Iron IV portraits, composed for a tall {w}x{h} crop: the head fills the upper half of the frame, the face about half the height, and the shoulders run off the bottom and the sides.",
+    "Vanilla's portrait backdrop: a plain, smooth studio background, pale cream to light grey (a scientist's is pale blue-grey), a little lighter behind the head, with no objects, room, landscape, flag or pattern. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
+    "Period-appropriate clothing.",
     "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure.",
 ];
 const FRAME_STRIP_RULES: &[&str] = &[
@@ -486,6 +499,7 @@ fn rows() -> Vec<Row> {
         },
         Row {
             margin: 1,
+            rules: IDEA_SPIRIT_RULES,
             note: "Ideas share the GFX_idea_ namespace across four families, so the prefix cannot tell them apart: the consuming script slot and this folder do. Spirits are 60x68.",
             ..base(IdeaSpirit, [60, 68], &[[60, 68], [62, 70]], "gfx/interface/ideas/{feature_slug}", "idea_", "interface/{feature_slug}_ideas.gfx")
         },
@@ -916,6 +930,23 @@ pub fn profiles() -> Vec<Profile> {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn portraits_are_close_on_vanillas_backdrop_and_spirits_only_need_to_read() {
+        let set = by_family();
+        for f in [Family::LeaderPortrait, Family::CommanderPortrait, Family::OperativePortrait, Family::ScientistPortrait] {
+            let r = set[&f].imagegen.prompt.rules.join(" ");
+            assert!(r.contains("close head-and-shoulders") && r.contains("face about half the height"), "{f}");
+            assert!(r.contains("Vanilla's portrait backdrop") && r.contains("council or otherwise unusual"), "{f}");
+            assert!(!r.contains("slightly textured backdrop"), "{f}");
+        }
+        // idea spirits may be scenes or emblems: the rule allows both and asks only for readability
+        let r = set[&Family::IdeaSpirit].imagegen.prompt.rules.join(" ");
+        assert!(r.contains("or a small scene") && r.contains("readable at {w}x{h} pixels"), "{r}");
+        assert!(!r.contains("never a scene"));
+        let focus = set[&Family::Focus].imagegen.prompt.rules.join(" ");
+        assert!(focus.contains("invented colours, never a real country's flag, unless the brief names that country"));
+    }
+
+    #[test]
     fn portraits_ask_for_an_invented_person() {
         // the backend refused fictional leaders described by nation and office as likenesses of real people
         for rules in [super::PORTRAIT_RULES, super::ADVISOR_RULES] {
@@ -1091,7 +1122,7 @@ mod tests {
     }
 
     #[test]
-    fn the_notes_the_maintainer_named_hold() {
+    fn the_documented_family_notes_hold() {
         let set = by_family();
         let sprite = |f: Family| set[&f].imagegen.sprite.as_ref().map(|s| s.name.clone());
         assert_eq!(set[&Family::IdeaSpirit].canvas, [60, 68]);
@@ -1221,7 +1252,7 @@ mod tests {
         assert!(sp.imagegen.prompt.negative.iter().any(|n| n.contains("shading")));
     }
 
-    /// The families the maintainer found off vanilla's form (2026-11-05) state that form in their first rule, and
+    /// The families whose output drifted from vanilla's form state that form in their first rule, and
     /// nothing in their rules or negatives contradicts it. The phrases are the measured vanilla form (HOI4 1.19.4.1).
     #[test]
     fn reviewed_families_state_their_vanilla_form() {

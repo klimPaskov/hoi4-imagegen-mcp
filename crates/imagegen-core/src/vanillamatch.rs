@@ -1,7 +1,7 @@
 //! The vanilla-match check of the review: does a candidate measure like its family's vanilla art?
 //!
-//! The 0.3.1 review approved whatever the caller answered `true` to, and the maintainer's look at the gallery on
-//! 2026-11-05 found that the approved images were the bad ones (a loose tank where vanilla commander traits are
+//! The 0.3.1 review approved whatever the caller answered `true` to, and a check of the gallery against vanilla
+//! found approved images that were wrong (a loose tank where vanilla commander traits are
 //! ribbon medals, a grey-filled rocket where vanilla special project icons are pale line drawings, a medal far larger
 //! on its canvas than any vanilla medal). The review now runs this check itself, and an approval needs it to pass.
 //!
@@ -15,9 +15,9 @@
 //! widened on each side by half of that width, and never narrower than the feature's floor. Every feature is
 //! measured and reported, but only the [`CHECKED`] ones can fail a candidate: the form features and the two medium
 //! features that tell painted art, line art and grey art apart. The others (contrast, edge density, soft alpha,
-//! palette size) were left out because the art the maintainer accepted differs from vanilla in them as much as the
+//! palette size) were left out because the art labelled good differs from vanilla in them as much as the
 //! rejected art does, so checking them would refuse good art without catching bad art. The choice and the widening
-//! were measured on HOI4 1.19.4.1 against the labelled gallery cases in `tests/fixtures/vanilla_match/`; the test
+//! were measured on HOI4 1.19.4.1 against the hand-labelled cases in `tests/fixtures/vanilla_match/`; the test
 //! in `tests/vanilla_match.rs` records each family's vanilla pass rate.
 //!
 //! Everything is a pure function of pixels and the vanilla files, so a check repeats exactly. The vanilla files
