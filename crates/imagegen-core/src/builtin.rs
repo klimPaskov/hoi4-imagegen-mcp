@@ -180,6 +180,7 @@ const ACHIEVEMENT_NEGATIVE: &[&str] =
 const ADVISOR_RULES: &[&str] = &[
     "A head-and-shoulders portrait of one person in the painterly style of Hearts of Iron IV advisor portraits, face and shoulders centred, composed for a tall crop.",
     "Period-appropriate clothing and a plain, slightly textured backdrop. The card frame is added afterwards by the tool, so do not draw a frame or border.",
+    "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure.",
 ];
 const NEWS_RULES: &[&str] = &[
     "A black and white press photograph that fills the whole frame, composed for a wide {w}x{h} crop.",
@@ -190,6 +191,7 @@ const PICTURE_NEGATIVE: &[&str] = &["text, captions or headlines", "watermark or
 const PORTRAIT_RULES: &[&str] = &[
     "A head-and-shoulders portrait in the painterly style of Hearts of Iron IV portraits, composed for a tall {w}x{h} crop.",
     "Period-appropriate clothing and a plain, slightly textured backdrop.",
+    "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure.",
 ];
 const FRAME_STRIP_RULES: &[&str] = &[
     "One centred emblem with a strong silhouette that reads at {w}x{h} pixels, drawn in the style of Hearts of Iron IV faction and interface art.",
@@ -748,6 +750,14 @@ pub fn profiles() -> Vec<Profile> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn portraits_ask_for_an_invented_person() {
+        // the backend refused fictional leaders described by nation and office as likenesses of real people
+        for rules in [super::PORTRAIT_RULES, super::ADVISOR_RULES] {
+            assert!(rules.iter().any(|r| r.contains("must not resemble any real historical figure")));
+        }
+    }
+
     use super::*;
     use crate::measurement::{self as m, data};
 

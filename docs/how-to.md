@@ -135,5 +135,5 @@ Install says "installed", not "verified in game". Start the game yourself to che
 ## 5. Before you publish a mod
 
 * Disclose that AI-generated art was used. The ledger has provider, model, date and prompt for every asset.
-* Do not make likenesses of real people without thinking about personal rights. Prefer stylised or fictional portraits.
+* Do not make likenesses of real people without thinking about personal rights. Prefer stylised or fictional portraits. Portrait and advisor prompts ask for an invented person who resembles no real historical figure, because the ChatGPT backend refuses a brief it reads as a likeness, such as a nation's president in the 1930s.
 * Read [rules and terms](rules-and-terms.md).
