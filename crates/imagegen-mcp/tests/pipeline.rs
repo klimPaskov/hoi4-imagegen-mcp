@@ -708,3 +708,130 @@ fn the_ledger_chain_survives_a_whole_session_and_detects_tampering() {
     let q = h.engine.ledger_query(serde_json::from_value(json!({})).unwrap()).unwrap();
     assert_eq!(q["chain"]["ok"], false);
 }
+
+// ---- 0.3.2: retiring an uncertain idempotency key ----
+
+fn crashed_harness(key: &str) -> (Harness, serde_json::Value) {
+    let h = openai_harness();
+    let plan = h.plan_focus("steel_gate");
+    h.engine
+        .ledger
+        .append(
+            "job_intent",
+            Some("iron_pact.steel_gate"),
+            None,
+            json!({"job_id": "job-crashed", "idempotency_key": key, "asset_id": "iron_pact.steel_gate"}),
+        )
+        .unwrap();
+    (h, plan)
+}
+
+fn gen_with(h: &Harness, plan: &serde_json::Value, key: &str) -> Result<serde_json::Value, imagegen_mcp::EngineError> {
+    h.engine.generate(serde_json::from_value(json!({"plan_id": plan["plan_id"], "idempotency_key": key})).unwrap())
+}
+
+#[test]
+fn abandon_retires_an_uncertain_key_and_the_same_key_then_proceeds() {
+    let (h, plan) = crashed_harness("k-killed");
+    assert_eq!(code(&gen_with(&h, &plan, "k-killed").unwrap_err()), "uncertain_previous_attempt");
+    // reconcile cannot clear it for a synchronous provider
+    let r = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-killed", "reconcile": true})).unwrap()).unwrap();
+    assert_eq!(r["status"], "unknown_outcome");
+    assert!(r["note"].as_str().unwrap().contains("abandon"), "the note points to the way out: {r}");
+    assert_eq!(code(&gen_with(&h, &plan, "k-killed").unwrap_err()), "uncertain_previous_attempt");
+
+    let c = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-killed", "abandon": true})).unwrap()).unwrap();
+    assert_eq!(c["status"], "abandoned", "{c}");
+    assert_eq!(c["job_ids"], json!(["job-crashed"]));
+    assert!(c["warning"].as_str().unwrap().contains("may have been charged"));
+    // the ledger records it with the time and the warning
+    let ended = h.engine.ledger.entries().unwrap().into_iter().rfind(|e| e.kind == "job_ended").unwrap();
+    assert_eq!(ended.data["outcome"], "abandoned");
+    assert_eq!(ended.data["job_id"], "job-crashed");
+    assert_eq!(ended.data["idempotency_key"], "k-killed");
+    assert!(ended.data["abandoned_at"].as_str().unwrap().starts_with("20"), "{}", ended.data);
+    assert!(ended.data["warning"].as_str().unwrap().contains("may have been charged"));
+    // no provider call was made by retiring the key
+    assert!(h.fixture.requests().is_empty());
+
+    // the same key now proceeds
+    h.queue_generation(&synthetic_icon_png());
+    let g = gen_with(&h, &plan, "k-killed").unwrap();
+    assert!(g["candidates"][0]["candidate_id"].is_string(), "{g}");
+    // and a second abandon of the now-completed key is refused
+    let again = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-killed", "abandon": true})).unwrap()).unwrap_err();
+    assert_eq!(code(&again), "attempt_completed");
+}
+
+#[test]
+fn abandon_by_job_id_works_too() {
+    let (h, plan) = crashed_harness("k-by-id");
+    let c = h.engine.cancel(serde_json::from_value(json!({"job_id": "job-crashed", "abandon": true})).unwrap()).unwrap();
+    assert_eq!(c["status"], "abandoned");
+    assert_eq!(c["idempotency_key"], "k-by-id");
+    h.queue_generation(&synthetic_icon_png());
+    assert!(gen_with(&h, &plan, "k-by-id").is_ok());
+}
+
+#[test]
+fn abandon_never_applies_to_a_completed_attempt() {
+    let h = openai_harness();
+    let plan = h.plan_focus("steel_gate");
+    h.queue_generation(&synthetic_icon_png());
+    let g = gen_with(&h, &plan, "k-done").unwrap();
+    let cid = g["candidates"][0]["candidate_id"].as_str().unwrap().to_string();
+    let e = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-done", "abandon": true})).unwrap()).unwrap_err();
+    assert_eq!(code(&e), "attempt_completed");
+    assert!(e.message.contains(&cid), "{}", e.message);
+    // the ledger gained no abandonment, and the key still replays the same candidate
+    assert!(!h.engine.ledger.entries().unwrap().iter().any(|x| x.data["outcome"] == "abandoned"));
+    let replay = gen_with(&h, &plan, "k-done").unwrap();
+    assert_eq!(replay["candidates"][0]["candidate_id"], json!(cid));
+    assert_eq!(replay["candidates"][0]["replayed"], true);
+}
+
+#[test]
+fn abandon_refuses_a_job_recorded_as_completed_by_job_id() {
+    let (h, _plan) = crashed_harness("k-rec");
+    h.engine.ledger.append("job_ended", Some("iron_pact.steel_gate"), None, json!({"job_id": "job-crashed", "outcome": "recovered"})).unwrap();
+    let e = h.engine.cancel(serde_json::from_value(json!({"job_id": "job-crashed", "abandon": true})).unwrap()).unwrap_err();
+    assert_eq!(code(&e), "attempt_completed");
+}
+
+#[test]
+fn abandon_reports_when_there_is_nothing_to_retire() {
+    let h = openai_harness();
+    let plan = h.plan_focus("steel_gate");
+    // unknown key
+    let e = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-never", "abandon": true})).unwrap()).unwrap_err();
+    assert_eq!(code(&e), "not_found");
+    // an attempt that failed cleanly is already closed
+    h.fixture.fail(Method::Post, "/v1/images/generations", TransportError::NotSent("no network".into()));
+    let _ = gen_with(&h, &plan, "k-failed");
+    let c = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-failed", "abandon": true})).unwrap()).unwrap();
+    assert_eq!(c["status"], "nothing_to_abandon", "{c}");
+    // abandon cannot be combined with reconcile, and needs an id
+    let e = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k", "abandon": true, "reconcile": true})).unwrap()).unwrap_err();
+    assert_eq!(code(&e), "invalid_argument");
+    let e = h.engine.cancel(serde_json::from_value(json!({"abandon": true})).unwrap()).unwrap_err();
+    assert_eq!(code(&e), "invalid_argument");
+}
+
+#[test]
+fn a_second_crash_after_an_abandon_blocks_the_key_again() {
+    // the retry reuses the job id, so the earlier end entry must not hide the new unfinished intent
+    let (h, plan) = crashed_harness("k-twice");
+    h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-twice", "abandon": true})).unwrap()).unwrap();
+    h.engine
+        .ledger
+        .append(
+            "job_intent",
+            Some("iron_pact.steel_gate"),
+            None,
+            json!({"job_id": "job-crashed", "idempotency_key": "k-twice", "asset_id": "iron_pact.steel_gate"}),
+        )
+        .unwrap();
+    assert_eq!(code(&gen_with(&h, &plan, "k-twice").unwrap_err()), "uncertain_previous_attempt");
+    let c = h.engine.cancel(serde_json::from_value(json!({"idempotency_key": "k-twice", "abandon": true})).unwrap()).unwrap();
+    assert_eq!(c["status"], "abandoned");
+}

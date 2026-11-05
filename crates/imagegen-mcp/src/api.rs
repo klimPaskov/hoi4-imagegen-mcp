@@ -448,6 +448,11 @@ pub struct CancelParams {
     /// For a job left behind by a crashed run: ask the provider what became of it and store the image if it finished.
     #[serde(default)]
     pub reconcile: Option<bool>,
+    /// Retire an uncertain idempotency key: a generate or edit request was cut off (the process was killed) and the same key is
+    /// refused with `uncertain_previous_attempt`. The ledger records the abandonment with the time and the warning that the first
+    /// attempt may have been charged, and the key (or a new one) can be used again. Refused for a key whose attempt completed.
+    #[serde(default)]
+    pub abandon: Option<bool>,
 }
 
 /// `hoi4.image_audit`

@@ -95,7 +95,7 @@ impl Engine {
             .into_iter()
             .filter_map(|name| style::load(&self.fs, &name).ok())
             .filter(|s| s.applies_to(prof.family))
-            .map(|s| json!({"name": s.name, "pinned_references": s.references.len(), "approved_by": s.approved_by, "provider": s.provider, "model": s.model}))
+            .map(|s| json!({"name": s.name, "pinned_references": s.references.len(), "approved_by": s.approved_by, "provider": s.provider, "model": s.model, "applied_automatically": s.auto_applies_to(prof.family).map(|w| w.as_str()), "families": s.families, "default": s.default}))
             .collect();
         let dirs: Vec<Value> = prof
             .imagegen
@@ -112,7 +112,7 @@ impl Engine {
         json!({
             "style_profiles": styles,
             "reference_dirs": dirs,
-            "selection": "automatic, mod first: (1) the project's pinned style for the family, (2) the mod's copy of the asset skill's assets folder, (3) the mod's own installed assets, (4) vanilla art from the installed game. The first tier with at least 3 usable images is used. Vanilla may always be sent. A provider's own reference limit can reduce the number sent at plan time",
+            "selection": "automatic, mod first: (1) the project's pinned style for the family (only a style that lists the family or has default = true; a style with no families is available by name but never applied by itself), (2) the mod's copy of the asset skill's assets folder, (3) the mod's own installed assets, (4) vanilla art from the installed game. The first tier with at least 3 usable images is used. Vanilla may always be sent. A provider's own reference limit can reduce the number sent at plan time",
             "automatic": resolved.report,
         })
     }

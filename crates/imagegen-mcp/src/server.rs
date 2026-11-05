@@ -260,7 +260,7 @@ impl ImageServer {
 
     #[tool(
         name = "hoi4.image_cancel",
-        description = "Cancel a running generation by idempotency key (providers with job ids are asked to stop), or settle a job a crashed run left behind: reconcile = true asks the provider what became of it and stores the image if it finished. Synchronous providers cannot be interrupted once the request is sent.",
+        description = "Cancel a running generation by idempotency key (providers with job ids are asked to stop), or settle a job a crashed run left behind: reconcile = true asks the provider what became of it and stores the image if it finished. Synchronous providers cannot be interrupted once the request is sent. abandon = true retires an idempotency key whose first attempt was cut off (the process was killed) so the key can be used again: the ledger records the abandonment and the warning that the first attempt may have been charged, and it is refused for a key whose attempt completed.",
         annotations(read_only_hint = false, destructive_hint = false, idempotent_hint = true, open_world_hint = true)
     )]
     async fn cancel(&self, Parameters(p): Parameters<CancelParams>) -> Result<CallToolResult, ErrorData> {
