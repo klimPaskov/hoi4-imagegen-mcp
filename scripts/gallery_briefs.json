@@ -119,6 +119,66 @@
    "asset": "land_reform_plough",
    "brief": "A southern Italian peasant family marking out their own field with boundary stakes beside a plough and oxen, hopeful early 1950s mood. Bold two-colour carved print.",
    "style": "linocut"
+  },
+  {
+   "asset": "steelworks_blast_furnace_v033",
+   "brief": "Industry: a blast furnace pouring molten steel into a ladle, sparks flying.",
+   "style": null
+  },
+  {
+   "asset": "assembly_line_trucks_v033",
+   "brief": "Industry: army trucks rolling off a long assembly line.",
+   "style": null
+  },
+  {
+   "asset": "infantry_bayonet_charge_v033",
+   "brief": "Military: infantrymen charging with fixed bayonets across a muddy field.",
+   "style": null
+  },
+  {
+   "asset": "fortified_border_line_v033",
+   "brief": "Military: a line of concrete bunkers and dragon's teeth along a border.",
+   "style": null
+  },
+  {
+   "asset": "signed_treaty_quill_v033",
+   "brief": "Diplomacy: a signed treaty with two wax seals and a quill pen.",
+   "style": null
+  },
+  {
+   "asset": "embassy_flags_handshake_v033",
+   "brief": "Diplomacy: two envoys shaking hands under two invented national flags.",
+   "style": null
+  },
+  {
+   "asset": "parliament_dome_ballots_v033",
+   "brief": "Politics: a parliament dome with ballot papers falling before it.",
+   "style": null
+  },
+  {
+   "asset": "rally_crowd_banners_v033",
+   "brief": "Politics: a rally crowd raising banners in invented colours.",
+   "style": null
+  },
+  {
+   "asset": "battleship_broadside_v033",
+   "brief": "Naval: a battleship firing a broadside at sea.",
+   "style": null
+  },
+  {
+   "asset": "submarine_periscope_v033",
+   "brief": "Naval: a submarine periscope breaking the waves at dusk.",
+   "style": null
+  },
+  {
+   "asset": "bomber_formation_v033",
+   "brief": "Air: a formation of twin-engine bombers over clouds.",
+   "style": null
+  },
+  {
+   "asset": "laboratory_microscope_v033",
+   "brief": "Research: a laboratory microscope beside glass flasks and notes.",
+   "style": null
   }
  ],
  "idea_spirit": [

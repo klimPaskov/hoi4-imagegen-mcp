@@ -49,6 +49,8 @@ PORTRAIT_LINE = "An invented person: the face, the name and the likeness are fic
 # Families with no vanilla texture to measure: the mod sets the canvas (the sizes the first gallery used).
 MOD_CANVAS = {"gui_texture": [300, 200], "super_event": [457, 328]}
 # Import-only families and the stand-in canvas their frames are generated at.
+NO_ANCHORS = {"counter_large", "counter_small", "division_emblem", "flag", "super_event"}  # material routes, own canvases, or no vanilla folder
+FAMILY_INFO = {}
 COUNTERS = {"counter_large": [76, 42], "counter_small": [30, 12], "division_emblem": [76, 42]}
 ORDER = [
     "focus", "idea_spirit", "idea_concern", "report_event", "news_event", "decision", "technology", "leader_portrait", "flag",
@@ -279,8 +281,9 @@ def make_standard(job, attempt):
     if family in MOD_CANVAS:
         req["canvas"] = MOD_CANVAS[family]
     if job.get("references"):
-        # caller references (the TNO section's style anchors); from 0.3.2 their form wins over vanilla's
-        req["references"] = job["references"]
+        # caller references (per-brief vanilla anchors or the TNO section's); from 0.3.2 their form wins over vanilla's
+        req["references"] = [{"path": r["path"], "role": r["role"]} for r in job["references"]]
+        rec["anchors"] = job["references"]
     if style:
         req["style"] = style
         style_on(style, family)
@@ -332,8 +335,8 @@ def run_priority():
 
     A file .work/priority/<name>.json holds {"cwd": ..., "argv": [...]}. It runs once, its output goes to <name>.log and the
     file is renamed to <name>.done."""
-    if not os.path.isdir(PRIORITY):
-        return
+    if not os.path.isdir(PRIORITY) or os.environ.get("GALLERY_IN_PRIORITY"):
+        return  # a priority job never starts the priority queue again from inside itself
     with PRIORITY_LOCK:
         for name in sorted(os.listdir(PRIORITY)):
             if not name.endswith(".json"):
@@ -376,6 +379,15 @@ def make(job):
     return f"{family}/{asset}", out
 
 
+def held():
+    """Regexes on "family/asset" from .work/held.txt (one per line, # comments): examples waiting for a later build.
+    Read when a run builds its job list, so a queue already written can still leave a family out."""
+    p = os.path.join(WORK, "held.txt")
+    if not os.path.exists(p):
+        return []
+    return [ln.strip() for ln in open(p, encoding="utf-8") if ln.strip() and not ln.startswith("#")]
+
+
 def jobs(families):
     """Jobs in order. An argument is `family` or `family:N` (only the first N examples of the family)."""
     b = briefs()
@@ -388,12 +400,19 @@ def jobs(families):
             skip = os.environ.get("GALLERY_SKIP")  # regex on "family/asset", e.g. ^commander_trait/.*tank
             if skip and re.search(skip, f"{fam}/{item['asset']}"):
                 continue
+            if any(re.search(rx, f"{fam}/{item['asset']}") for rx in held()):
+                continue
             if fam in PORTRAITS and not os.environ.get("GALLERY_NO_PORTRAIT_LINE"):
                 # W5's 0.3.2 portrait line, added to the brief until the build carries it
                 item["brief"] = item["brief"].rstrip() + " " + PORTRAIT_LINE
             if os.environ.get("GALLERY_NO_STYLES"):
                 # the vanilla-style gallery: mod styles are shown in their own (TNO) section instead
                 item["style"] = None
+            if os.environ.get("GALLERY_PICK_ANCHORS") and fam not in NO_ANCHORS and not item.get("references"):
+                # per-brief vanilla anchors instead of the family's one automatic set
+                import gallery_anchors
+                info = FAMILY_INFO.get(fam) or FAMILY_INFO.setdefault(fam, cli("families", fam)["family"])
+                item["references"] = gallery_anchors.pick(fam, info, item["asset"], item["brief"], MOD, WORK) or None
             if fam in COUNTERS and not os.environ.get("GALLERY_COUNTER_STANDIN"):
                 # the model draws one black silhouette and the tool renders vanilla's material and NATO box
                 item["brief"] = re.sub(r"\bwhite\b", "black", item["brief"], flags=re.I)
