@@ -87,19 +87,41 @@ fn install_refuses_until_validation_review_and_hashes_are_in_order() {
 
     // approving without a preview is refused
     let answers: serde_json::Map<String, Value> =
-        imagegen_core::rubric::questions("icon_v2").iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
-    let review = |verdict: &str, answers: Value| {
+        imagegen_core::rubric::questions("icon_v3").iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
+    let plain = |verdict: &str, answers: Value| {
         h.engine.review(serde_json::from_value(json!({"target": processed, "verdict": verdict, "reviewer": "t", "answers": answers})).unwrap())
+    };
+    // the harness has no installed game, so every approval below records an override of the vanilla check
+    let review = |verdict: &str, answers: Value| {
+        h.engine.review(
+            serde_json::from_value(json!({"target": processed, "verdict": verdict, "reviewer": "t", "answers": answers, "override_vanilla_check": true, "override_reason": "synthetic test art, no installed game"}))
+                .unwrap(),
+        )
     };
     assert_eq!(review("approved", json!(answers)).unwrap_err().code, "review_needs_preview");
     h.preview(&processed);
+    // blanket true answers alone no longer approve: without the vanilla side-by-side sheet and check it is refused
+    let e = plain("approved", json!(answers)).unwrap_err();
+    assert_eq!(e.code, "review_needs_vanilla_preview", "{e}");
+    assert_eq!(e.details.as_ref().unwrap()["vanilla_check"]["status"], "unavailable");
+    // an override needs a reason
+    let e = h
+        .engine
+        .review(
+            serde_json::from_value(
+                json!({"target": processed, "verdict": "approved", "reviewer": "t", "answers": answers, "override_vanilla_check": true}),
+            )
+            .unwrap(),
+        )
+        .unwrap_err();
+    assert_eq!(e.code, "invalid_argument");
     // an incomplete rubric is refused
     let mut partial = answers.clone();
-    partial.insert("silhouette_clear".into(), json!(false));
+    partial.insert("vanilla_form".into(), json!(false));
     partial.remove("no_text_or_watermark");
     let e = review("approved", json!(partial)).unwrap_err();
     assert_eq!(e.code, "review_incomplete");
-    assert!(e.message.contains("silhouette_clear") && e.message.contains("no_text_or_watermark"));
+    assert!(e.message.contains("vanilla_form") && e.message.contains("no_text_or_watermark"));
     // a rejection issues no approval
     let rej = review("rejected", json!(partial)).unwrap();
     assert!(rej["approval_id"].is_null());
@@ -107,7 +129,14 @@ fn install_refuses_until_validation_review_and_hashes_are_in_order() {
     assert_eq!(code(&e), "install_gate_approval_mismatch", "a rejection issues no approval id, so no id can match");
 
     // a real approval opens the gate...
-    let approval = review("approved", json!(answers)).unwrap()["approval_id"].as_str().unwrap().to_string();
+    let approved = review("approved", json!(answers)).unwrap();
+    // the override and its reason are in the reply and the ledger
+    assert_eq!(approved["vanilla_override"]["reason"], "synthetic test art, no installed game");
+    assert_eq!(approved["vanilla_override"]["status_overridden"], "unavailable");
+    let rec = h.engine.ledger.entries().unwrap().into_iter().rev().find(|e| e.kind == imagegen_core::records::kind::REVIEWED).unwrap();
+    assert_eq!(rec.data["vanilla_override"]["reason"], "synthetic test art, no installed game");
+    assert_eq!(rec.data["vanilla_check"]["status"], "unavailable");
+    let approval = approved["approval_id"].as_str().unwrap().to_string();
     // ...but only with its own id
     assert_eq!(code(&h.install(&processed, "apr-ffffffffffffffff", json!({})).unwrap_err()), "install_gate_approval_mismatch");
 
@@ -400,10 +429,10 @@ fn fake_checkerboards_are_rejected_at_validation() {
     // the failed validation blocks approval and install
     h.preview(&id);
     let answers: serde_json::Map<String, Value> =
-        imagegen_core::rubric::questions("icon_v2").iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
+        imagegen_core::rubric::questions("icon_v3").iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
     let e = h
         .engine
-        .review(serde_json::from_value(json!({"target": id, "verdict": "approved", "reviewer": "t", "answers": answers})).unwrap())
+        .review(serde_json::from_value(json!({"target": id, "verdict": "approved", "reviewer": "t", "answers": answers, "override_vanilla_check": true, "override_reason": "synthetic test art, no installed game"})).unwrap())
         .unwrap_err();
     assert_eq!(e.code, "review_needs_validation");
     assert_eq!(code(&h.install(&id, "apr-0000000000000000", json!({})).unwrap_err()), "install_gate_validation_failed");
@@ -543,7 +572,7 @@ fn finished_art_from_another_tool_can_be_imported_validated_and_installed() {
     assert_eq!(art.pixels_sha256(), p["pixels_sha256"], "no pixel changed");
     assert_eq!(h.validate(&id)["status"], "pass");
     h.preview(&id);
-    let approval = h.approve(&id, "portrait_v1")["approval_id"].as_str().unwrap().to_string();
+    let approval = h.approve(&id, "portrait_v3")["approval_id"].as_str().unwrap().to_string();
     let out = h.install(&id, &approval, json!({})).unwrap();
     let installed = dds::decode(&h.read("gfx/interface/ideas/iron_pact/advisors/idea_chief_advisor.dds")).unwrap();
     assert_eq!(installed.pixels_sha256(), art.pixels_sha256(), "imported art arrives pixel for pixel");
@@ -574,7 +603,7 @@ fn flag_sets_install_three_tga_sizes() {
     assert_eq!(p["size"], json!([82, 52]));
     assert_eq!(h.validate(&id)["status"], "pass");
     h.preview(&id);
-    let approval = h.approve(&id, "flag_v1")["approval_id"].as_str().unwrap().to_string();
+    let approval = h.approve(&id, "flag_v3")["approval_id"].as_str().unwrap().to_string();
     h.install(&id, &approval, json!({})).unwrap();
     for (rel, w, hgt) in [("gfx/flags/IRP.tga", 82, 52), ("gfx/flags/medium/IRP.tga", 41, 26), ("gfx/flags/small/IRP.tga", 10, 7)] {
         let info = imagegen_core::tga::parse_header(&h.read(rel)).unwrap();

@@ -320,7 +320,7 @@ fn a_processed_artifact_without_its_mandatory_recipe_fails_validation_and_the_in
     // a failing validation cannot be approved, and the gate names the chain even when an approval id is made up
     h.preview(&no_fit);
     let answers: serde_json::Map<String, Value> =
-        imagegen_core::rubric::questions("icon_v2").iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
+        imagegen_core::rubric::questions("icon_v3").iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
     let e = h
         .engine
         .review(serde_json::from_value(json!({"target": no_fit, "verdict": "approved", "reviewer": "t", "answers": answers})).unwrap())

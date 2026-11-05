@@ -42,6 +42,7 @@ pub mod styledesc;
 pub mod stylesrc;
 pub mod tga;
 pub mod validate;
+pub mod vanillamatch;
 
 pub use error::{Error, Result, RetryClass};
 pub use family::{Automation, Family, Group};

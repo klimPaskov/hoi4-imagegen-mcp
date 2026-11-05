@@ -203,17 +203,17 @@ impl ImageServer {
 
     #[tool(
         name = "hoi4.image_preview",
-        description = "Write a contact sheet: native size on dark and light, an enlarged copy on dark, light and checker backgrounds, and the plan's references side by side. Returns the sheet as an image. Judge the native-size panels first.",
+        description = "Write a contact sheet: native size on dark and light, an enlarged copy on dark, light and checker backgrounds, and the plan's references side by side. For an artifact it also makes the vanilla side-by-side sheet (the candidate beside the family's most typical vanilla images, written outside the mod) and reports the measured vanilla-match check. Returns both sheets as images. Judge the native-size panels first. An approval needs a preview of the exact file with the vanilla sheet.",
         annotations(read_only_hint = false, destructive_hint = false, idempotent_hint = false, open_world_hint = false)
     )]
     async fn preview(&self, Parameters(p): Parameters<PreviewParams>) -> Result<CallToolResult, ErrorData> {
         let include = p.include_image.unwrap_or(true);
         let engine = self.engine.clone();
         match tokio::task::spawn_blocking(move || engine.preview_with_image(&p)).await {
-            Ok(Ok((report, png))) => {
+            Ok(Ok((report, pngs))) => {
                 let mut result = CallToolResult::structured(report);
-                if include && png.len() <= 1_500_000 {
-                    result.content.push(ContentBlock::image(base64::engine::general_purpose::STANDARD.encode(&png), "image/png"));
+                for png in pngs.iter().filter(|_| include).filter(|png| png.len() <= 1_500_000) {
+                    result.content.push(ContentBlock::image(base64::engine::general_purpose::STANDARD.encode(png), "image/png"));
                 }
                 Ok(result)
             }
@@ -224,7 +224,7 @@ impl ImageServer {
 
     #[tool(
         name = "hoi4.image_review",
-        description = "Record the visual review of an exact file against the family's rubric. An approval needs a passing validation, a preview of this file and every rubric answer true, and returns the approval_id install requires. Use changes_requested or rejected otherwise.",
+        description = "Record the visual review of an exact file against the family's rubric (v3: every question is asked against the vanilla references in the preview). The review runs the measured vanilla-match check itself. An approval needs a passing validation, a preview of this file with the vanilla side-by-side sheet, a passing vanilla-match check and every rubric answer true, and returns the approval_id install requires. A deliberate mod style can approve past the vanilla check only with override_vanilla_check and an override_reason, both recorded. Use changes_requested or rejected otherwise.",
         annotations(read_only_hint = false, destructive_hint = false, idempotent_hint = false, open_world_hint = false)
     )]
     async fn review(&self, Parameters(p): Parameters<ReviewParams>) -> Result<CallToolResult, ErrorData> {

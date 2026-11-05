@@ -387,7 +387,7 @@ fn the_whole_loop_runs_over_stdio() {
     let profile = c.ok("hoi4.image_families", json!({"family": "focus"}));
     let answers: serde_json::Map<String, Value> =
         profile["family"]["rubric_questions"].as_array().unwrap().iter().map(|q| (q["key"].as_str().unwrap().to_string(), json!(true))).collect();
-    let rev = c.ok("hoi4.image_review", json!({"target": art, "verdict": "approved", "reviewer": "protocol test", "answers": answers}));
+    let rev = c.ok("hoi4.image_review", json!({"target": art, "verdict": "approved", "reviewer": "protocol test", "answers": answers, "override_vanilla_check": true, "override_reason": "synthetic test art, no installed game"}));
     let approval = rev["approval_id"].as_str().unwrap().to_string();
 
     let inst = c.ok("hoi4.image_install", json!({"target": art, "approval_id": approval}));

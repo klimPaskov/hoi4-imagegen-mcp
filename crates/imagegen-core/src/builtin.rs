@@ -658,13 +658,10 @@ pub fn animation_of(family: Family) -> Option<AnimationSpec> {
     })
 }
 
-/// The rubric id of a family: one per group (officer spirits and every other icon get the icon rubric).
+/// The rubric id of a family: one per group (officer spirits and every other icon get the icon rubric). v3 asks
+/// every question against the vanilla references beside the candidate in the preview.
 pub fn rubric_of(family: Family) -> String {
-    match family.group() {
-        // icon_v2 adds the family-form question (the per-family form rules)
-        crate::family::Group::Icon => "icon_v2".to_string(),
-        g => format!("{}_v1", g.as_str()),
-    }
+    format!("{}_v3", family.group().as_str())
 }
 
 /// The evidence text of a family: the measurement sentence, then what the measurement does not say.
