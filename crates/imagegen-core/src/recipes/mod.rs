@@ -17,6 +17,7 @@
 //! | Flatten on colour | Rust only | [`flatten`] |
 //! | Companions the game looks up (small emblem, text icon, miniature, half size) | Rust only, fitted to vanilla | [`derived`] |
 //! | Unit art: silhouette to vanilla material, NATO box frame 2 | Rust only, fitted to vanilla | [`unit_art`] |
+//! | Special project line drawing | Rust only, fitted to vanilla | [`line_art`] |
 //!
 //! `convert_to_dds.py` is already [`crate::dds::write_a8r8g8b8`].
 
@@ -29,6 +30,7 @@ pub mod flags;
 pub mod flatten;
 pub mod focus_shine;
 pub mod frames;
+pub mod line_art;
 pub mod pillow;
 pub mod portrait;
 pub mod report_card;

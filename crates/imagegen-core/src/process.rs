@@ -120,6 +120,14 @@ pub enum Op {
         /// The NATO symbol: marks joined by `+`, as `recipes::unit_art::symbol_text` writes them.
         symbol: String,
     },
+    /// Special project icons: the subject read from alpha (or from a flat background), fitted into vanilla's box and
+    /// redrawn as thin pale white lines on a transparent `width` x `height` canvas. See `recipes::line_art`.
+    LineArt {
+        /// Canvas width.
+        width: u32,
+        /// Canvas height.
+        height: u32,
+    },
     /// Light on black to alpha: alpha is the brightest channel, colour is divided by it (blend glows).
     BlackToAlpha,
     /// Two-frame blend glow from its bright frame: frame 1 is the glow at `dim` of its alpha, frame 2 the glow.
@@ -169,6 +177,7 @@ impl Op {
             Op::DisabledFrame { .. } => "disabled_frame",
             Op::UnitGlyph { .. } => "unit_glyph",
             Op::NatoFrame { .. } => "nato_frame",
+            Op::LineArt { .. } => "line_art",
             Op::BlackToAlpha => "black_to_alpha",
             Op::GlowFrames { .. } => "glow_frames",
             Op::ScrollFrames { .. } => "scroll_frames",
@@ -242,6 +251,7 @@ pub fn apply(img: &Rgba, op: &Op) -> Result<Rgba> {
             let marks = crate::recipes::unit_art::parse_symbol(symbol)?;
             crate::recipes::unit_art::counter_strip(img, *kind, &marks)
         }
+        Op::LineArt { width, height } => crate::recipes::line_art::line_art(img, *width, *height),
         Op::BlackToAlpha => Ok(crate::animation::black_to_alpha(img)),
         Op::GlowFrames { frames, dim } => crate::animation::glow_strip(img, *frames, *dim),
         Op::ScrollFrames { frames } => crate::animation::scroll_strip(img, *frames),
@@ -275,6 +285,7 @@ pub fn upscale_factor(img: &Rgba, op: &Op) -> Option<f64> {
             let (aw, ah) = (f64::from(*width - 2 * margin), f64::from(*height - 2 * margin));
             Some((aw / sw).min(ah / sh))
         }
+        Op::LineArt { width, height } => crate::recipes::line_art::fit_scale(img, *width, *height),
         _ => None,
     }
 }
@@ -771,6 +782,7 @@ mod tests {
             Op::DisabledFrame { frames: 2 },
             Op::UnitGlyph { kind: crate::recipes::unit_art::UnitArtKind::CounterSmall },
             Op::NatoFrame { kind: crate::recipes::unit_art::UnitArtKind::CounterLarge, symbol: "cross".into() },
+            Op::LineArt { width: 161, height: 98 },
         ] {
             let tag = serde_json::to_value(&op).unwrap()["op"].as_str().unwrap().to_string();
             assert_eq!(tag, op.name(), "name() is the serde tag");

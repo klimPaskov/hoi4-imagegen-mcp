@@ -19,6 +19,7 @@
 //! | `landmark_strip` v1 | building | `fit_subject`, `second_frame`: the ruined state, a second candidate of the same asset (or one `conform`) |
 //! | `unit_counter` v1 | battalion and on-map counters | `unit_glyph` (silhouette to vanilla's material), `nato_frame` (the NATO box as frame 2), or one `conform` for an imported finished strip |
 //! | `division_symbol` v1 | division emblem | `unit_glyph`, or `conform` for an imported finished 76x42 symbol |
+//! | `line_art` v1 | special project icon | `line_art` (any image to vanilla's pale line drawing) or `conform` for imported finished art, then `grayscale` |
 //! | `portrait` v1 | the four portraits | `flatten_on`, `extract_portrait` (or `conform` for a finished 156x210) |
 //! | `advisor_card` v1 | advisor card | `advisor_card` (or `conform` for a finished 65x67 card) |
 //! | `achievement` v1 | achievement | `fit_subject`, `achievement_triplet` |
@@ -93,6 +94,8 @@ pub enum Recipe {
     UnitCounter,
     /// A division template symbol: the silhouette in vanilla's material.
     DivisionSymbol,
+    /// A special project icon: any image redrawn as vanilla's thin pale lines on transparency.
+    LineArt,
     /// Portraits.
     Portrait,
     /// Advisor card.
@@ -122,6 +125,7 @@ impl Recipe {
             Recipe::LandmarkStrip => "landmark_strip",
             Recipe::UnitCounter => "unit_counter",
             Recipe::DivisionSymbol => "division_symbol",
+            Recipe::LineArt => "line_art",
             Recipe::Portrait => "portrait",
             Recipe::AdvisorCard => "advisor_card",
             Recipe::Achievement => "achievement",
@@ -138,6 +142,7 @@ impl Recipe {
         match self {
             Recipe::ReportCard => crate::recipes::report_card::RECIPE_VERSION,
             Recipe::UnitCounter | Recipe::DivisionSymbol => crate::recipes::unit_art::RECIPE_VERSION,
+            Recipe::LineArt => crate::recipes::line_art::RECIPE_VERSION,
             Recipe::AnimGlow | Recipe::AnimKeyframes | Recipe::AnimScroll | Recipe::AnimSpin => crate::animation::RECIPE_VERSION,
             _ => 1,
         }
@@ -161,6 +166,7 @@ pub fn recipe_of(profile: &Profile) -> Recipe {
         Family::Building => Recipe::LandmarkStrip,
         Family::CounterLarge | Family::CounterSmall => Recipe::UnitCounter,
         Family::DivisionEmblem => Recipe::DivisionSymbol,
+        Family::SpecialProjectIcon => Recipe::LineArt,
         Family::LeaderPortrait | Family::CommanderPortrait | Family::OperativePortrait | Family::ScientistPortrait => Recipe::Portrait,
         Family::AdvisorCard => Recipe::AdvisorCard,
         Family::Achievement => Recipe::Achievement,
@@ -387,6 +393,18 @@ pub fn plan_finishing_with(
                 }
             }
         }
+        Recipe::LineArt => {
+            if imported && accepted_single(size) {
+                ops.push(Op::Conform { width: size[0], height: size[1] });
+            } else {
+                // the recipe reads the subject from alpha or from a flat background itself, so an opaque source is
+                // not refused here, and it redraws every line in white, so a key-coloured fringe needs no cleaning
+                ops.push(Op::LineArt { width: canvas[0], height: canvas[1] });
+            }
+            if profile.imagegen.grayscale {
+                ops.push(Op::Grayscale);
+            }
+        }
         Recipe::Portrait => {
             ops.push(Op::FlattenOn { background: FLATTEN_BACKGROUND });
             if imported && accepted_single(size) {
@@ -480,6 +498,7 @@ pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
         Recipe::LandmarkStrip => vec![vec!["fit_subject", "conform"], vec!["second_frame", "conform"]],
         Recipe::UnitCounter => vec![vec!["unit_glyph", "conform"], vec!["nato_frame", "conform"]],
         Recipe::DivisionSymbol => vec![vec!["unit_glyph", "conform"]],
+        Recipe::LineArt => vec![vec!["line_art", "conform"]],
         Recipe::Portrait => vec![vec!["flatten_on"], vec!["extract_portrait", "conform"]],
         Recipe::AdvisorCard => vec![vec!["advisor_card", "conform"]],
         Recipe::Achievement => vec![vec!["fit_subject", "conform"], vec!["achievement_triplet"]],
@@ -740,6 +759,38 @@ mod tests {
         let mut odd = counter.clone();
         odd.canvas = [80, 40];
         assert!(plan_finishing(&odd, odd.canvas, &blob(), false, false, "").is_err());
+    }
+
+    #[test]
+    fn special_project_icons_are_redrawn_as_line_art_and_the_audit_wants_the_drawing() {
+        let p = prof(Family::SpecialProjectIcon);
+        assert_eq!(recipe_of(&p), Recipe::LineArt);
+        assert_eq!((recipe_of(&p).id(), recipe_of(&p).version()), ("line_art", 1));
+        // generated art, cut out or opaque on a flat background, is always redrawn, then kept grayscale
+        let plan = plan_finishing(&p, p.canvas, &blob(), false, false, "").unwrap();
+        assert_eq!(plan.ops, vec![Op::LineArt { width: 161, height: 98 }, Op::Grayscale]);
+        let paper = Rgba::filled(300, 200, [20, 40, 90, 255]);
+        assert_eq!(plan_finishing(&p, p.canvas, &paper, false, false, "").unwrap().ops[0], Op::LineArt { width: 161, height: 98 });
+        // imported finished art at the accepted size is kept
+        assert_eq!(plan_finishing(&p, p.canvas, &Rgba::new(161, 98), true, false, "").unwrap().ops[0], Op::Conform { width: 161, height: 98 });
+        // the processed drawing passes the family's own checks
+        let (out, _) = crate::process::run_chain(&blob(), &plan.ops).unwrap();
+        let report = crate::validate::validate_image(&out, &p, &p.imagegen.checks, &Default::default());
+        assert!(report.findings.iter().all(|f| f.level != crate::validate::Level::Error), "{:?}", report.findings);
+        assert!(report.findings.iter().all(|f| f.code != "GFX-UNDERSIZED-SUBJECT"), "{:?}", report.findings);
+        // the audit wants the drawing: a bare fit, the old icon recipe's stage, is not enough
+        let line = [Op::LineArt { width: 161, height: 98 }, Op::Grayscale];
+        assert!(audit(&record(&p, &line, &[], &[], ""), &p).is_empty());
+        assert!(audit(&record(&p, &[Op::Conform { width: 161, height: 98 }, Op::Grayscale], &[], &[], ""), &p).is_empty());
+        let fit = [Op::FitSubject { width: 161, height: 98, margin: 3, min_alpha: 16 }, Op::Grayscale];
+        let missing = audit(&record(&p, &fit, &[], &[], ""), &p);
+        assert!(missing.iter().any(|m| m.contains("line_art")), "{missing:?}");
+        let no_grey = audit(&record(&p, &line[..1], &[], &[], ""), &p);
+        assert!(no_grey.iter().any(|m| m.contains("grayscale")), "{no_grey:?}");
+        // a record of the old icon recipe is refused by id
+        let mut old = record(&p, &line, &[], &[], "");
+        old.recipe.as_mut().unwrap().id = "icon".into();
+        assert!(audit(&old, &p).iter().any(|m| m.contains("recipe icon v1")));
     }
 
     /// Selected-strip emblems sit as far inside frame 1 as vanilla's, whatever minimum margin the profile sets (the

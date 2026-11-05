@@ -339,7 +339,13 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
                 // a selected-strip emblem sits as far inside frame 1 as vanilla's (about 76 percent of an agency
                 // frame), so the floor follows that fit, less a little for the subject's own shape
                 let fit = f64::from(crate::recipes::frames::selected_fit_margin(profile.family));
-                let fitted = (1.0 - 2.0 * fit / f64::from(f.width)).max(1.0 - 2.0 * fit / f64::from(f.height));
+                let mut fitted = (1.0 - 2.0 * fit / f64::from(f.width)).max(1.0 - 2.0 * fit / f64::from(f.height));
+                // a special project drawing fills vanilla's box (86 by 74 percent of the canvas), so a tall subject
+                // spans 74 percent of the height, as vanilla's do
+                if profile.family == crate::family::Family::SpecialProjectIcon {
+                    let b = crate::recipes::line_art::STYLE.fit_box;
+                    fitted = b[0].min(b[1]);
+                }
                 if span < 0.80_f64.min(fitted - 0.05) {
                     findings.push(Finding::new(
                         "GFX-UNDERSIZED-SUBJECT",
