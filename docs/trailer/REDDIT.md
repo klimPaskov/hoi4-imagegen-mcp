@@ -1,16 +1,14 @@
 # hoi4-imagegen trailer (Reddit)
 
-For r/hoi4modding. Post as a video or link post, with the YouTube link in place of `<VIDEO LINK>`.
+For r/hoi4modding. Post as a video or link post.
 
 ## Title
 
-I made a free MCP that generates HOI4 art and wires it into your mod
+I made an MCP that generates HOI4 art and wires it into your mod
 
 ## Post
 
-I've been building HOI4 Imagegen, a free and open-source MCP server for coding agents like Claude Code and Codex. You describe the asset you need, and it generates the art and wires it into your mod as a file the game actually loads, instead of a big picture you still have to cut, convert and register yourself.
-
-Trailer: <VIDEO LINK>
+Video: https://youtu.be/4ko6f-icwDc
 
 What it does:
 
@@ -31,4 +29,4 @@ Links:
 - HOI4 Mod Setup, which installs it into a mod project: https://github.com/klimPaskov/HOI4-Mod-Setup
 - Discord: https://discord.gg/rAXesGcT2t
 
-Happy to answer questions, and feedback on which art types to improve next is welcome.
+Happy to answer questions, and feedback on which art types to improve is welcome.
