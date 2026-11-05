@@ -136,6 +136,9 @@ pub struct CandidateRecord {
     pub usage: Option<Value>,
     /// Note the provider attached (for example a safety message).
     pub note: Option<String>,
+    /// The sub-family the plan drew references and its form note from (absent before 0.3.4 and for imports).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subfamily: Option<String>,
 }
 
 /// An engine-level finishing stage that ran (a template composite, a face crop, the flag sizes).

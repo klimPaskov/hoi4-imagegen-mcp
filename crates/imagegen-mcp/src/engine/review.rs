@@ -42,7 +42,7 @@ impl Engine {
         let profile = self.profile_of(&artifact)?;
         let (bytes, sha) = self.read_artifact(&artifact)?;
         let (img, _) = decode(&bytes, Some(&artifact.path), DecodeLimits::default())?;
-        let vanilla_check = self.vanilla_check(artifact.family, &img);
+        let vanilla_check = self.vanilla_check(artifact.family, artifact.subfamily.as_deref(), &img);
         let vanilla_status = vanilla_check.get("status").and_then(Value::as_str).unwrap_or("unavailable").to_string();
         let vanilla_override = override_on.then(|| json!({"reason": override_reason, "status_overridden": vanilla_status}));
         let rubric_id = profile.imagegen.rubric.clone();

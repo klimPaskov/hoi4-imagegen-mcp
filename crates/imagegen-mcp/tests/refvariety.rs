@@ -299,3 +299,53 @@ fn a_near_duplicate_of_an_earlier_output_warns_and_a_different_one_does_not() {
     assert!(!v["results"][0]["findings"].as_array().unwrap().iter().any(|f| f["code"] == "GFX-NEAR-DUPLICATE"), "{v:#}");
     let _ = synthetic_icon_png;
 }
+
+#[test]
+fn subfamilies_are_inferred_named_limited_and_fall_back() {
+    let game = fake_focus_game();
+    let h = harness_with_game(game.path());
+    let fam = imagegen_core::subfamily::for_family(imagegen_core::family::Family::Focus).expect("focus has sub-families");
+    assert!(fam.get("naval").is_some() && fam.get("society").is_some());
+    // inferred from the brief: references come only from the naval files
+    let p = plan(&h, "fleet", "a battleship fleet at anchor", json!({}));
+    let sub = p.subfamily.as_ref().unwrap();
+    assert_eq!((sub.id.as_str(), sub.how.as_str(), sub.references_from_subfamily), ("naval", "inferred", true), "{sub:?}");
+    assert!(sent(&p).iter().all(|f| f.contains("navy_fleet")), "{:?}", sent(&p));
+    assert!(p.prompt.text.contains("Vanilla national focus icon naval files"), "the form note goes into the prompt: {}", p.prompt.text);
+    // named in the request, whatever the brief says
+    let p = plan(&h, "named", "a quiet harbour town", json!({"subfamily": "air"}));
+    assert_eq!(p.subfamily.as_ref().unwrap().how, "named");
+    assert!(sent(&p).iter().all(|f| f.contains("air_bomber")), "{:?}", sent(&p));
+    let r = p.style_sources.as_ref().unwrap();
+    assert!(r.excluded.iter().any(|e| e.reason == "outside the sub-family air"));
+    // a sub-family with too few files here falls back to the whole family and says so
+    let p = plan(&h, "people", "a crowd of workers", json!({"subfamily": "society"}));
+    let sub = p.subfamily.as_ref().unwrap();
+    assert!(!sub.references_from_subfamily && sub.note.contains("whole family"), "{sub:?}");
+    assert_eq!(sent(&p).len(), 4);
+    // a brief that matches no sub-family uses the whole family and says so
+    let p = plan(&h, "lake", "a quiet mountain lake", json!({}));
+    assert!(p.subfamily.is_none());
+    assert!(p.warnings.iter().any(|w| w.contains("points to no sub-family")), "{:?}", p.warnings);
+    // an unknown sub-family is refused with the list
+    let e = h
+        .engine
+        .plan(
+            serde_json::from_value(
+                json!({"family": "focus", "feature_slug": "f", "asset": "x", "brief": "x", "provider": "openai", "subfamily": "pirates"}),
+            )
+            .unwrap(),
+        )
+        .unwrap_err();
+    assert!(e.to_string().contains("naval"), "{e}");
+    // the candidate record keeps the sub-family
+    h.queue_edit(&synthetic_icon_png());
+    let p = plan(&h, "fleet2", "a battleship fleet at anchor", json!({}));
+    h.engine.generate(serde_json::from_value(json!({"plan_id": p.plan_id, "idempotency_key": "k-sub"})).unwrap()).unwrap();
+    let rec = h.engine.ledger.entries().unwrap().into_iter().find(|e| e.kind == "generated").unwrap();
+    assert_eq!(rec.data["subfamily"], "naval");
+    // and hoi4.image_families lists the sub-families
+    let f = h.engine.families_info(serde_json::from_value(json!({"family": "focus"})).unwrap()).unwrap();
+    let subs = f["family"]["subfamilies"].as_array().unwrap();
+    assert!(subs.iter().any(|s| s["id"] == "naval" && s["files"].as_u64().unwrap() > 0 && s["form_note"].is_string()), "{subs:#?}");
+}

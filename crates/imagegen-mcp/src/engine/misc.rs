@@ -158,6 +158,14 @@ impl Engine {
                 "mod_override": {"origin": prof.origin, "overridden": prof.overridden, "differs_from_vanilla": prof.differs_from_vanilla(), "vanilla_canvas": prof.vanilla.as_ref().map(|x| x.canvas)},
                 "evidence": prof.source,
             });
+            // the kinds the family's vanilla art splits into (data/subfamilies.json), for the subfamily parameter
+            if let Some(f) = imagegen_core::subfamily::for_family(prof.family) {
+                v["subfamilies"] = json!(f
+                    .subfamilies
+                    .iter()
+                    .map(|s| json!({"id": s.id, "files": s.files, "examples": s.examples, "style_groups": s.style_groups.len(), "form_note": s.form_note}))
+                    .collect::<Vec<_>>());
+            }
             if full {
                 v["measured"] = json!({
                     "game_version": measured.game_version(),

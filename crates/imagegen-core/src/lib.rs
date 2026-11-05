@@ -42,6 +42,7 @@ pub mod sprite;
 pub mod style;
 pub mod styledesc;
 pub mod stylesrc;
+pub mod subfamily;
 pub mod tga;
 pub mod validate;
 pub mod vanillamatch;

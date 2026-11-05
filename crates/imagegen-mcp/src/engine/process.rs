@@ -328,6 +328,7 @@ impl Engine {
             provider_request_id: None,
             usage: None,
             note: Some(note),
+            subfamily: None,
         };
         self.ledger.append(kind::IMPORTED, Some(&aid), Some(&rec.candidate_id), &rec)?;
         self.artifact(&rec.candidate_id)

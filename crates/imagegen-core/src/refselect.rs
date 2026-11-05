@@ -165,7 +165,6 @@ pub const THEMES: &[(&str, &[&str])] = &[
             "research*",
             "scien*",
             "technolog*",
-            "tech",
             "universit*",
             "laborator*",
             "educat*",

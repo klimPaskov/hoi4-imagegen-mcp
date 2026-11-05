@@ -187,6 +187,9 @@ pub struct StyleReport {
     /// Near-duplicate check set-up.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub near_duplicate: Option<NearDuplicateSummary>,
+    /// The sub-family the references were drawn from, when the request had one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subfamily: Option<SubfamilyUse>,
     /// Candidates of the used tier the request left out, with the reason (at most [`MAX_EXCLUDED_LISTED`]; `notes`
     /// gives the full count).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -272,6 +275,21 @@ pub struct RequestKey<'a> {
     pub asset: &'a str,
     /// The brief.
     pub brief: &'a str,
+    /// The sub-family to draw from (named in the request or inferred from the brief).
+    pub subfamily: Option<&'a str>,
+}
+
+/// How a request's sub-family limited the references.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct SubfamilyUse {
+    /// Sub-family id.
+    pub id: String,
+    /// True when the references were drawn from the sub-family alone.
+    pub used: bool,
+    /// Eligible files of the used tier in the sub-family.
+    pub files: usize,
+    /// Why, for a person.
+    pub note: String,
 }
 
 // ---- family tables ----
@@ -706,6 +724,7 @@ fn select(
     cands: &[Cand],
     pool: &[Pooled],
     excluded: &mut Vec<ExcludedRef>,
+    sub_use: &mut Option<SubfamilyUse>,
     notes: &mut Vec<String>,
 ) -> Vec<(Pooled, String)> {
     let Selection { tier, family, label, found, sampled, model, send_slots } = *sel;
@@ -749,6 +768,42 @@ fn select(
         ));
     }
     excluded.extend(left_out.iter().take(MAX_EXCLUDED_LISTED).map(|(i, why)| ExcludedRef { path: cands[*i].display.clone(), reason: why.clone() }));
+
+    // the request's sub-family: only its files, unless it has too few, then the whole family
+    if let (Some(id), Some(fam)) = (ctx.request.and_then(|r| r.subfamily), crate::subfamily::for_family(family)) {
+        let member = |i: usize| {
+            let dirs = rel_dirs(&cands[i].display);
+            fam.member(&raw_stem(&cands[i]), &dirs[dirs.len().saturating_sub(1)..]) == Some(id)
+        };
+        let (inside, outside): (Vec<usize>, Vec<usize>) = eligible.iter().partition(|&&i| member(i));
+        if inside.len() >= need {
+            notes.push(format!(
+                "{} of the {} eligible {label} images are outside the sub-family {id} and were left out",
+                outside.len(),
+                eligible.len()
+            ));
+            excluded.extend(
+                outside
+                    .iter()
+                    .take(MAX_EXCLUDED_LISTED / 2)
+                    .map(|&i| ExcludedRef { path: cands[i].display.clone(), reason: format!("outside the sub-family {id}") }),
+            );
+            *sub_use = Some(SubfamilyUse {
+                id: id.to_string(),
+                used: true,
+                files: inside.len(),
+                note: format!("references drawn from the {} eligible {label} images of the sub-family {id}", inside.len()),
+            });
+            eligible = inside;
+        } else {
+            let note = format!(
+                "the sub-family {id} has only {} eligible {label} images here (fewer than {need}), so the references come from the whole family",
+                inside.len()
+            );
+            notes.push(note.clone());
+            *sub_use = Some(SubfamilyUse { id: id.to_string(), used: false, files: inside.len(), note });
+        }
+    }
 
     // the style-typical images among the eligible ones: generic files first, then by distance from the style
     let eligible_set: Vec<&Cand> = eligible.iter().map(|&i| &cands[i]).collect();
@@ -1043,6 +1098,7 @@ pub fn resolve(ctx: &SourceCtx) -> Resolved {
     }
 
     let mut excluded: Vec<ExcludedRef> = Vec::new();
+    let mut subfamily_use: Option<SubfamilyUse> = None;
     let mut near_duplicate = None;
     let mut near_duplicate_bits = None;
     if let Some(tier) = chosen_tier {
@@ -1080,7 +1136,7 @@ pub fn resolve(ctx: &SourceCtx) -> Resolved {
             idx.into_iter().zip(why).map(|(i, w)| (pool[i].clone(), w)).collect()
         } else {
             let sel = Selection { tier, family, label, found: chosen_found, sampled: &sampled, model: &model, send_slots };
-            select(&sel, ctx, &chosen_cands, pool, &mut excluded, &mut notes)
+            select(&sel, ctx, &chosen_cands, pool, &mut excluded, &mut subfamily_use, &mut notes)
         };
         let stats_sha: Vec<&str> = stats_idx.iter().map(|&i| pool[i].file_sha.as_str()).collect();
         for (p, why) in &sends {
@@ -1145,6 +1201,7 @@ pub fn resolve(ctx: &SourceCtx) -> Resolved {
             style_paragraph: paragraph,
             drift,
             near_duplicate,
+            subfamily: subfamily_use,
             excluded,
             notes,
         },

@@ -193,6 +193,9 @@ pub struct Plan {
     /// Which style was applied and why, what each source contributed and which form wins (new in 0.3.2).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_selection: Option<StyleSelection>,
+    /// The sub-family the plan drew references and its form note from (new in 0.3.4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subfamily: Option<SubfamilyChoice>,
     /// Estimate.
     pub estimate: PlanEstimate,
     /// Output paths.
@@ -203,6 +206,22 @@ pub struct Plan {
     pub approvals: Vec<String>,
     /// Warnings.
     pub warnings: Vec<String>,
+}
+
+/// The sub-family of a plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SubfamilyChoice {
+    /// Sub-family id (`army`, `naval`, ...).
+    pub id: String,
+    /// `named` (in the request) or `inferred` (from the brief).
+    pub how: String,
+    /// True when the automatic references came from the sub-family alone; false when it had too few files and the
+    /// whole family was used, or when no automatic reference was drawn.
+    pub references_from_subfamily: bool,
+    /// The sub-family's form note, when it went into the prompt.
+    pub form_note: Option<String>,
+    /// One sentence for a person.
+    pub note: String,
 }
 
 /// The references one source contributed to a plan.
@@ -466,6 +485,7 @@ mod tests {
             style_sha256: None,
             style_sources: None,
             style_selection: None,
+            subfamily: None,
             estimate: PlanEstimate {
                 usd_per_call: 0.006,
                 calls: 1,
