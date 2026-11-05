@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A rating batch: two examples of every family for the maintainer to rate, plus earlier handbacks.
+"""A review batch: two examples of every family to check against vanilla references, plus earlier handbacks.
 
   make_rating_batch.py gen                 generate 2 unstyled examples per family (serial, resumable; they are also
                                            the gallery's first examples, so nothing is spent twice)
