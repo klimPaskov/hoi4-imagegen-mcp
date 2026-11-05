@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 
 use crate::api::ValidateParams;
 
+use super::diversity::Subject;
 use super::{looks_like_artifact, EResult, Engine, EngineError};
 
 const MAX_FOLDER_FILES: usize = 500;
@@ -125,8 +126,18 @@ impl Engine {
         let checks = profile.imagegen.checks.clone();
         let canvas = (profile.free_canvas() && artifact.canvas != profile.canvas).then_some(artifact.canvas);
         let style = styles.get(self, profile, &checks);
+        let near_bits = match style {
+            Some(model) => model.and_then(|m| m.near_duplicate_bits),
+            None => self.style_model(profile).and_then(|m| m.near_duplicate_bits),
+        };
         let (_, mut findings, extra) = run_checks(&bytes, &artifact.path, profile, &checks, canvas, style);
         let mut notes = extra;
+        // a frame and composition that nearly repeat an earlier output of the family warn, never fail
+        if let Ok((img, _)) = decode(&bytes, Some(&artifact.path), DecodeLimits::default()) {
+            let subject =
+                Subject { family: artifact.family, asset_id: &artifact.asset_id, processed: artifact.processed, root_id: &artifact.root_id };
+            findings.extend(self.near_duplicate_findings(&subject, &img, near_bits));
+        }
         // the family's processing must be on record: a processed artifact whose chain lacks a required stage fails
         if let Some(rec) = &artifact.record {
             for problem in imagegen_core::chain::audit(rec, profile) {

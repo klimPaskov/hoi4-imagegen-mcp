@@ -127,7 +127,7 @@ impl Engine {
             })
             .collect();
         let pinned = self.pinned_style_for(prof.family, None);
-        let resolved = self.resolve_style(prof, pinned.as_ref(), imagegen_core::stylesrc::DEFAULT_SEND, true, None);
+        let resolved = self.resolve_style(prof, pinned.as_ref(), imagegen_core::stylesrc::DEFAULT_SEND, true, None, None);
         json!({
             "style_profiles": styles,
             "reference_dirs": dirs,

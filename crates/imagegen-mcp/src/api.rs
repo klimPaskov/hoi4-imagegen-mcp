@@ -107,6 +107,12 @@ macro_rules! group_request {
             /// GUI textures only: the kind of texture (`button`, `frame`, `panel` or `background`). It adds that kind's vanilla form to the prompt and picks vanilla references of that kind. Refused for the others.
             #[serde(default)]
             pub texture_kind: Option<imagegen_core::GuiTextureKind>,
+            /// With your own `style_anchor` references: `replace` (default) sends only yours, `add` also sends the automatic style references.
+            #[serde(default)]
+            pub style_mode: Option<imagegen_core::plan::StyleMode>,
+            /// The sub-family to draw references and the form note from (listed by hoi4.image_families). Inferred from the brief when omitted.
+            #[serde(default)]
+            pub subfamily: Option<String>,
             /// Candidates to produce in one go (1 to 4); each is a separate provider call.
             #[serde(default)]
             pub variants: Option<u8>,
@@ -150,6 +156,8 @@ macro_rules! group_request {
                     quality: self.quality,
                     canvas: self.canvas,
                     texture_kind: self.texture_kind,
+                    style_mode: self.style_mode,
+                    subfamily: self.subfamily,
                 };
                 (req, follow)
             }
