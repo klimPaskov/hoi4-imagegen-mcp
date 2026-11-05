@@ -128,7 +128,7 @@ Every sprite name follows Hearts of Iron IV 1.19.4.1, and `crates/imagegen-core/
 | `division_emblem` | `GFX_div_templ_<n>_large` and `GFX_div_templ_<n>_small` | none: the player picks symbol `<n>` |
 | `faction_logo` | the logo and `<logo>_miniature` | `icon = GFX_faction_logo_<asset>` |
 | `medal` | `GFX_medal_icon_<x>` and `GFX_medal_icon_<x>_large` | `icon = GFX_medal_icon_<asset>` with `frame = 1` |
-| `building` | `GFX_<x>_icon_small` (province window) and `GFX_<x>_icon` (raid window) | `special_icon = GFX_<asset>_icon_small` |
+| `building` | `GFX_<x>_icon_small` (province window) and `GFX_<x>_icon` (raid window) | `special_icon = GFX_<asset>_icon_small`, and an entity `building_<building key>` in `gfx/entities` that you add yourself |
 | `modifier_stat_icon` | the name a `.gui` gives, upper case like vanilla | `spriteType = "GFX_MODIFIER_<ASSET>"` |
 
 A division emblem's number `<n>` is one past the highest of vanilla's numbers (0 to 43 and 65 to 121) and every number the mod's `interface/*.gfx` files or an earlier install already use. Install records it in the asset record. Achievements and flags have no sprite: the game loads them by file name.
@@ -299,6 +299,10 @@ Install is the last step and the strictest.
 4. `hoi4.image_install` needs the `approval_id` of an approval of this exact file, and refuses if any hash changed since.
 5. The write is atomic: every file of an asset (companions, `.gfx` text or the handoff note) is written together and all are undone if one fails.
 
+**`legacy_lazy_load = no` (since 0.3.5).** The install writes this line into a sprite only where vanilla does. Counted on 1.19.4.1 with all DLC (25,769 sprites, 4,840 with the line), it is on every text icon (`GFX_unit_*_icon_small`, 201 of 201) and every focus `_shine` companion (2,930 of 2,930), which is why the install adds it to the `counter_small` text icon and the shine. A text icon without it drew as a blank next to the "1" in the division tooltip. Every other family is below 1% of its sprites (focus 46 of 3,070, national spirit and idea 2 of 3,742, trait 20 of 231, technology 6 of 2,892, building 0 of 52, and 0 for decisions, medals, portraits, events, counters, emblems, logos and the rest), so none of them gets it. The per-family counts are in `VANILLA_LEGACY_LAZY_LOAD` in `crates/imagegen-core/src/lookup.rs`.
+
+**Landmark entity (since 0.3.5).** A `building` install writes the two icons and no entity. The game also needs an entry named `building_<building key>` under `gfx/entities`, where the key is the building's name in `common/buildings`. Without it error.log says "Building <key> doesn't have an entity" and the landmark cannot be placed. Vanilla's building `landmark_eiffel_tower` has the entity `building_landmark_eiffel_tower` in `gfx/entities/landmarks.asset` (its mesh is in `landmarks.gfx`), plus `building_landmark_eiffel_tower_destroyed`. The install output (`script`), the handoff note and the install receipt say this. The tool does not generate entities.
+
 `mode: handoff` (default) writes the sprite snippet into `docs/assets/<feature>/gfx_handoff.md` for the main agent to wire. `mode: register` inserts the entries into the suggested `.gfx` file as text, keeping comments and layout. Families without a sprite (achievements and flags) are loaded by the game from the file name, so both modes install the files alone. A final file is replaced only if this tool installed it and it is unchanged (`on_exists: replace`).
 
 **Small icons.** An icon family with a side of 40 px or less (decision, decision category icon, state modifier, raid, commander and personal traits) gets one more rule in its prompt: one bold object of a few large, solid shapes, with no thin parallel lines, lattices, groups of small figures or scene. It also gets the `small_detail` check. The check measures the share of the subject's opaque pixels that lie on its edge, which is high for thin lines and small parts, and warns with `GFX-SMALL-DETAIL` above the family's vanilla 95th percentile (raid 0.468, state modifier 0.364, decision 0.342, commander trait 0.347, personal trait 0.448, decision category icon 0.112). Edge density was measured too, but it is high for every small icon, readable or not, so it does not separate them. The warning never blocks an install. The review decides.
@@ -367,15 +371,15 @@ Details, the sign-in steps and the recorded evidence are in [docs/chatgpt-login.
 
 ## Install
 
-The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/releases>. Version 0.3.4 has one archive per platform:
+The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/releases>. Version 0.3.5 has one archive per platform:
 
 | Platform | Archive |
 |---|---|
-| Windows x64 | `hoi4-imagegen-v0.3.4-x86_64-pc-windows-msvc.zip` |
-| macOS arm64 | `hoi4-imagegen-v0.3.4-aarch64-apple-darwin.tar.gz` |
-| macOS x64 | `hoi4-imagegen-v0.3.4-x86_64-apple-darwin.tar.gz` |
-| Linux x64 | `hoi4-imagegen-v0.3.4-x86_64-unknown-linux-gnu.tar.gz` |
-| Linux arm64 | `hoi4-imagegen-v0.3.4-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows x64 | `hoi4-imagegen-v0.3.5-x86_64-pc-windows-msvc.zip` |
+| macOS arm64 | `hoi4-imagegen-v0.3.5-aarch64-apple-darwin.tar.gz` |
+| macOS x64 | `hoi4-imagegen-v0.3.5-x86_64-apple-darwin.tar.gz` |
+| Linux x64 | `hoi4-imagegen-v0.3.5-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux arm64 | `hoi4-imagegen-v0.3.5-aarch64-unknown-linux-gnu.tar.gz` |
 
 Each archive holds both programs, `LICENSE`, `NOTICE`, `README.md` and `UPSTREAM.md`. The release also has a `SHA256SUMS` file. The binaries are **unsigned**, so Windows SmartScreen and macOS Gatekeeper may warn. The archives and `SHA256SUMS` carry GitHub build attestations. To check a download:
 

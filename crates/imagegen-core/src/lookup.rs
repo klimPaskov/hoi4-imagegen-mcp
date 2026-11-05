@@ -99,7 +99,7 @@ pub fn lookup_of(family: Family) -> Lookup {
         CounterLarge => l(EngineKey, "name the sub-unit {asset} in common/units (the battalion icon is GFX_unit_<sub-unit key>_icon_medium)", "interface/subuniticons.gfx:81 GFX_unit_engineer_icon_medium for sub-unit engineer, whose sprite is infantry (common/units/engineer.txt:4): the key, not sprite, names the icon; 100 sub-units whose sprite differs from the key all have GFX_unit_<key>_icon_medium; hoi4.exe has GFX_unit_ and _icon_medium", Some("engineer")),
         CounterSmall => l(EngineKey, "name the sub-unit {asset} in common/units (the on-map counter is GFX_unit_<sub-unit key>_icon_medium_white, the tooltip text icon GFX_unit_<sub-unit key>_icon_small)", "interface/subuniticons.gfx:201 GFX_unit_infantry_icon_medium_white (noOfFrames = 2); interface/texticons.gfx:953 GFX_unit_infantry_icon_small (noOfFrames = 2); hoi4.exe has _icon_medium_white and builds unit_<key>_icon_small| text icons for sub-unit tooltips", Some("infantry")),
         DivisionEmblem => l(Numbered, "no script: the player picks symbol {n} in the division designer (GFX_div_templ_{n}_large and GFX_div_templ_{n}_small)", "interface/subuniticons.gfx:318 GFX_div_templ_0_large to :418 GFX_div_templ_121_large and :425 GFX_div_templ_0_small; numbers 0-43 and 65-121 (a gap at 44-64); hoi4.exe has GFX_div_templ_ and _large", Some("0")),
-        Building => l(FullName, "landmark building: special_icon = GFX_{asset}_icon_small (the raid window shows the large GFX_{asset}_icon)", "common/buildings/01_landmark_buildings.txt:134 special_icon = GFX_eiffel_tower_icon_small -> interface/buildings/landmarks.gfx:144; the large GFX_eiffel_tower_icon is at :7 under '# Big Icons in Raid Window #' and no file names it", Some("eiffel_tower")),
+        Building => l(FullName, "landmark building: special_icon = GFX_{asset}_icon_small (the raid window shows the large GFX_{asset}_icon). The building also needs an entity: add an entry named building_<building key> under gfx/entities (the key is the building's name in common/buildings), or the game logs \"Building <building key> doesn't have an entity\" and the landmark cannot be placed. Vanilla names the entity building_landmark_eiffel_tower for the building landmark_eiffel_tower (gfx/entities/landmarks.asset, with its mesh in landmarks.gfx), and also defines building_landmark_eiffel_tower_destroyed. This tool does not write entities", "common/buildings/01_landmark_buildings.txt:134 special_icon = GFX_eiffel_tower_icon_small -> interface/buildings/landmarks.gfx:144; the large GFX_eiffel_tower_icon is at :7 under '# Big Icons in Raid Window #' and no file names it; gfx/entities/landmarks.asset:134 name = \"building_landmark_eiffel_tower\" is the entity of the building landmark_eiffel_tower", Some("eiffel_tower")),
         FactionLogo => l(FullName, "faction: icon = {sprite} (the game also loads {sprite}_miniature)", "common/factions/templates/allies.txt:30 icon = GFX_faction_icon_allies; interface/factions/factions.gfx:20 GFX_faction_logo_axis and :175 GFX_faction_logo_axis_miniature: all 31 logos have a 32x32 _miniature and hoi4.exe has the string _miniature", Some("axis")),
         AgencyLogo => l(FullName, "intelligence agency: picture = {sprite}", "common/intelligence_agencies/00_intelligence_agencies.txt:719 picture = GFX_intelligence_agency_logo_AFG_communism (noOfFrames = 2)", None),
         ModifierStatIcon => l(FullName, "a .gui element: spriteType = \"{sprite}\"", "interface/unitleaderwindow.gui:468 spriteType = \"GFX_MODIFIER_SUPPLY_CONSUMPTION_FACTOR\" -> interface/countryarmyview.gfx:173; hoi4.exe builds no GFX_MODIFIER_ name, and all 159 vanilla ones are upper case", Some("supply_consumption_factor")),
@@ -108,6 +108,49 @@ pub fn lookup_of(family: Family) -> Lookup {
         AnimBlendGlow | AnimBlendKeyframes | AnimScroll | AnimSpin => l(FullName, "a .gui iconType: spriteType = \"{sprite}\" (a frameAnimatedSpriteType plays when the element is shown)", "interface/alerts.gfx:16 GFX_yellow_alert_glow (noOfFrames = 2, buttonstate_blendframes.lua) and interface/leadergroups.gfx:46 GFX_defending_icon_anim_strip (noOfFrames = 20) are named in full by .gui elements", None),
     }
 }
+
+/// How many vanilla sprites of each family's name pattern carry `legacy_lazy_load = no`, as (family, with the line,
+/// all). Measured on HOI4 1.19.4.1 with all DLC (`interface/**/*.gfx` and `dlc/*/interface/**/*.gfx`, 25,769
+/// sprites of which 4,840 have the line, counting every `*SpriteType` block by its `name`). The install writes the
+/// line wherever vanilla uses it for most of a family's sprites: only the text icon (201 of 201) and the focus
+/// `_shine` companion (2,930 of 2,930, written by [`crate::recipes::focus_shine`]). Every other family is below 1%
+/// (focus 46 of 3,070, national spirit and idea 2 of 3,742, trait 20 of 231, technology 6 of 2,892) or has none.
+pub const VANILLA_LEGACY_LAZY_LOAD: &[(&str, u32, u32)] = &[
+    ("focus", 46, 3070),
+    ("focus_shine", 2930, 2930),
+    ("idea_spirit, idea_concern, advisor_card, officer_corps_spirit (GFX_idea_)", 2, 3742),
+    ("decision", 1, 381),
+    ("decision_category_icon", 0, 112),
+    ("decision_category_picture", 0, 105),
+    ("state_modifier", 0, 108),
+    ("special_project_icon", 0, 116),
+    ("raid", 0, 25),
+    ("mio_department", 0, 301),
+    ("mio_trait", 0, 47),
+    ("mio_policy", 0, 20),
+    ("bop_side", 0, 107),
+    ("medal", 0, 42),
+    ("agency_upgrade", 2, 36),
+    ("operation_icon", 0, 71),
+    ("operation_picture", 0, 75),
+    ("commander_trait, personal_trait", 20, 231),
+    ("doctrine", 2, 118),
+    ("report_event", 0, 597),
+    ("news_event", 0, 283),
+    ("technology", 6, 2892),
+    ("portraits (leader, commander, operative, scientist)", 0, 2738),
+    ("counter_large", 0, 183),
+    ("counter_small (on-map)", 0, 133),
+    ("counter_small text icon", 201, 201),
+    ("division_emblem large", 0, 122),
+    ("division_emblem small", 0, 122),
+    ("building (landmark big)", 0, 28),
+    ("building (landmark small)", 0, 24),
+    ("faction_logo", 0, 29),
+    ("faction_logo miniature", 0, 29),
+    ("agency_logo", 0, 72),
+    ("modifier_stat_icon", 0, 47),
+];
 
 /// A companion image the game looks up next to the main sprite, derived from the main art at processing time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +171,9 @@ pub struct DerivedCompanion {
     pub file: &'static str,
     /// Sprite name pattern (`{asset}`, `{n}`).
     pub sprite: &'static str,
+    /// Whether the companion's sprite carries `legacy_lazy_load = no`. Vanilla's text icons all do (see
+    /// [`VANILLA_LEGACY_LAZY_LOAD`]) and one without it draws as a blank in the division tooltip.
+    pub legacy_lazy_load_no: bool,
 }
 
 impl DerivedCompanion {
@@ -140,7 +186,17 @@ impl DerivedCompanion {
 /// The companions of a family at a frame canvas. A landmark made at the small 32x32 frame is itself the small
 /// sprite and has none.
 pub fn derived_companions(family: Family, canvas: [u32; 2]) -> Vec<DerivedCompanion> {
-    let c = |key, kind, frame, frames, margin, folder, file, sprite| DerivedCompanion { key, kind, frame, frames, margin, folder, file, sprite };
+    let c = |key, kind, frame, frames, margin, folder, file, sprite| DerivedCompanion {
+        key,
+        kind,
+        frame,
+        frames,
+        margin,
+        folder,
+        file,
+        sprite,
+        legacy_lazy_load_no: kind == DeriveKind::TextIcon,
+    };
     match family {
         Family::CounterSmall => vec![c(
             "text_icon",
@@ -240,6 +296,20 @@ mod tests {
         assert!(derived_companions(Family::Focus, [100, 88]).is_empty());
         assert_eq!(derived_companion(Family::Building, "small").map(|d| d.frames), Some(2));
         assert!(derived_companion(Family::Focus, "small").is_none());
+    }
+
+    #[test]
+    fn only_the_text_icon_companion_writes_legacy_lazy_load() {
+        for f in Family::ALL.iter().copied() {
+            for canvas in [[64, 64], [0, 0]] {
+                for d in derived_companions(f, canvas) {
+                    assert_eq!(d.legacy_lazy_load_no, d.key == "text_icon", "{f} {}", d.key);
+                }
+            }
+        }
+        // the measurement behind it: the line is vanilla's practice (at least half) for the text icon and the shine only
+        let majority: Vec<&str> = VANILLA_LEGACY_LAZY_LOAD.iter().filter(|(_, with, all)| with * 2 > *all).map(|(n, _, _)| *n).collect();
+        assert_eq!(majority, vec!["focus_shine", "counter_small text icon"]);
     }
 
     #[test]

@@ -914,6 +914,8 @@ common/intelligence_agencies/00_intelligence_agencies.txt:719 picture = GFX_inte
 
 <img src="gallery/building.webp" alt="Example building asset made by hoi4-imagegen" width="256">
 
+**Entity (since 0.3.5).** The install writes the icons and sprites only. A landmark building with no `gfx/entities` entry named `building_<building key>` cannot be placed: error.log says "Building <key> doesn't have an entity". The install output, the handoff note and the receipt carry this note. The tool does not generate entities.
+
 **Vanilla form (since 0.3.2).** Measured on the 27 vanilla 128x64 landmark strips (`eiffel_tower_icon`, `big_ben_icon`, `colosseum_icon`): frame 1 is a real-world landmark (a monument, a government building, a tower, a statue, a dam or an industrial site) as a small, detailed painted miniature in muted stone colours with a dark outline, seen from the front at a slightly raised angle. It stands on nothing: no ground, rock or hill under it, only water for a dam or a canal. Frame 2 is the same building as ruins with one small orange flame above it. There is no landscape, backdrop or diorama base, and no fantasy castle. References come from these 128x64 strips only, because vanilla's 64x32 small strips are flat orange pictograms, a different form. Since 0.3.4 the rule also keeps the building compact and centred, at most about four times as wide as tall: frame 1 of vanilla's landmarks runs from 0.34 (Big Ben) to 4.0 (the small Cataract dam), median 1.41, and its box is always centred. A long dam, wall or palace is shown foreshortened, from an angle or as its central part. The citadel above predates these rules and stands on a hill.
 
 | | |
@@ -922,7 +924,7 @@ common/intelligence_agencies/00_intelligence_agencies.txt:719 picture = GFX_inte
 | Canvas and frames | 64x64 per frame, 2 frames side by side in a 128x64 strip; DDS |
 | Also accepted | 32x32 |
 | Names the game looks up | the script names the sprite in full, so the name is free. The example installs `GFX_citadel_icon`, `GFX_citadel_icon_small`. |
-| Script | landmark building: special_icon = GFX_citadel_icon_small (the raid window shows the large GFX_citadel_icon) |
+| Script | landmark building: special_icon = GFX_citadel_icon_small (the raid window shows the large GFX_citadel_icon). The building also needs an entity: add an entry named building_<building key> under gfx/entities (the key is the building's name in common/buildings), or the game logs "Building <building key> doesn't have an entity" and the landmark cannot be placed. Vanilla names the entity building_landmark_eiffel_tower for the building landmark_eiffel_tower (gfx/entities/landmarks.asset, with its mesh in landmarks.gfx), and also defines building_landmark_eiffel_tower_destroyed. This tool does not write entities |
 | Installed files (example) | `gfx/interface/buildings/gallery/building_citadel.dds`<br>`gfx/interface/buildings/gallery/building_citadel_small.dds` |
 | Processing | recipe `landmark_strip` v1: fit, then frame 2 as the ruined landmark from a second candidate. Ran: `defringe` (erosion 1) → `trim_to_subject` → `fit_subject` (height 64, margin 2, width 64), then finishing `second_frame`, `derived_companions` |
 | Checks | `size`, `alpha`, `frames`, `style`, `dds` |
@@ -935,7 +937,7 @@ hoi4-imagegen call hoi4.image_unit '{"family": "building", "feature_slug": "gall
 
 <details><summary>Vanilla evidence for the name</summary>
 
-common/buildings/01_landmark_buildings.txt:134 special_icon = GFX_eiffel_tower_icon_small -> interface/buildings/landmarks.gfx:144; the large GFX_eiffel_tower_icon is at :7 under '# Big Icons in Raid Window #' and no file names it
+common/buildings/01_landmark_buildings.txt:134 special_icon = GFX_eiffel_tower_icon_small -> interface/buildings/landmarks.gfx:144; the large GFX_eiffel_tower_icon is at :7 under '# Big Icons in Raid Window #' and no file names it; gfx/entities/landmarks.asset:134 name = "building_landmark_eiffel_tower" is the entity of the building landmark_eiffel_tower
 
 </details>
 
@@ -974,6 +976,8 @@ interface/subuniticons.gfx:81 GFX_unit_engineer_icon_medium for sub-unit enginee
 ### counter_small
 
 <img src="gallery/counter_small.webp" alt="Example counter_small asset made by hoi4-imagegen" width="180">
+
+**Text icon (since 0.3.5).** The install writes the tooltip text icon `GFX_unit_<sub-unit key>_icon_small` with `legacy_lazy_load = no`, as all 201 vanilla text icons have it. Without the line the icon is blank in the division tooltip. The on-map sprite and every other family's sprites do not get the line, because vanilla uses it on under 1% of them (see the install section of the reference).
 
 | | |
 |---|---|
