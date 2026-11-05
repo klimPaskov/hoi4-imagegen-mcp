@@ -47,8 +47,10 @@ const SCAN_BUDGET: usize = 12_000;
 pub const MAX_EXCLUDED_LISTED: usize = 40;
 /// Theme matches considered per sent theme slot.
 const THEME_WINDOW_PER_SLOT: usize = 4;
-/// Style-typical images considered per sent typical slot.
+/// Style-typical images considered per sent typical slot, at least (the window is at least the more typical half).
 const TYPICAL_WINDOW_PER_SLOT: usize = 6;
+/// Style-typical candidates compared per pick (the one furthest from the images already chosen wins).
+const TYPICAL_LOOKAHEAD: usize = 6;
 /// Most `.gfx` files read when looking for registered sprites.
 const MAX_GFX_FILES: usize = 400;
 /// Largest `.gfx` file read.
@@ -888,21 +890,30 @@ fn select(
         typical_pool.iter().enumerate().map(|(i, p)| (!refselect::is_generic(&file_tokens(&p.cand)), model.check(&p.analysis.v).z_rms, i)).collect();
     ranked.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)).then(a.2.cmp(&b.2)));
     let left = send_slots.saturating_sub(out.len());
-    let window = ranked.len().min((TYPICAL_WINDOW_PER_SLOT * left).max(8));
+    // the more typical half of the eligible images (generic first), so the draw keeps the family's palette spread
+    let window = ranked.len().min((TYPICAL_WINDOW_PER_SLOT * left).max(ranked.len() / 2).max(8));
     let generic = ranked.iter().take(window).filter(|r| !r.0).count();
     let mut typical: Vec<_> = ranked.into_iter().take(window).collect();
     rng.shuffle(&mut typical);
-    for (_, z, i) in typical {
-        if out.len() >= send_slots {
-            break;
-        }
+    // each pick takes, of the next few in the seeded order, the one furthest in style from the images already chosen,
+    // so a set spreads over the family's frames and palettes instead of four near neighbours
+    typical.retain(|t| !out.iter().any(|(q, _)| q.file_sha == typical_pool[t.2].file_sha));
+    while out.len() < send_slots && !typical.is_empty() {
+        let look = typical.len().min(TYPICAL_LOOKAHEAD);
+        let chosen_z: Vec<Vector> = out.iter().map(|(q, _)| model.std.z(&q.analysis.v)).collect();
+        let far = |t: &(bool, f64, usize)| {
+            let z = model.std.z(&typical_pool[t.2].analysis.v);
+            chosen_z.iter().map(|c| c.iter().zip(&z).map(|(a, b)| (a - b).powi(2)).sum::<f64>()).fold(f64::INFINITY, f64::min)
+        };
+        let pick = (0..look).fold(0, |best, k| if far(&typical[k]) > far(&typical[best]) + 1e-12 { k } else { best });
+        let (_, z, i) = typical.remove(pick);
         let p = &typical_pool[i];
         if out.iter().any(|(q, _)| q.file_sha == p.file_sha) {
             continue;
         }
         let kind = if generic == window { "generic " } else { "" };
         let why = format!(
-            "{tier_name}: style-typical, drawn from the {window} most typical {kind}{label} images of {} by the request seed (z {z:.2})",
+            "{tier_name}: style-typical, drawn from the {window} most typical {kind}{label} images of {} by the request seed, the furthest in style from the others of {TYPICAL_LOOKAHEAD} looked at (z {z:.2})",
             typical_pool.len()
         );
         out.push((p.clone(), why));

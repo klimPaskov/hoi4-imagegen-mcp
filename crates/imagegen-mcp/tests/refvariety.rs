@@ -349,3 +349,188 @@ fn subfamilies_are_inferred_named_limited_and_fall_back() {
     let subs = f["family"]["subfamilies"].as_array().unwrap();
     assert!(subs.iter().any(|s| s["id"] == "naval" && s["files"].as_u64().unwrap() > 0 && s["form_note"].is_string()), "{subs:#?}");
 }
+
+// ------------------------------------------------------------------ the real game (skipped without it)
+
+fn find_game() -> Option<std::path::PathBuf> {
+    let candidates = [
+        std::env::var("HOI4_GAME_DIR").ok().map(std::path::PathBuf::from),
+        Some(std::path::PathBuf::from("C:/Program Files (x86)/Steam/steamapps/common/Hearts of Iron IV")),
+        Some(std::path::PathBuf::from("C:/Program Files/Steam/steamapps/common/Hearts of Iron IV")),
+        std::env::var("HOME").ok().map(|h| std::path::PathBuf::from(h).join("Library/Application Support/Steam/steamapps/common/Hearts of Iron IV")),
+    ];
+    candidates.into_iter().flatten().find(|p| p.join("interface/subuniticons.gfx").is_file())
+}
+
+/// Spread of a multiset of images: mean pairwise 64-bit horizontal dHash distance, frame-shape distance (L1 over the
+/// form features x 100) and palette distance (L1 over saturation, lightness / 100 and gold share).
+fn spread(images: &[Rgba]) -> (f64, f64, f64) {
+    use imagegen_core::vanillamatch::{measure, NAMES};
+    let idx = |n: &str| NAMES.iter().position(|x| *x == n).unwrap();
+    let form = ["hull_fill", "ellipse_fill", "box_fill", "subject_span", "subject_aspect", "mirror_symmetry"].map(idx);
+    let palette = ["saturation_mean", "lightness_mean", "warm_metal_share"].map(idx);
+    let rows: Vec<(u128, [f64; imagegen_core::vanillamatch::N])> =
+        images.iter().filter_map(|i| Some((imagegen_core::diversity::dhash(i) >> 64, measure(i)?))).collect();
+    let (mut d, mut f, mut p, mut n) = (0.0, 0.0, 0.0, 0.0);
+    for i in 0..rows.len() {
+        for j in i + 1..rows.len() {
+            d += f64::from((rows[i].0 ^ rows[j].0).count_ones());
+            f += form.iter().map(|&k| (rows[i].1[k] - rows[j].1[k]).abs()).sum::<f64>() * 100.0;
+            p += palette.iter().map(|&k| (rows[i].1[k] - rows[j].1[k]).abs() * if NAMES[k] == "lightness_mean" { 0.01 } else { 1.0 }).sum::<f64>();
+            n += 1.0;
+        }
+    }
+    (d / n, f / n, p / n)
+}
+
+fn load(path: &str) -> Option<Rgba> {
+    let bytes = std::fs::read(path).ok()?;
+    imagegen_core::pixels::decode(&bytes, Some(path), imagegen_core::pixels::DecodeLimits::default()).ok().map(|d| d.0)
+}
+
+const FOCUS_BRIEFS: [&str; 50] = [
+    "rebuild the navy",
+    "expand the air force",
+    "modernise the tank divisions",
+    "build civilian factories",
+    "hold free elections",
+    "found a national university",
+    "open the stock exchange",
+    "found a secret police",
+    "sign a defensive pact",
+    "fortify the border",
+    "lay new railways",
+    "collectivise the farms",
+    "a census of the population",
+    "a concordat with the church",
+    "a steel gate",
+    "submarine pens on the coast",
+    "dive bombers",
+    "mountain infantry",
+    "an aluminium plant",
+    "a royal coronation",
+    "rocket research",
+    "a gold reserve",
+    "code breakers",
+    "a trade agreement",
+    "coastal batteries",
+    "a hydroelectric dam",
+    "a grain export deal",
+    "a youth movement",
+    "a monastery",
+    "the national anthem",
+    "a carrier task force",
+    "a radar network",
+    "artillery parks",
+    "synthetic rubber",
+    "a constitutional reform",
+    "an atomic programme",
+    "an oil refinery",
+    "a spy ring",
+    "a non-aggression treaty",
+    "a fortress city",
+    "a motorway",
+    "a fishing fleet",
+    "a hospital programme",
+    "a pilgrimage",
+    "a victory parade",
+    "paratroopers",
+    "a shipyard expansion",
+    "a printing press",
+    "a new capital",
+    "an expedition to the pole",
+];
+
+/// The measured variety of the automatic references over 50 focus briefs against vanilla and the old fixed set. The
+/// numbers are printed for the release notes; the assertions are the acceptance bar.
+#[test]
+fn real_game_focus_references_vary_like_vanilla() {
+    let Some(game) = find_game() else {
+        eprintln!("SKIPPED: the installed game was not found");
+        return;
+    };
+    let h = harness_with_game(&game);
+    let mut sets: Vec<BTreeSet<String>> = Vec::new();
+    let mut all: Vec<String> = Vec::new();
+    for (k, b) in FOCUS_BRIEFS.iter().enumerate() {
+        let p = plan(&h, &format!("b{k}"), b, json!({}));
+        let paths: Vec<String> = p.style_sources.as_ref().unwrap().chosen.iter().filter(|c| c.sent_to_provider).map(|c| c.path.clone()).collect();
+        for f in &paths {
+            let name = f.rsplit('/').next().unwrap();
+            let nation = imagegen_core::refselect::Nations::load(Some(&game)).nation_of(name.trim_end_matches(".dds"), &[]);
+            assert!(nation.is_none(), "{b}: nation-specific {name} ({nation:?})");
+        }
+        all.extend(paths.iter().cloned());
+        sets.push(paths.into_iter().collect());
+    }
+    let overlap = mean_overlap(&sets);
+    let distinct: BTreeSet<&String> = all.iter().collect();
+    let new = spread(&all.iter().filter_map(|p| load(p)).collect::<Vec<_>>());
+    // vanilla: an even sample of the family's files
+    let files = imagegen_core::stylesrc::vanilla_files(&game, imagegen_core::family::Family::Focus, &[[100, 88]]);
+    let sample: Vec<Rgba> = (0..200).filter_map(|i| load(&files[i * files.len() / 200].display().to_string())).collect();
+    let vanilla = spread(&sample);
+    // vanilla without its nation-specific files, the pool a generic brief draws from
+    let nations = imagegen_core::refselect::Nations::load(Some(&game));
+    let generic_files: Vec<&std::path::PathBuf> =
+        files.iter().filter(|p| nations.nation_of(&p.file_stem().unwrap().to_string_lossy(), &[]).is_none()).collect();
+    let generic_sample: Vec<Rgba> = (0..200).filter_map(|i| load(&generic_files[i * generic_files.len() / 200].display().to_string())).collect();
+    let generic = spread(&generic_sample);
+    // the old fixed set: k-medoids over the same evenly sampled, hash-ordered pool
+    let pool: Vec<(String, Rgba)> = {
+        let mut v: Vec<(String, Rgba)> = (0..256)
+            .map(|i| files[i * files.len() / 256].clone())
+            .filter_map(|p| Some((imagegen_core::hashing::sha256_hex(&std::fs::read(&p).ok()?), load(&p.display().to_string())?)))
+            .collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0));
+        v.dedup_by(|a, b| a.0 == b.0);
+        v
+    };
+    let analysed: Vec<(usize, imagegen_core::styledesc::Vector)> =
+        pool.iter().enumerate().filter_map(|(i, (_, img))| Some((i, imagegen_core::styledesc::analyse(img)?.v))).collect();
+    let m = imagegen_core::styledesc::kmedoids(&analysed.iter().map(|a| a.1).collect::<Vec<_>>(), 4);
+    let old_set: Vec<Rgba> = m.medoids.iter().map(|&i| pool[analysed[i].0].1.clone()).collect();
+    let old_all: Vec<Rgba> = (0..50).flat_map(|_| old_set.clone()).collect();
+    let old = spread(&old_all);
+    eprintln!(
+        "focus, 50 briefs: mean set overlap {overlap:.3} (old fixed set 1.000), {} distinct files of {} sent\n\
+         spread (dHash bits of 64, frame shape, palette): vanilla {:.1} {:.1} {:.2}; vanilla without nation files ({}) {:.1} {:.1} {:.2}; old automatic {:.1} {:.1} {:.2}; new automatic {:.1} {:.1} {:.2}",
+        distinct.len(),
+        all.len(),
+        vanilla.0,
+        vanilla.1,
+        vanilla.2,
+        generic_files.len(),
+        generic.0,
+        generic.1,
+        generic.2,
+        old.0,
+        old.1,
+        old.2,
+        new.0,
+        new.1,
+        new.2
+    );
+    assert!(overlap < 0.2, "mean overlap {overlap:.3}");
+    // dHash and frame shape must clearly beat the old set; the palette may not fall below it
+    assert!(new.0 > old.0 + 3.0 && new.1 > old.1 + 8.0 && new.2 >= old.2 - 0.005, "the new sets must vary more than the old fixed set");
+}
+
+/// The near-duplicate threshold each family measures on its vanilla art (printed for the docs).
+#[test]
+fn real_game_near_duplicate_thresholds_come_from_vanillas_spread() {
+    let Some(game) = find_game() else {
+        eprintln!("SKIPPED: the installed game was not found");
+        return;
+    };
+    let h = harness_with_game(&game);
+    let mut line = Vec::new();
+    for f in ["focus", "idea_spirit", "decision", "decision_category_icon", "report_event", "commander_trait", "technology"] {
+        let info = h.engine.families_info(serde_json::from_value(json!({"family": f})).unwrap()).unwrap();
+        let nd = &info["family"]["style_sources"]["automatic"]["near_duplicate"];
+        let bits = nd["threshold_bits"].as_u64().unwrap_or_else(|| panic!("{f}: {nd}"));
+        assert!((u64::from(imagegen_core::diversity::MIN_THRESHOLD)..64).contains(&bits), "{f}: {bits}");
+        line.push(format!("{f} {bits} ({} images)", nd["images"]));
+    }
+    eprintln!("near-duplicate thresholds (dHash bits of 128): {}", line.join(", "));
+}

@@ -5,10 +5,10 @@
 //! It sees the outline of the frame and the placement of the large shapes, not colour or fine detail.
 //!
 //! What counts as near is the family's own: the threshold is the 1st percentile of the distances between distinct
-//! files of the family's reference set (vanilla when it falls to vanilla), so a warning means two outputs are closer
-//! than 99 in 100 pairs of the family's own art. Measured on HOI4 1.19.4.1 with 400 files a family (all pairs): focus
-//! 29, national spirits 11, decision categories 16, decisions 27, report events 41, unit leader traits 20,
-//! technologies 28 and leader portraits 29 bits. Vanilla's own recolours and copies sit at 0 to 6 bits.
+//! files of the family's reference set (vanilla when it falls to vanilla, up to 256 files sampled evenly), so a warning
+//! means two outputs are closer than 99 in 100 pairs of the family's own art. Measured on HOI4 1.19.4.1: focus 28,
+//! national spirits 31, decisions 27, decision categories 15, report events 41, unit leader traits 22 and
+//! technologies 24 bits. Vanilla's own recolours and copies sit at 0 to 6 bits.
 
 use crate::pixels::Rgba;
 
