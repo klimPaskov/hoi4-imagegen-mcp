@@ -21,7 +21,7 @@ What it does:
 - Audits a whole mod and finds sprites that point at missing art.
 - Runs on your ChatGPT login at no extra cost, or with OpenAI, Gemini, fal or your own ComfyUI.
 
-For portraits, a dedicated ComfyUI workflow still does a better job, and the trailer says so.
+For portraits, a dedicated ComfyUI workflow still does a better job.
 
 Links:
 
