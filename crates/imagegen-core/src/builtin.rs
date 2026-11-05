@@ -420,7 +420,7 @@ fn rows() -> Vec<Row> {
         },
         Row {
             sprite: Some(("interface/{feature_slug}_medals.gfx", "GFX_medal_icon_{asset}_large", &[])),
-            note: "A unit medal: script names GFX_medal_icon_<x> with frame = N, and every vanilla GFX_medal_icon_* has a GFX_medal_icon_*_large twin at twice the size (28x42 and 56x84 frames). This tool makes one 56x84 frame registered as the _large sprite and derives the 28x42 GFX_medal_icon_<asset> from it, the way vanilla's small strips are its large ones downscaled; script uses frame = 1. The measured dominant 16x28 files are older medal sprites that no vanilla script or GUI names.",
+            note: "A unit medal: script names GFX_medal_icon_<x> with frame = N, and every vanilla GFX_medal_icon_* has a GFX_medal_icon_*_large twin at twice the size (28x42 and 56x84 frames). This tool makes one 56x84 frame registered as the _large sprite and derives the 28x42 GFX_medal_icon_<asset> from it, the way vanilla's small strips are its large ones downscaled; script uses frame = 1. The medal is fitted into vanilla's box, 33x56 in the 56x84 frame (the median of the 85 frames of vanilla's large strips), not edge to edge. The measured dominant 16x28 files are older medal sprites that no vanilla script or GUI names.",
             ..base(Medal, [56, 84], &[[56, 84]], "gfx/interface/medals/{feature_slug}", "medal_icon_", "interface/{feature_slug}_medals.gfx")
         },
         Row {
@@ -1085,7 +1085,24 @@ mod tests {
             }
         }
         paths.sort();
-        paths.iter().filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok()).filter(|img| [img.width, img.height] == size).collect()
+        // size [0, 0] asks for the large medal strips: 84 px tall, a whole number of 56 px frames
+        let wanted = |img: &crate::pixels::Rgba| {
+            if size == [0, 0] {
+                img.height == 84 && img.width >= 56 && img.width.is_multiple_of(56)
+            } else {
+                [img.width, img.height] == size
+            }
+        };
+        paths.iter().filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok()).filter(|img| wanted(img)).collect()
+    }
+
+    /// The 56x84 frames of vanilla's large medal strips (every vanilla medal is a strip of such frames).
+    fn medal_frames() -> Vec<crate::pixels::Rgba> {
+        let mut out = Vec::new();
+        for strip in vanilla_files("gfx/interface/medals", "", [0, 0]) {
+            out.extend(strip.split_frames(strip.width / 56).unwrap_or_default());
+        }
+        out
     }
 
     /// The emblem of the plaque, disc, badge and pictogram families is fitted at vanilla's size: for each vanilla file
@@ -1098,7 +1115,7 @@ mod tests {
     #[test]
     fn plaque_and_disc_emblems_are_fitted_at_vanillas_size() {
         // (family, folder, file prefix, also not larger than vanilla)
-        let cases: [(Family, &str, &str, bool); 10] = [
+        let cases: [(Family, &str, &str, bool); 11] = [
             (Family::Focus, "gfx/interface/goals", "goal", false),
             (Family::DecisionCategoryIcon, "gfx/interface/decisions", "decision_category", false),
             (Family::MioDepartment, "gfx/interface/military_industrial_organization/department_icons", "", false),
@@ -1109,6 +1126,7 @@ mod tests {
             (Family::OperationIcon, "gfx/interface/operations", "", true),
             (Family::Raid, "gfx/interface/military_raids", "", true),
             (Family::IdeaConcern, "gfx/interface/ideas", "idea_", true),
+            (Family::Medal, "gfx/interface/medals", "", true),
         ];
         let span = |img: &crate::pixels::Rgba| {
             let b = img.alpha_bbox(16).unwrap();
@@ -1122,7 +1140,7 @@ mod tests {
         let mut report = String::new();
         for (family, folder, prefix, both_ways) in cases {
             let p = &set[&family];
-            let mut files = vanilla_files(folder, prefix, p.canvas);
+            let mut files = if family == Family::Medal { medal_frames() } else { vanilla_files(folder, prefix, p.canvas) };
             if family == Family::Focus {
                 files.extend(vanilla_files(folder, "focus", p.canvas));
             }

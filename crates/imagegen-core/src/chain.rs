@@ -51,6 +51,11 @@ pub const PRE_STEP_OPS: [&str; 4] = ["chroma_key", "crop_to_aspect", "defringe",
 /// What flat colour provider alpha is composited over in an opaque family.
 pub const FLATTEN_BACKGROUND: [u8; 3] = [0, 0, 0];
 
+/// The box a medal is fitted into on its 56x84 frame: vanilla's medal is 33 px wide and 56 px tall in the median of
+/// the 85 frames of its large strips (HOI4 1.19.4.1; margins 12 px at the sides, 13 at the top, 15 at the bottom), so
+/// it spans 0.667 of the frame. Fitted edge to edge with the default 2 px margin it spanned 0.94 to 0.95.
+pub const MEDAL_BOX: [u32; 2] = [33, 56];
+
 /// Achievement subject layers keep this margin so the template shows around them.
 pub const ACHIEVEMENT_MARGIN: u32 = 2;
 
@@ -351,6 +356,11 @@ pub fn plan_finishing_with(
                 ops.push(Op::Conform { width: size[0], height: size[1] });
             } else {
                 ops = transparent_icon_ops(img, canvas, keyed, profile.margin)?;
+                if profile.family == Family::Medal && canvas == [56, 84] {
+                    if let Some(last) = ops.last_mut() {
+                        *last = Op::FitInBox { width: 56, height: 84, box_width: MEDAL_BOX[0], box_height: MEDAL_BOX[1], min_alpha: 16 };
+                    }
+                }
             }
             if profile.imagegen.grayscale {
                 ops.push(Op::Grayscale);
@@ -547,7 +557,7 @@ pub fn companion_keys_of(profile: &Profile, canvas: [u32; 2]) -> Vec<&'static st
 /// may satisfy several consecutive stages: it stands for finished art accepted whole.
 pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
     let mut stages: Vec<Vec<&'static str>> = match recipe_of(profile) {
-        Recipe::Icon => vec![vec!["fit_subject", "conform"]],
+        Recipe::Icon => vec![vec!["fit_subject", "fit_in_box", "conform"]],
         Recipe::Picture => vec![vec!["flatten_on"], vec!["cover_resize", "conform"]],
         Recipe::ReportCard => vec![vec!["report_card", "conform"]],
         Recipe::PhaseCard => vec![vec!["phase_card", "conform"]],

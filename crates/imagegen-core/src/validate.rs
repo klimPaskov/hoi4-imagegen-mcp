@@ -372,6 +372,11 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
                     let b = crate::recipes::line_art::STYLE.fit_box;
                     fitted = b[0].min(b[1]);
                 }
+                // a medal sits in vanilla's 33x56 box of its 56x84 frame, spanning two thirds of it
+                if profile.family == crate::family::Family::Medal && [f.width, f.height] == [56, 84] {
+                    let b = crate::chain::MEDAL_BOX;
+                    fitted = (f64::from(b[0]) / 56.0).max(f64::from(b[1]) / 84.0);
+                }
                 if span < 0.80_f64.min(fitted - 0.05) {
                     findings.push(Finding::new(
                         "GFX-UNDERSIZED-SUBJECT",

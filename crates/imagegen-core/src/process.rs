@@ -42,6 +42,22 @@ pub enum Op {
         #[serde(default = "default_min_alpha")]
         min_alpha: u8,
     },
+    /// Trim to the subject, scale it to fit inside a `box_width` x `box_height` box (aspect kept), and centre it on a
+    /// transparent canvas of exactly `width` x `height`. For families whose vanilla art sits in a box that is not the
+    /// canvas less one margin on every side (medals: a 33x56 box in a 56x84 frame).
+    FitInBox {
+        /// Canvas width.
+        width: u32,
+        /// Canvas height.
+        height: u32,
+        /// Box width.
+        box_width: u32,
+        /// Box height.
+        box_height: u32,
+        /// Alpha threshold for the subject bounds.
+        #[serde(default = "default_min_alpha")]
+        min_alpha: u8,
+    },
     /// Resize to exactly `width` x `height` (Lanczos3, premultiplied alpha).
     Resize {
         /// Target width.
@@ -191,6 +207,7 @@ impl Op {
             Op::CropToAspect { .. } => "crop_to_aspect",
             Op::TrimToSubject { .. } => "trim_to_subject",
             Op::FitSubject { .. } => "fit_subject",
+            Op::FitInBox { .. } => "fit_in_box",
             Op::Resize { .. } => "resize",
             Op::CoverResize { .. } => "cover_resize",
             Op::Defringe { .. } => "defringe",
@@ -254,6 +271,7 @@ pub fn apply(img: &Rgba, op: &Op) -> Result<Rgba> {
             img.crop(b[0], b[1], b[2] - b[0], b[3] - b[1])
         }
         Op::FitSubject { width, height, margin, min_alpha } => fit_subject(img, *width, *height, *margin, *min_alpha),
+        Op::FitInBox { width, height, box_width, box_height, min_alpha } => fit_in_box(img, [*width, *height], [*box_width, *box_height], *min_alpha),
         Op::Resize { width, height } => resize_lanczos3(img, *width, *height),
         Op::CoverResize { width, height } => {
             let cropped = crop_to_aspect(img, *width, *height)?;
@@ -328,6 +346,10 @@ pub fn upscale_factor(img: &Rgba, op: &Op) -> Option<f64> {
             Some((aw / sw).min(ah / sh))
         }
         Op::LineArt { width, height } => crate::recipes::line_art::fit_scale(img, *width, *height),
+        Op::FitInBox { box_width, box_height, min_alpha, .. } => {
+            let b = img.alpha_bbox(*min_alpha)?;
+            Some((f64::from(*box_width) / f64::from(b[2] - b[0])).min(f64::from(*box_height) / f64::from(b[3] - b[1])))
+        }
         _ => None,
     }
 }
@@ -382,6 +404,22 @@ fn crop_to_aspect(img: &Rgba, aw: u32, ah: u32) -> Result<Rgba> {
     };
     let (cw, ch) = (cw.max(1) as u32, ch.max(1) as u32);
     img.crop((img.width - cw) / 2, (img.height - ch) / 2, cw, ch)
+}
+
+fn fit_in_box(img: &Rgba, canvas: [u32; 2], fit: [u32; 2], min_alpha: u8) -> Result<Rgba> {
+    let [w, h] = canvas;
+    if fit[0] == 0 || fit[1] == 0 || fit[0] > w || fit[1] > h {
+        return Err(Error::Invalid(format!("a {}x{} box does not fit a {w}x{h} canvas", fit[0], fit[1])));
+    }
+    let b = img.alpha_bbox(min_alpha).ok_or_else(|| Error::Image("no visible subject to fit".into()))?;
+    let subject = img.crop(b[0], b[1], b[2] - b[0], b[3] - b[1])?;
+    let scale = (f64::from(fit[0]) / f64::from(subject.width)).min(f64::from(fit[1]) / f64::from(subject.height));
+    let tw = ((f64::from(subject.width) * scale).round() as u32).clamp(1, fit[0]);
+    let th = ((f64::from(subject.height) * scale).round() as u32).clamp(1, fit[1]);
+    let scaled = resize_lanczos3(&subject, tw, th)?;
+    let mut out = Rgba::new(w, h);
+    out.paste(&scaled, i64::from((w - tw) / 2), i64::from((h - th) / 2));
+    Ok(out)
 }
 
 fn fit_subject(img: &Rgba, w: u32, h: u32, margin: u32, min_alpha: u8) -> Result<Rgba> {

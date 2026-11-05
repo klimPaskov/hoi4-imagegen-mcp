@@ -103,7 +103,7 @@ A chain is the caller's optional pre-steps followed by the family's mandatory fi
 | `unit_counter` | `counter_large`, `counter_small` | `unit_glyph`: the silhouette in vanilla's green (or the on-map grey) material, then `nato_frame`: the NATO box as frame 2. The on-map counter also gets its text icon | one DDS, or two |
 | `division_symbol` | `division_emblem` | `unit_glyph` in vanilla's green material, and the 30x12 small symbol | two DDS |
 
-A medal is made as one 56x84 frame, registered as `GFX_medal_icon_<asset>_large`, and its 28x42 `GFX_medal_icon_<asset>` is derived from it.
+A medal is made as one 56x84 frame, registered as `GFX_medal_icon_<asset>_large`, and its 28x42 `GFX_medal_icon_<asset>` is derived from it. The medal is fitted into vanilla's 33x56 box in that frame (`fit_in_box`), so it spans two thirds of the frame as vanilla's do.
 
 ### Names the game looks up
 
