@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/klimPaskov/hoi4-imagegen-mcp/releases/tag/trailer-2026-11-05"><img src="docs/images/imagegen-trailer-thumbnail.png" alt="Watch the HOI4 Imagegen trailer"></a>
+  <a href="https://www.youtube.com/watch?v=4ko6f-icwDc"><img src="docs/images/imagegen-trailer-thumbnail.png" alt="Watch the HOI4 Imagegen trailer"></a>
 </p>
 
 Focus icons, idea pictures, decision icons, technology pictures, event pictures, portraits, flags, counters, logos, animated sprites and more: 44 asset families, each with the canvas, frames, naming, processing and checks measured from the game itself.
