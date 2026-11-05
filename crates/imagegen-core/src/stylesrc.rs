@@ -405,15 +405,16 @@ fn texture_dirs(f: Family, gui_kind: Option<GuiTextureKind>) -> Vec<Dir> {
         Technology => vec![dir("gfx/interface/technologies", true)],
         Achievement => vec![dir("gfx/achievements", false).not_has(&["_grey", "_not_eligible"])],
         // Each portrait family keeps to the files with its own backdrop (measured on 1.19.4.1, see
-        // recipes::portrait_backdrop): scientists are the gfx/leaders/scientists folder (pale blue-grey), leaders and
-        // commanders the rest of gfx/leaders (one pale cream-grey template on 424 of 447 decodable files), and
-        // operatives the portraits the game's create_operative_leader calls name in gfx/leaders (Patrick Fermor and
-        // the two German agents, dark charcoal) with the unknown operative, plus a mod's own operatives folder.
-        LeaderPortrait | CommanderPortrait => vec![dir("gfx/leaders", true).skip(&["scientists", "operatives", "placeholder"])],
-        OperativePortrait => vec![
-            dir("gfx/leaders", true).pre(&["operative_", "portrait_eng_patrick_fermor", "portrait_germany_hilter_"]).skip(&["scientists"]),
-            dir("gfx/leaders", true).under(&["operatives"]),
-        ],
+        // validate::portrait_backdrop): scientists are the gfx/leaders/scientists folder (pale blue-grey), operatives
+        // La Resistance's portrait_*_operative_* files (163 at 156x210, dark warm charcoal with a spotlight behind the
+        // head) plus a mod's own operatives folder, and leaders and commanders the rest of gfx/leaders (one pale
+        // cream-grey template). The base game's operative_unknown silhouette is a placeholder and belongs to none.
+        LeaderPortrait | CommanderPortrait => {
+            vec![dir("gfx/leaders", true).skip(&["scientists", "operatives", "placeholder"]).not_has(&["_operative_"]).not_pre(&["operative_"])]
+        }
+        OperativePortrait => {
+            vec![dir("gfx/leaders", true).has(&["_operative_"]).skip(&["scientists"]), dir("gfx/leaders", true).under(&["operatives"])]
+        }
         ScientistPortrait => vec![dir("gfx/leaders", true).under(&["scientists"])],
         AdvisorCard => vec![dir("gfx/interface/ideas", true)],
         Flag => vec![dir("gfx/flags", false)],
@@ -535,11 +536,34 @@ fn scan_dirs(base: &Path, dirs: &[Dir], sizes: &[[u32; 2]], exts: &[&str]) -> Ve
     files
 }
 
-/// The family's vanilla texture files in the installed game, limited to `sizes` (empty: any size), sorted by path.
+/// The folders the game loads art from: the game folder, then each DLC folder under `dlc/` in name order. A DLC keeps
+/// its art in the same layout (`dlc/<dlc>/gfx/...`), and some families live mostly there: vanilla's 163 operative
+/// portraits at 156x210 are La Resistance's (`dlc028_la_resistance/gfx/leaders/<region>/portrait_*_operative_*`).
+/// A DLC packed as a zip archive is not read.
+pub fn game_roots(game: &Path) -> Vec<PathBuf> {
+    let mut roots = vec![game.to_path_buf()];
+    let mut dlcs: Vec<PathBuf> = std::fs::read_dir(game.join("dlc"))
+        .map(|rd| rd.filter_map(|e| e.ok()).filter(|e| e.file_type().is_ok_and(|t| t.is_dir())).map(|e| e.path()).collect())
+        .unwrap_or_default();
+    dlcs.sort();
+    roots.extend(dlcs);
+    roots
+}
+
+/// [`scan_dirs`] over every root of [`game_roots`], sorted by path.
+fn scan_game(game: &Path, dirs: &[Dir], sizes: &[[u32; 2]], exts: &[&str]) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = game_roots(game).iter().flat_map(|root| scan_dirs(root, dirs, sizes, exts)).collect();
+    files.sort();
+    files.dedup();
+    files
+}
+
+/// The family's vanilla texture files in the installed game and its DLC folders ([`game_roots`]), limited to `sizes`
+/// (empty: any size), sorted by path.
 /// The same folders and name rules as the vanilla style tier, so the review's vanilla-match check and the style
 /// sources agree on what a family's vanilla art is.
 pub fn vanilla_files(game: &Path, family: Family, sizes: &[[u32; 2]]) -> Vec<PathBuf> {
-    scan_dirs(game, &texture_dirs(family, None), sizes, &RASTER)
+    scan_game(game, &texture_dirs(family, None), sizes, &RASTER)
 }
 
 fn unify(p: &str) -> String {
@@ -784,7 +808,7 @@ pub fn resolve(ctx: &SourceCtx) -> Resolved {
                     vec![]
                 }
                 Some(game) => {
-                    let list = game_cands(scan_dirs(game, &texture_dirs(family, ctx.gui_kind), &vanilla_sizes, &RASTER));
+                    let list = game_cands(scan_game(game, &texture_dirs(family, ctx.gui_kind), &vanilla_sizes, &RASTER));
                     if family == Family::GuiTexture && ctx.gui_kind.is_none() {
                         summary.note =
                             "a GUI texture takes vanilla references by its kind: pass texture_kind (button, frame, panel or background)".into();

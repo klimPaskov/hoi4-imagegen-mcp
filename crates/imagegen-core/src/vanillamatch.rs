@@ -56,7 +56,7 @@ pub const MAX_FILES: usize = 400;
 pub const MAX_SIDE: u32 = 160;
 
 /// Number of features.
-pub const N: usize = 28;
+pub const N: usize = 29;
 
 /// Feature names, in vector order.
 pub const NAMES: [&str; N] = [
@@ -88,6 +88,7 @@ pub const NAMES: [&str; N] = [
     "rim_warm_metal_share",
     "backdrop_lightness",
     "backdrop_yellow",
+    "backdrop_glow",
 ];
 
 /// The features that can fail a candidate: form (coverage, background fill, size, position, aspect, the fills of the
@@ -128,8 +129,9 @@ pub type FamilyCheck = (&'static str, f64, (f64, f64));
 ///   Their lightness spreads over the special portraits and is checked with the general rule. Scientists (217 files of
 ///   one pale blue-grey template, lightness 66.0 and yellow -14.4 in the median, but three special ones down to
 ///   lightness 19.5): their whole range widened by a tenth, so every vanilla file passes (lightness 14.5 to 74.6, yellow
-///   -16.5 to 8.7) and the leaders' cream (lightness 89.8) does not. Operatives (four files, three dark and the grey silhouette): their whole range widened by a quarter, which
-///   refuses the leaders' cream and the scientists' blue-grey.
+///   -16.5 to 8.7) and the leaders' cream (lightness 89.8) does not. Operatives (La Resistance's 163 files, corners 11.9 lightness, 5.3 yellow): their whole
+///   range widened by a quarter, which refuses the leaders' cream and the scientists' blue-grey, and the light
+///   behind the figure (`backdrop_glow`, 17.1 to 29.2, checked 14.2 to 32.2), which refuses a dark but evenly lit backdrop.
 pub fn family_checks(family: Family) -> &'static [FamilyCheck] {
     match family {
         Family::AgencyUpgrade => {
@@ -139,7 +141,9 @@ pub fn family_checks(family: Family) -> &'static [FamilyCheck] {
             &[("backdrop_lightness", RANGE_WIDENING, RANGE_PERCENTILES), ("backdrop_yellow", 0.65, RANGE_PERCENTILES)]
         }
         Family::ScientistPortrait => &[("backdrop_lightness", 0.1, (0.0, 1.0)), ("backdrop_yellow", 0.1, (0.0, 1.0))],
-        Family::OperativePortrait => &[("backdrop_lightness", 0.25, (0.0, 1.0)), ("backdrop_yellow", 0.25, (0.0, 1.0))],
+        Family::OperativePortrait => {
+            &[("backdrop_lightness", 0.25, (0.0, 1.0)), ("backdrop_yellow", 0.25, (0.0, 1.0)), ("backdrop_glow", 0.25, (0.0, 1.0))]
+        }
         _ => &[],
     }
 }
@@ -174,13 +178,14 @@ pub const MEANINGS: [&str; N] = [
     "share of the subject's outer ring (opaque pixels within two pixels of a clear one) in gold or bronze tones (a metal rim)",
     "mean CIE L* lightness of the two top corners (a tenth of the width, 7.5 percent of the height each): a portrait's backdrop",
     "mean CIE b* of the two top corners, yellow above 0 and blue below: a portrait's backdrop, cream for leaders, blue-grey for scientists",
+    "CIE L* of the side edges at two thirds of the height (a tenth of the width each, 62 to 72 percent of the height) minus that of the top corners: the light behind a portrait's figure, high for an operative's spotlight",
 ];
 
 /// Smallest half-width of an accepted range, per feature. Keeps a family whose vanilla art is nearly uniform in a
 /// feature from refusing a rounding difference.
 const FLOOR: [f64; N] = [
     4.0, 3.0, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 2.0, 0.03, 0.05, 0.03, 0.03, 0.03, 0.03, 0.03, 0.03, 0.08, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04,
-    0.04, 0.04, 4.0, 3.0,
+    0.04, 0.04, 4.0, 3.0, 4.0,
 ];
 
 /// The measured features of one image.
@@ -208,12 +213,37 @@ pub const BACKDROP_CORNER: (f64, f64) = (0.10, 0.075);
 /// Mean CIE L*a*b* of the opaque pixels (alpha 128 and up) in the two top corners, see [`BACKDROP_CORNER`]. `None`
 /// when no corner pixel is opaque.
 pub fn backdrop_lab(img: &Rgba) -> Option<[f64; 3]> {
-    let lut = srgb_lut();
     let cw = ((f64::from(img.width) * BACKDROP_CORNER.0).round() as u32).max(1);
     let ch = ((f64::from(img.height) * BACKDROP_CORNER.1).round() as u32).max(1);
+    let xs: Vec<u32> = (0..cw.min(img.width)).chain(img.width.saturating_sub(cw)..img.width).collect();
+    mean_lab(img, 0..ch.min(img.height), &xs)
+}
+
+/// The side edges at two thirds of a portrait's height: a tenth of the width at each side, 62 to 72 percent of the
+/// height, beside the shoulders, where the light behind the figure shows.
+pub const BACKDROP_GLOW_BAND: (f64, f64, f64) = (0.10, 0.62, 0.72);
+
+/// Mean CIE L*a*b* of the opaque pixels in the side band [`BACKDROP_GLOW_BAND`]. `None` when none is opaque.
+pub fn glow_band_lab(img: &Rgba) -> Option<[f64; 3]> {
+    let cw = ((f64::from(img.width) * BACKDROP_GLOW_BAND.0).round() as u32).max(1);
+    let y0 = (f64::from(img.height) * BACKDROP_GLOW_BAND.1).round() as u32;
+    let y1 = ((f64::from(img.height) * BACKDROP_GLOW_BAND.2).round() as u32).max(y0 + 1).min(img.height);
+    let xs: Vec<u32> = (0..cw.min(img.width)).chain(img.width.saturating_sub(cw)..img.width).collect();
+    mean_lab(img, y0..y1, &xs)
+}
+
+/// How much lighter the side band at two thirds of the height is than the top corners, in CIE L*
+/// ([`glow_band_lab`] minus [`backdrop_lab`]). Vanilla's operative portraits sit in a soft light behind the figure,
+/// so it is high for them, and it is below zero for the evenly lit or top-lit leader and scientist backdrops.
+pub fn backdrop_glow(img: &Rgba) -> Option<f64> {
+    Some(glow_band_lab(img)?[0] - backdrop_lab(img)?[0])
+}
+
+fn mean_lab(img: &Rgba, ys: std::ops::Range<u32>, xs: &[u32]) -> Option<[f64; 3]> {
+    let lut = srgb_lut();
     let (mut s, mut n) = ([0f64; 3], 0f64);
-    for y in 0..ch.min(img.height) {
-        for x in (0..cw.min(img.width)).chain(img.width.saturating_sub(cw)..img.width) {
+    for y in ys {
+        for &x in xs {
             let p = img.px(x, y);
             if p[3] < 128 {
                 continue;
@@ -499,6 +529,7 @@ pub fn measure(src: &Rgba) -> Option<Features> {
         }
     }
     let backdrop = backdrop_lab(img).map_or([0.0, 0.0], |c| [c[0], c[2]]);
+    let glow = backdrop_glow(img).unwrap_or(0.0);
     let band_end = y0 + ((y1 - y0) / 5).max(1);
     let (mut band_sat, mut band_n) = (0f64, 0u64);
     for y in y0..band_end {
@@ -539,6 +570,7 @@ pub fn measure(src: &Rgba) -> Option<Features> {
         if ring == 0 { 0.0 } else { ring_warm as f64 / ring as f64 },
         backdrop[0],
         backdrop[1],
+        glow,
     ])
 }
 

@@ -165,7 +165,8 @@ pub const BACKDROP_CODE: &str = "GFX-PORTRAIT-BACKDROP";
 /// A portrait family's vanilla backdrop: the median CIE L*a*b* of the two top corners ([`crate::vanillamatch::backdrop_lab`]
 /// at 156x210) over the family's vanilla files (HOI4 1.19.4.1, measured by `tests/vanilla_forms.rs`), and the largest
 /// colour distance (CIE76) before `GFX-PORTRAIT-BACKDROP` warns. Leaders and commanders share one pale cream-grey
-/// template, scientists have a pale blue-grey one, and vanilla's operative portraits are dark charcoal. The distance
+/// template, scientists have a pale blue-grey one, and vanilla's 163 operative portraits (La Resistance's
+/// `portrait_*_operative_*`) are dark warm charcoal at the top. The distance
 /// between the leader and scientist backdrops is about 33 and between the leader and operative ones about 77, so a
 /// limit of 15 tells them apart. `None` for a family that is not a portrait.
 pub fn portrait_backdrop(family: crate::family::Family) -> Option<([f64; 3], f64)> {
@@ -179,8 +180,17 @@ pub fn portrait_backdrop(family: crate::family::Family) -> Option<([f64; 3], f64
 }
 const LEADER_BACKDROP: [f64; 3] = [89.8, -1.9, 8.5];
 const SCIENTIST_BACKDROP: [f64; 3] = [66.0, -7.2, -14.4];
-const OPERATIVE_BACKDROP: [f64; 3] = [12.3, -0.2, 5.2];
+const OPERATIVE_BACKDROP: [f64; 3] = [11.9, -0.1, 5.3];
 const BACKDROP_LIMIT: f64 = 15.0;
+
+/// The least light behind the figure an operative portrait has before `GFX-PORTRAIT-BACKDROP` warns
+/// ([`crate::vanillamatch::backdrop_glow`], in CIE L*): vanilla's operatives sit in a soft spotlight that makes the side
+/// band at two thirds of the height 17.1 to 29.2 lighter than the top corners (median 27.6, 163 files). The 0.3.3
+/// gallery's two operatives were dark but evenly lit (0.2 and 11.4). `None` for the other families.
+pub fn portrait_min_glow(family: crate::family::Family) -> Option<f64> {
+    (family == crate::family::Family::OperativePortrait).then_some(OPERATIVE_MIN_GLOW)
+}
+const OPERATIVE_MIN_GLOW: f64 = 15.0;
 
 /// Share of a subject's opaque pixels (alpha 128 and up) that lie on its edge, next to a pixel that is not opaque
 /// (4-neighbours; outside the canvas counts as clear). A shape of thick, solid parts has a low share; thin lines, wires,
@@ -595,6 +605,20 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
                     ),
                     None,
                     json!({"backdrop_lab": got, "vanilla_lab": want, "distance": d, "limit": limit}),
+                ));
+            }
+        }
+        if let (Some(min), Some(glow)) = (portrait_min_glow(profile.family), crate::vanillamatch::backdrop_glow(img)) {
+            if glow < min {
+                findings.push(Finding::new(
+                    BACKDROP_CODE,
+                    Level::Warning,
+                    format!(
+                        "the backdrop beside the shoulders is only {glow:.0} lighter than at the top corners (CIE L*). Vanilla's {} backdrops have a soft spotlight behind the figure, at least {min:.0} lighter. Unless the brief asks for an unusual portrait, plan again with the family's own backdrop",
+                        profile.family
+                    ),
+                    None,
+                    json!({"glow": glow, "vanilla_min": min}),
                 ));
             }
         }

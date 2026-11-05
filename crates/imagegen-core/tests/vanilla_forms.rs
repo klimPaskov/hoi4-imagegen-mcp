@@ -210,7 +210,8 @@ fn landmark_aspect_and_centre_are_vanillas() {
 
 /// Each portrait family's backdrop constant is the median of its own vanilla files' top corners, and the files are
 /// separate: leaders and commanders share the pale cream-grey template (L*a*b* 89.8, -1.9, 8.5), scientists have the
-/// pale blue-grey one (66.0, -7.2, -14.4), and vanilla's operative portraits are dark charcoal (12.3, -0.2, 5.2).
+/// pale blue-grey one (66.0, -7.2, -14.4), and La Resistance's 163 operative portraits are dark warm charcoal at the top (11.9, -0.1,
+/// 5.3) with a spotlight behind the figure: the side band at two thirds of the height is 17.1 to 29.2 lighter.
 /// At least 85 percent of each family's own files sit within the warning limit (the rest are special portraits with
 /// dark or patterned backdrops, or a hat or hair in a corner), and the other families' backdrops do not.
 #[test]
@@ -233,11 +234,18 @@ fn portrait_backdrops_are_each_familys_own() {
             assert!((med[c] - want[c]).abs() <= 0.3, "{f} channel {c}: {} vs {}\n{report}", med[c], want[c]);
         }
         let share = within as f64 / labs.len() as f64;
+        assert!(share >= 0.85, "{f}: only {share:.3} of vanilla within the limit\n{report}");
         if f == Family::OperativePortrait {
-            // three dark portraits and the grey silhouette of the unknown operative
-            assert!(labs.len() >= 3 && within >= 3, "{report}");
-        } else {
-            assert!(share >= 0.85, "{f}: only {share:.3} of vanilla within the limit\n{report}");
+            let glows: Vec<f64> = vanilla(&game, f).iter().filter_map(vanillamatch::backdrop_glow).collect();
+            let min = imagegen_core::validate::portrait_min_glow(f).unwrap();
+            report.push_str(&format!(
+                "  glow {:.1} to {:.1}, median {:.1}\n",
+                quantile(glows.clone(), 0.0),
+                quantile(glows.clone(), 1.0),
+                quantile(glows.clone(), 0.5)
+            ));
+            assert!(labs.len() >= 160, "La Resistance's operatives are read from the DLC folder\n{report}");
+            assert!(glows.iter().all(|g| *g >= min), "every vanilla operative has the spotlight\n{report}");
         }
         for g in families {
             let (other, _) = portrait_backdrop(g).unwrap();
@@ -267,6 +275,18 @@ fn a_portrait_on_another_familys_backdrop_gets_the_warning() {
     assert!(!warns(Family::ScientistPortrait, &blue));
     assert!(!warns(Family::LeaderPortrait, &cream) && !warns(Family::CommanderPortrait, &cream));
     assert!(warns(Family::LeaderPortrait, &blue) && warns(Family::OperativePortrait, &cream));
+    // an operative on vanilla's charcoal: evenly dark warns (no spotlight), with the glow beside the shoulders it does not
+    let flat = Rgba::filled(156, 210, [34, 31, 24, 255]);
+    let mut lit = flat.clone();
+    for y in 0..210u32 {
+        let t = (f64::from(y) / 145.0).min(1.0);
+        let c = |a: f64, b: f64| (a + (b - a) * t).round() as u8;
+        for x in 0..156u32 {
+            lit.set_px(x, y, [c(34.0, 95.0), c(31.0, 92.0), c(24.0, 85.0), 255]);
+        }
+    }
+    assert!(warns(Family::OperativePortrait, &flat), "an evenly dark backdrop lacks the spotlight");
+    assert!(!warns(Family::OperativePortrait, &lit), "{:?}", vanillamatch::backdrop_glow(&lit));
 }
 
 /// Vanilla's doctrine icons run their glow close to the canvas edge: 55 of 105 touch it and 73 keep at most 1 px clear

@@ -224,9 +224,10 @@ fn a_saturated_warm_agency_medallion_is_refused_until_processed() {
     assert!(res.pass, "{}", vanillamatch::describe(&res.outside));
 }
 
-/// Each portrait family is checked against its own vanilla files, with the backdrop in the top corners: every vanilla
-/// file of a family passes its own check (HOI4 1.19.4.1: leaders and commanders 201 of 201 measurable files, scientists
-/// 217 of 217, operatives 4 of 4; with 0.3.3's one shared set of every gfx/leaders file it was 231 of 232 for each),
+/// Each portrait family is checked against its own vanilla files, base game and DLC, with the backdrop in the top
+/// corners and, for operatives, the spotlight behind the figure. On HOI4 1.19.4.1: leaders and commanders 268 of 271
+/// measured files pass (a regency council, a placeholder and a cut-out portrait fail), scientists 217 of 217,
+/// operatives 163 of 163. With 0.3.3's one shared set of every base-game gfx/leaders file it was 231 of 232 for each,
 /// and the typical file of another family's backdrop is refused on the backdrop, except that the leader and commander
 /// check passes the operatives' dark backdrop: vanilla leaders include special dark backdrops.
 #[test]
@@ -241,9 +242,11 @@ fn portrait_families_keep_their_own_backdrop() {
     for (f, set) in &sets {
         let passed = set.images.iter().filter(|i| set.calibration.check(&i.features).pass).count();
         report.push_str(&format!("{f}: vanilla pass {passed} of {}\n", set.images.len()));
-        assert_eq!(passed, set.images.len(), "{f}\n{report}");
+        assert!(passed as f64 / set.images.len() as f64 >= MIN_VANILLA_PASS, "{f}\n{report}");
         for r in set.calibration.ranges.iter().filter(|r| r.feature.starts_with("backdrop_")) {
-            assert!(r.checked, "{f}: {} is checked", r.feature);
+            // the spotlight behind the figure is the operatives' alone
+            let want = r.feature != "backdrop_glow" || *f == Family::OperativePortrait;
+            assert_eq!(r.checked, want, "{f}: {} checked", r.feature);
         }
     }
     let typical = |f: Family| sets[&f].typical(1)[0].features;

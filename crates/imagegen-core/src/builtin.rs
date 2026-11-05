@@ -382,10 +382,11 @@ const SCIENTIST_PORTRAIT_RULES: &[&str] = &[
     PORTRAIT_PERIOD,
     PORTRAIT_INVENTED,
 ];
-/// Operative portraits: the portraits the game's operative scripts name (three files), dark charcoal.
+/// Operative portraits: La Resistance's 163 operative portraits (`portrait_*_operative_*`), corners RGB about (34, 31, 24),
+/// the side band at two thirds of the height about (95, 92, 85).
 const OPERATIVE_PORTRAIT_RULES: &[&str] = &[
     PORTRAIT_FRAMING,
-    "Vanilla's operative portrait backdrop: one plain, dark charcoal-brown background (about RGB 36, 33, 26 at the top), a little lighter toward the bottom, with low-key light on the face that leaves the clothes and the edges in shadow, like a night photograph, and no objects, room, street or pattern. Not the pale cream of leader portraits and not the blue-grey of scientists. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
+    "Vanilla's operative portrait backdrop: a dark warm charcoal studio backdrop with a soft lighter spotlight behind the figure. The top corners are near black-brown (about RGB 34, 31, 24), and a warm grey glow centred behind the head and shoulders lights the backdrop around them, lightest beside the shoulders (about RGB 95, 92, 85) and fading smoothly into the dark corners. Plain, with no objects, room, street or pattern. Not the pale cream of leader portraits, not the blue-grey of scientists, and not an evenly dark background. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
     PORTRAIT_PERIOD,
     PORTRAIT_INVENTED,
 ];
@@ -1013,12 +1014,12 @@ mod tests {
         for f in [Family::LeaderPortrait, Family::CommanderPortrait, Family::OperativePortrait, Family::ScientistPortrait] {
             let r = set[&f].imagegen.prompt.rules.join(" ");
             assert!(r.contains("close head-and-shoulders") && r.contains("face about half the height"), "{f}");
-            assert!(r.contains("portrait backdrop: one plain") && r.contains("council or otherwise unusual"), "{f}");
+            assert!(r.contains("portrait backdrop: ") && r.contains("council or otherwise unusual"), "{f}");
             assert!(!r.contains("slightly textured backdrop"), "{f}");
             // each family names its own vanilla backdrop
             let own = match f {
                 Family::ScientistPortrait => "pale blue-grey (about RGB 135, 171, 193",
-                Family::OperativePortrait => "dark charcoal-brown background (about RGB 36, 33, 26",
+                Family::OperativePortrait => "dark warm charcoal studio backdrop with a soft lighter spotlight behind the figure",
                 _ => "pale cream-grey (about RGB 229, 226, 209",
             };
             assert!(r.contains(own), "{f}: {r}");

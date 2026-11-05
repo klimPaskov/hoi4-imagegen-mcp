@@ -92,7 +92,7 @@ The family's rules already describe vanilla's form, so the brief only names the 
 * **Small icons** (a side of 40 px or less: decision, decision category icon, state modifier, raid, commander and personal traits). Name one bold object, not a scene: "a stick of dynamite", not "commandos in a dinghy". Avoid subjects that are thin lines (rails, wires, a bridge's arches) or groups of small figures. `GFX-SMALL-DETAIL` warns when the result is mostly thin lines.
 * **Agency upgrades** (`agency_upgrade`). Name one close-up, such as hands at a cipher machine, not a room full of objects. The tool cuts the round vignette and mutes the colours itself.
 * **MIO traits** (`mio_trait`). Name one plain object or symbol, such as a wrench or a shield. A detailed machine comes out as a dark painting, not vanilla's light, flat glyph.
-* **Portraits.** Leave the background out of the brief: each portrait family's rule already names its own vanilla backdrop, pale cream-grey for leaders and commanders, pale blue-grey for scientists and dark charcoal for operatives. Describe a background only for a council or otherwise unusual portrait. `GFX-PORTRAIT-BACKDROP` warns when the backdrop is another family's.
+* **Portraits.** Leave the background out of the brief: each portrait family's rule already names its own vanilla backdrop, pale cream-grey for leaders and commanders, pale blue-grey for scientists and dark warm charcoal with a soft spotlight behind the figure for operatives. Describe a background only for a council or otherwise unusual portrait. `GFX-PORTRAIT-BACKDROP` warns when the backdrop is another family's.
 
 ## 4. Fix problems
 
