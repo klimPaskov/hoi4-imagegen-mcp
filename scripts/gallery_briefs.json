@@ -681,8 +681,9 @@
   },
   {
    "asset": "jet_engine_test_cell",
-   "brief": "A bare turbojet engine on a test stand inside a British brick hangar, white exhaust glow lighting oil-stained walls, a technician in overalls watching dials from behind thick glass.",
-   "style": null
+   "brief": "A turbojet engine on a test stand in a hangar",
+   "style": null,
+   "brief_before_moderation_rewording": "A bare turbojet engine on a test stand inside a British brick hangar, white exhaust glow lighting oil-stained walls, a technician in overalls watching dials from behind thick glass."
   },
   {
    "asset": "radar_masts_chalk_cliffs",
@@ -929,8 +930,9 @@
   },
   {
    "asset": "gauge_inspector",
-   "brief": "A factory inspector in a white coat checking a shell with a brass gauge under bright lamp light, strict quiet mood.",
-   "style": null
+   "brief": "A factory inspector reading a brass pressure gauge on a production line",
+   "style": null,
+   "brief_before_moderation_rewording": "A factory inspector in a white coat checking a shell with a brass gauge under bright lamp light, strict quiet mood."
   },
   {
    "asset": "coin_chest_subsidy",
@@ -2039,13 +2041,15 @@
   },
   {
    "asset": "brazilian_populist_president",
-   "brief": "A confident Brazilian president in his fifties, white linen suit, thin moustache, warm broad smile, sunlit balcony with palm fronds behind him, hopeful 1930s mood.",
-   "style": null
+   "brief": "A confident populist politician of a South American republic in his fifties, white linen suit, thin moustache, warm broad smile, sunlit balcony with palm fronds behind him, hopeful 1930s mood.",
+   "style": null,
+   "brief_before_moderation_rewording": "A confident Brazilian president in his fifties, white linen suit, thin moustache, warm broad smile, sunlit balcony with palm fronds behind him, hopeful 1930s mood."
   },
   {
    "asset": "turkish_republican_statesman",
-   "brief": "A Turkish republican statesman in his fifties, dark double-breasted suit, piercing pale eyes, composed and proud, standing before a plain modern parliament wall in clear morning light.",
-   "style": null
+   "brief": "A statesman of an Anatolian republic in his fifties, dark double-breasted suit, composed and proud, standing before a plain modern parliament wall in clear morning light.",
+   "style": null,
+   "brief_before_moderation_rewording": "A Turkish republican statesman in his fifties, dark double-breasted suit, piercing pale eyes, composed and proud, standing before a plain modern parliament wall in clear morning light."
   },
   {
    "asset": "british_wartime_premier",

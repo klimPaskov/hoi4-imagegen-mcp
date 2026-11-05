@@ -44,6 +44,10 @@ STYLES = {
     "gouache": ("soft matte gouache painting", ["flat colour shapes", "muted pastel palette of dusty blue, ochre and sage green", "visible brush strokes"], ["styles_src/gouache_a.png", "styles_src/gouache_b.png"]),
     "ink": ("grainy ink and charcoal sketch with a sepia wash", ["loose hatching", "rough paper texture", "monochrome brown and black"], ["styles_src/ink_a.png", "styles_src/ink_b.png"]),
 }
+PORTRAITS = ("leader_portrait", "commander_portrait", "operative_portrait", "scientist_portrait", "advisor_card")
+PORTRAIT_LINE = "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
+# Families with no vanilla texture to measure: the mod sets the canvas (the sizes the first gallery used).
+MOD_CANVAS = {"gui_texture": [300, 200], "super_event": [457, 328]}
 # Import-only families and the stand-in canvas their frames are generated at.
 COUNTERS = {"counter_large": [76, 42], "counter_small": [30, 12], "division_emblem": [76, 42]}
 ORDER = [
@@ -259,6 +263,8 @@ def make_standard(job, attempt):
     tool = tool_of(family)
     rec = {"family": family, "tool": tool, "asset": asset, "brief": brief, "style": style, "kind": "generate", "attempt": attempt, "started_at": now(), "tool_version": tool_version()}
     req = {"family": family, "feature_slug": family, "asset": asset, "brief": brief, "approve": True, "idempotency_key": f"big-{family}-{asset}-{attempt}"}
+    if family in MOD_CANVAS:
+        req["canvas"] = MOD_CANVAS[family]
     if style:
         req["style"] = style
         style_on(style, family)
@@ -361,6 +367,15 @@ def jobs(families):
         fam, _, n = spec.partition(":")
         for item in b.get(fam, [])[: int(n) if n else None]:
             item = dict(item)
+            skip = os.environ.get("GALLERY_SKIP")  # regex on "family/asset", e.g. ^commander_trait/.*tank
+            if skip and re.search(skip, f"{fam}/{item['asset']}"):
+                continue
+            if fam in PORTRAITS and not os.environ.get("GALLERY_NO_PORTRAIT_LINE"):
+                # W5's 0.3.2 portrait line, added to the brief until the build carries it
+                item["brief"] = item["brief"].rstrip() + " " + PORTRAIT_LINE
+            if os.environ.get("GALLERY_NO_STYLES"):
+                # the vanilla-style gallery: mod styles are shown in their own (TNO) section instead
+                item["style"] = None
             if fam in COUNTERS and not os.environ.get("GALLERY_COUNTER_STANDIN"):
                 # the model draws one black silhouette and the tool renders vanilla's material and NATO box
                 item["brief"] = re.sub(r"\bwhite\b", "black", item["brief"], flags=re.I)
