@@ -38,7 +38,7 @@ THEMES = {  # a theme word in the brief also matches these file-name words
 PLACE = re.compile(r"_(befriend|attack|claim|annex|invade|demand|integrate|approach)_|_(usa|germany|italy|britain|england|france|japan|china|soviet|"
                    r"russia|turkey|sweden|bohemia|slovakia|yugoslavia|poland|asia|europe|africa|african|balkan|balkans|nordic|islamic|guyanas|"
                    r"waziristan|philippines|latin|american|arab|ottoman|baltic|scandinavian|georgia|albania|tuva|saudi|benelux|liechtenstein|iberia|iberian|vatican|scandinavia|scandinavism|coa|nordic|london|japanese|spanish|chinese|manchu|siamese)(_|$)")
-# sub-families inside a family (maintainer, 2026-11-05: "the family has its own smaller family as well"): a vanilla
+# sub-families inside a family (ideas split into war, economy, politics and so on): a vanilla
 # file belongs to the sub-family whose words its name shares most, and a brief draws its anchors only from its own
 SUBFAMILIES = {
     "war": {"army", "military", "infantry", "artillery", "tank", "armor", "armour", "attack", "war", "warfare", "defence", "defense",
