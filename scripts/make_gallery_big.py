@@ -25,6 +25,7 @@ import concurrent.futures as cf
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -32,16 +33,16 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORK = os.path.join(ROOT, ".work")
-MOD = os.path.join(WORK, "gallery-mod")
-RES = os.path.join(WORK, "big-results")
+MOD = os.environ.get("GALLERY_MOD") or os.path.join(WORK, "gallery-mod")
+RES = os.environ.get("GALLERY_RES") or os.path.join(WORK, "big-results")
 BIN = os.environ.get("HOI4_IMAGEGEN_BIN") or (
     os.path.join(WORK, "hoi4-imagegen.exe") if os.path.exists(os.path.join(WORK, "hoi4-imagegen.exe")) else "hoi4-imagegen"
 )
 BRIEFS = os.path.join(ROOT, "scripts", "gallery_briefs.json")
 STYLES = {
-    "linocut": ("bold two-colour linocut propaganda print", ["thick carved black lines", "flat red and cream colours on dark paper", "visible carving texture"], ["references/linocut_a.png", "references/linocut_b.png"]),
-    "gouache": ("soft matte gouache painting", ["flat colour shapes", "muted pastel palette of dusty blue, ochre and sage green", "visible brush strokes"], ["references/gouache_a.png", "references/gouache_b.png"]),
-    "ink": ("grainy ink and charcoal sketch with a sepia wash", ["loose hatching", "rough paper texture", "monochrome brown and black"], ["references/ink_a.png", "references/ink_b.png"]),
+    "linocut": ("bold two-colour linocut propaganda print", ["thick carved black lines", "flat red and cream colours on dark paper", "visible carving texture"], ["styles_src/linocut_a.png", "styles_src/linocut_b.png"]),
+    "gouache": ("soft matte gouache painting", ["flat colour shapes", "muted pastel palette of dusty blue, ochre and sage green", "visible brush strokes"], ["styles_src/gouache_a.png", "styles_src/gouache_b.png"]),
+    "ink": ("grainy ink and charcoal sketch with a sepia wash", ["loose hatching", "rough paper texture", "monochrome brown and black"], ["styles_src/ink_a.png", "styles_src/ink_b.png"]),
 }
 # Import-only families and the stand-in canvas their frames are generated at.
 COUNTERS = {"counter_large": [76, 42], "counter_small": [30, 12], "division_emblem": [76, 42]}
@@ -69,6 +70,20 @@ def cli(*args, timeout=1200):
         return {"error": {"message": (text + "\n" + out.stderr).strip()}}
 
 
+def tool_version():
+    out = subprocess.run([BIN, "--version"], capture_output=True, text=True).stdout.strip()
+    return out.split()[-1] if out else "unknown"
+
+
+def check_build():
+    """GALLERY_EXPECT_VERSION (for example 0.3.0) must match the binary, or nothing is spent."""
+    want = os.environ.get("GALLERY_EXPECT_VERSION")
+    have = tool_version()
+    if want and have != want:
+        sys.exit(f"wrong build: expected hoi4-imagegen {want}, {BIN} is {have}")
+    print(f"[{now()}] build hoi4-imagegen {have}, mod {MOD}", flush=True)
+
+
 def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -89,6 +104,8 @@ def throttle():
 
 def call(tool, params):
     """One operation, with pacing: a gap between provider requests, wait out a pause, back off on 429, stop on a rejected token."""
+    reconciled = False
+    last = None
     for attempt in range(8):
         while PAUSE.is_set() and not ABORT.is_set():
             time.sleep(5)
@@ -116,10 +133,16 @@ def call(tool, params):
                     threading.Timer(wait * 60, PAUSE.clear).start()
             continue
         if err.get("retry_class") == "reconcile_first":
-            call("hoi4.image_cancel", {"reconcile": True})
-            continue
-        return r
-    return {"error": {"message": "gave up after repeated rate limits"}}
+            key = params.get("idempotency_key")
+            if key and not reconciled:
+                reconciled = True
+                cancel = cli("call", "hoi4.image_cancel", json.dumps({"idempotency_key": key, "reconcile": True}))
+                print(f"[{now()}] reconciled {key}: {json.dumps(cancel)[:200]}", flush=True)
+                continue
+        last = r
+        if "429" not in msg and "rate limit" not in msg.lower():
+            return r
+    return last if last else {"error": {"message": "gave up after repeated rate limits"}}
 
 
 def rpath(family, asset):
@@ -215,14 +238,35 @@ def make_counter(job, attempt):
     return f"{rec['validation']} {art}"
 
 
+def style_on(name, family):
+    """A pinned style is the DEFAULT of every family it lists (empty = all), and `style` is refused for a family it does not
+    list. So a style lives in styles_off/ and is switched on for one family only while its request runs."""
+    d = json.load(open(os.path.join(MOD, "styles_off", name + ".json"), encoding="utf-8"))
+    d["families"] = [family]
+    os.makedirs(os.path.join(MOD, ".hoi4-imagegen", "styles"), exist_ok=True)
+    with open(os.path.join(MOD, ".hoi4-imagegen", "styles", name + ".json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(d, f, indent=2)
+
+
+def style_off(name):
+    p = os.path.join(MOD, ".hoi4-imagegen", "styles", name + ".json")
+    if os.path.exists(p):
+        os.remove(p)
+
+
 def make_standard(job, attempt):
     family, asset, brief, style = job["family"], job["asset"], job["brief"], job.get("style")
     tool = tool_of(family)
-    rec = {"family": family, "tool": tool, "asset": asset, "brief": brief, "style": style, "kind": "generate", "attempt": attempt, "started_at": now()}
+    rec = {"family": family, "tool": tool, "asset": asset, "brief": brief, "style": style, "kind": "generate", "attempt": attempt, "started_at": now(), "tool_version": tool_version()}
     req = {"family": family, "feature_slug": family, "asset": asset, "brief": brief, "approve": True, "idempotency_key": f"big-{family}-{asset}-{attempt}"}
     if style:
         req["style"] = style
-    r = call(tool, req)
+        style_on(style, family)
+    try:
+        r = call(tool, req)
+    finally:
+        if style:
+            style_off(style)
     rec["generate"] = r
     cand = first_candidate(r)
     if not cand:
@@ -257,8 +301,36 @@ def make_standard(job, attempt):
     return f"{rec['validation']} {art}"
 
 
+PRIORITY = os.path.join(WORK, "priority")
+PRIORITY_LOCK = threading.Lock()
+
+
+def run_priority():
+    """Other sessions' generation jobs, run between two of ours so the login still sees one request at a time.
+
+    A file .work/priority/<name>.json holds {"cwd": ..., "argv": [...]}. It runs once, its output goes to <name>.log and the
+    file is renamed to <name>.done."""
+    if not os.path.isdir(PRIORITY):
+        return
+    with PRIORITY_LOCK:
+        for name in sorted(os.listdir(PRIORITY)):
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(PRIORITY, name)
+            spec = json.load(open(path, encoding="utf-8"))
+            print(f"[{now()}] priority job {name}: {' '.join(spec['argv'])}", flush=True)
+            with open(path[:-5] + ".log", "w", encoding="utf-8") as log:
+                env = {**os.environ, **spec.get("env", {})}
+                rc = subprocess.run(spec["argv"], cwd=spec["cwd"], env=env, stdout=log, stderr=subprocess.STDOUT).returncode
+            os.replace(path, path[:-5] + ".done")
+            print(f"[{now()}] priority job {name} exited {rc}", flush=True)
+
+
 def make(job):
+    run_priority()
     family, asset = job["family"], job["asset"]
+    if os.path.exists(os.path.join(WORK, "STOP")):
+        return f"{family}/{asset}", "BLOCKED stop file present"
     prior = load(family, asset)
     if prior and prior.get("processed") and prior.get("validation") == "pass":
         return f"{family}/{asset}", "kept"
@@ -269,7 +341,8 @@ def make(job):
         history = prior.get("history", []) + [old]
         attempt = prior.get("attempt", 1) + 1
     try:
-        out = make_counter(job, attempt) if family in COUNTERS else make_standard(job, attempt)
+        # hoi4-imagegen 0.3.0 generates counters and division emblems itself; the gui_texture stand-in is only for 0.2.x
+        out = make_counter(job, attempt) if family in COUNTERS and os.environ.get("GALLERY_COUNTER_STANDIN") else make_standard(job, attempt)
     except Blocked as e:
         return f"{family}/{asset}", "BLOCKED " + str(e)
     if history:
@@ -280,11 +353,17 @@ def make(job):
 
 
 def jobs(families):
+    """Jobs in order. An argument is `family` or `family:N` (only the first N examples of the family)."""
     b = briefs()
     out = []
     names = families or ORDER + [f for f in b if f not in ORDER]
-    for fam in names:
-        for item in b.get(fam, []):
+    for spec in names:
+        fam, _, n = spec.partition(":")
+        for item in b.get(fam, [])[: int(n) if n else None]:
+            item = dict(item)
+            if fam in COUNTERS and not os.environ.get("GALLERY_COUNTER_STANDIN"):
+                # the model draws one black silhouette and the tool renders vanilla's material and NATO box
+                item["brief"] = re.sub(r"\bwhite\b", "black", item["brief"], flags=re.I)
             out.append({"family": fam, **item})
     return out
 
@@ -295,7 +374,15 @@ def cmd_gen(args):
         i = args.index("--workers")
         workers = int(args[i + 1])
         del args[i : i + 2]
+    limit = None
+    if "--limit" in args:
+        i = args.index("--limit")
+        limit = int(args[i + 1])
+        del args[i : i + 2]
+    check_build()
     todo = jobs(args)
+    if limit:
+        todo = todo[:limit]
     print(f"[{now()}] {len(todo)} examples, {workers} workers", flush=True)
     done = 0
     with cf.ThreadPoolExecutor(workers) as ex:
@@ -418,17 +505,91 @@ def cmd_review(args):
             print(name, out, flush=True)
 
 
+ANCHOR_SUBJECTS = ["soldiers marching behind a large banner", "a factory with tall chimneys and a tractor in front"]
+ANCHOR_LOOKS = {
+    "linocut": "A bold two-colour linocut propaganda print of {s}: thick carved black lines, flat red and cream colours on dark paper, visible carving texture, no text",
+    "gouache": "A soft matte gouache painting of {s}: flat colour shapes, muted pastel palette of dusty blue, ochre and sage green, visible brush strokes, no text",
+    "ink": "A grainy black ink and charcoal sketch with a sepia wash of {s}: loose hatching, rough paper texture, monochrome brown and black, no text",
+}
+
+
+def cmd_anchors(args):
+    """Make the six style anchor pictures with hoi4-imagegen itself (super_event at 768x512) into styles_src/."""
+    import shutil
+
+    os.makedirs(os.path.join(MOD, "styles_src"), exist_ok=True)
+    for name, look in ANCHOR_LOOKS.items():
+        for letter, subject in zip("ab", ANCHOR_SUBJECTS):
+            dest = os.path.join(MOD, "styles_src", f"{name}_{letter}.png")
+            if os.path.exists(dest):
+                continue
+            asset = f"{name}_{letter}"
+            r = call("hoi4.image_interface", {"family": "super_event", "feature_slug": "styleanchors", "asset": asset, "brief": look.format(s=subject), "canvas": [768, 512], "approve": True, "idempotency_key": f"anchor-{asset}"})
+            cand = first_candidate(r)
+            if not cand:
+                sys.exit("anchor failed: " + json.dumps(r)[:300])
+            p = call("hoi4.image_process", {"candidate_id": cand["candidate_id"]})
+            shutil.copyfile(os.path.join(MOD, p["path"]), dest)
+            print("anchor", asset, p["path"], flush=True)
+
+
+def cmd_extra(args):
+    """extra <jobs.json> <handback folder>: run other sessions' requests through the same queue and hand the files back.
+
+    Each job: {id, family, feature_slug, asset, brief, references: [{path, role}], style?, canvas?}. For each job the raw
+    candidate, the processed PNG and the plan id are copied to <handback folder>/<id>/ with a result.json."""
+    import shutil
+
+    jobs_file, handback = args[0], args[1]
+    check_build()
+    os.makedirs(handback, exist_ok=True)
+    for job in json.load(open(jobs_file, encoding="utf-8")):
+        out = os.path.join(handback, job["id"])
+        if os.path.exists(os.path.join(out, "result.json")):
+            continue
+        tool = tool_of(job["family"])
+        req = {k: v for k, v in job.items() if k not in ("id", "tool")}
+        req.update({"approve": True, "idempotency_key": f"extra-{job['id']}"})
+        try:
+            r = call(tool, req)
+        except Blocked as e:
+            print("BLOCKED", e, flush=True)
+            sys.exit(3)
+        cands = (r.get("generation") or {}).get("candidates") or []
+        if not cands:
+            print(job["id"], "FAILED", json.dumps(r)[:300], flush=True)
+            continue
+        os.makedirs(out, exist_ok=True)
+        items = []
+        for cand in cands:
+            p = call("hoi4.image_process", {"candidate_id": cand["candidate_id"]})
+            v = call("hoi4.image_validate", {"targets": [p["artifact_id"]]}) if p.get("artifact_id") else None
+            raw = os.path.join(MOD, cand["path"])
+            proc = os.path.join(MOD, p["path"])
+            shutil.copyfile(raw, os.path.join(out, os.path.basename(raw)))
+            shutil.copyfile(proc, os.path.join(out, os.path.basename(proc)))
+            items.append({"candidate_id": cand["candidate_id"], "raw_candidate": os.path.join(out, os.path.basename(raw)), "processed_png": os.path.join(out, os.path.basename(proc)), "processed_artifact": p.get("artifact_id"), "validation_failed": (v or {}).get("failed"), "model": cand.get("model"), "note": cand.get("note"), "prompt_sha256": cand.get("prompt_sha256")})
+        res = {"id": job["id"], "plan_id": (r.get("plan") or {}).get("plan_id"), "generated_at": now(), "tool_version": tool_version(), **items[0], "candidates": items}
+        json.dump(res, open(os.path.join(out, "result.json"), "w", encoding="utf-8"), indent=1)
+        print(job["id"], "done", res["plan_id"], len(items), "candidate(s)", flush=True)
+
+
 def cmd_styles(args):
     for name, (desc, frags, refs) in STYLES.items():
         for r in refs:
             if not os.path.exists(os.path.join(MOD, r)):
                 sys.exit(f"missing reference {r}")
-        for r in refs:
-            print(call("hoi4.image_references", {"action": "add", "path": r, "role": "style_anchor", "note": f"{name} style anchor made on the ChatGPT login"}).get("error") or "added " + r)
+        # Not `references add` (it attaches the image to every plan), and the profile is then parked in styles_off/ (see style_on).
         res = call("hoi4.image_references", {"action": "style_save", "style": {"name": name, "description": desc, "prompt_fragments": frags, "references": [{"path": r, "sha256": "", "note": ""} for r in refs], "approved_by": "claude-docs-session (agent)"}})
         print(name, json.dumps(res)[:300])
+        live = os.path.join(MOD, ".hoi4-imagegen", "styles", name + ".json")
+        os.makedirs(os.path.join(MOD, "styles_off"), exist_ok=True)
+        d = json.load(open(live, encoding="utf-8"))
+        d["families"] = []
+        json.dump(d, open(os.path.join(MOD, "styles_off", name + ".json"), "w", encoding="utf-8"), indent=2)
+        os.remove(live)
 
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
-    {"gen": cmd_gen, "status": cmd_status, "review": cmd_review, "redo": cmd_redo, "verdict": cmd_verdict, "styles": cmd_styles}[cmd](sys.argv[2:])
+    {"gen": cmd_gen, "status": cmd_status, "review": cmd_review, "redo": cmd_redo, "verdict": cmd_verdict, "styles": cmd_styles, "anchors": cmd_anchors, "extra": cmd_extra}[cmd](sys.argv[2:])

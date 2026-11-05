@@ -52,11 +52,13 @@ def sheet(family, out):
         p = os.path.join(MOD, r["process"]["path"])
         label = f"{n:02d} {item['asset'][:22]}" + (f" a{r.get('attempt', 1)}" if r.get("attempt", 1) > 1 else "")
         tiles.append((label, tile(p)))
-        if not refs:
+        if not refs and not r.get("style"):
             for ref in ((r.get("generate") or {}).get("generation", {}).get("candidates") or [{}])[0].get("references", [])[:6]:
                 rp = os.path.join(MOD, ref["path"])
                 if os.path.exists(rp):
-                    refs.append(("ref " + os.path.basename(ref["path"])[:20], tile(rp, 1)))
+                    t = tile(rp, 1)
+                    t.thumbnail((200, 200))
+                    refs.append(("ref " + os.path.basename(ref["path"])[:20], t))
     if not tiles:
         return None
     allt = refs + tiles
