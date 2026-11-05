@@ -618,7 +618,8 @@ fn rows() -> Vec<Row> {
         Row {
             rules: OPERATION_PICTURE_RULES,
             negative: OPERATION_PICTURE_NEGATIVE,
-            note: "LOW CONFIDENCE. The 210x176 operation phase picture: a phase's picture names it in full, and all 71 vanilla ones are GFX_phase_<x> (GFX_operations_* are the 85x85 and 48x48 operation icons). The pixel class of this size alone was not measured, so opacity follows the picture convention. Vanilla's 71 phase pictures (operations/images) are sepia photographs on tilted worn cards with transparent corners, 86 percent of the canvas covered like the report event cards.",
+            checks: CARD_CHECKS,
+            note: "LOW CONFIDENCE. The 210x176 operation phase picture: a phase's picture names it in full, and all 71 vanilla ones are GFX_phase_<x> (GFX_operations_* are the 85x85 and 48x48 operation icons). The model draws an opaque photograph and the phase_card step turns it into vanilla's tilted card with transparent corners, so the art is checked for the corners, never for opacity. Vanilla's 71 phase pictures (operations/images) are sepia photographs on tilted worn cards with transparent corners, 86 percent of the canvas covered like the report event cards.",
             ..base(OperationPicture, [210, 176], &[[210, 176]], "gfx/interface/operations/{feature_slug}/pictures", "phase_", "interface/{feature_slug}_operations.gfx")
         },
         Row {
@@ -1176,7 +1177,7 @@ mod tests {
             assert!(p.imagegen.rubric.starts_with(f.group().as_str()), "{f}");
             if p.imagegen.background == Background::Opaque {
                 // cards keep transparent corners on purpose: they are checked for the corners instead of for opacity
-                let card = matches!(f, Family::ReportEvent | Family::AdvisorCard);
+                let card = matches!(f, Family::ReportEvent | Family::OperationPicture | Family::AdvisorCard);
                 let want = if card { "card_corners" } else { "opaque" };
                 assert!(p.imagegen.checks.iter().any(|c| c == want), "{f} must check {want}");
                 assert_eq!(p.imagegen.checks.iter().any(|c| c == "opaque"), !card, "{f}");
