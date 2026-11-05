@@ -168,8 +168,21 @@ def briefs():
     return json.load(open(BRIEFS, encoding="utf-8"))
 
 
+TOOLS = {}
+
+
 def tool_of(family):
-    return cli("families", family)["family"]["tool"]
+    # cached, and asked twice: under two workers a `families` call once answered without "family" and killed the run
+    if family not in TOOLS:
+        for _ in range(2):
+            r = cli("families", family)
+            if "family" in r:
+                TOOLS[family] = r["family"]["tool"]
+                break
+            time.sleep(5)
+        else:
+            raise RuntimeError(f"families {family}: {json.dumps(r)[:300]}")
+    return TOOLS[family]
 
 
 def first_candidate(r):
@@ -354,6 +367,8 @@ def make(job):
         out = make_counter(job, attempt) if family in COUNTERS and os.environ.get("GALLERY_COUNTER_STANDIN") else make_standard(job, attempt)
     except Blocked as e:
         return f"{family}/{asset}", "BLOCKED " + str(e)
+    except Exception as e:  # noqa: BLE001 - one broken example is logged as failed and the run goes on
+        return f"{family}/{asset}", f"FAILED {type(e).__name__}: {str(e)[:200]}"
     if history:
         rec = load(family, asset)
         rec["history"] = history
