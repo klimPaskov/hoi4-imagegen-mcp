@@ -31,6 +31,8 @@ Planned with `hoi4.image_icon`.
 
 <img src="gallery/agency_upgrade.webp" alt="Example agency_upgrade asset made by hoi4-imagegen" width="272">
 
+**Vanilla form (since 0.3.2).** Measured on the 15 vanilla upgrades (`agency_cryptology_1`, `agency_invisible_ink`, `agency_portable_radios`): a round disc whose whole face is one small painted scene or close-up, a semi-realistic 1930s or 1940s illustration in muted colours. The scene runs to the softly darkened edge of the disc. There is no ring or frame around it. The example above predates this rule and shows a loose object instead, which is not the vanilla form.
+
 | | |
 |---|---|
 | Group and tool | icon, `hoi4.image_icon` |
@@ -82,6 +84,8 @@ common/bop/PRC.txt:10 icon = GFX_PRC_bop_left_side
 ### commander_trait
 
 <img src="gallery/commander_trait.webp" alt="Example commander_trait asset made by hoi4-imagegen" width="161">
+
+**Vanilla form (since 0.3.2).** Measured on the 81 vanilla army and navy leader traits at 23x33 (`trait_panzer_leader`, `trait_desert_fox`, `trait_admiral_marksman`): a small medal seen straight on. A short striped ribbon under a thin gold bar sits on top, and below it the symbol hangs as grey steel or silver metal, often on a bronze wreath. The symbol is never painted in its own colours (median saturation 0.02). The operative traits, shield plaques without a ribbon, are left out of the references. The tank above predates this rule and is not the vanilla form.
 
 | | |
 |---|---|
@@ -346,6 +350,8 @@ common/military_industrial_organization/policies/_general_policies.txt:77 icon =
 
 <img src="gallery/mio_trait.webp" alt="Example mio_trait asset made by hoi4-imagegen" width="240">
 
+**Vanilla form (since 0.3.2).** Measured on the 44 vanilla trait icons (`generic_mio_trait_icon_armor_value`, `generic_mio_trait_icon_detection`, `generic_mio_trait_icon_build_cost_ic`): one small loose object or symbol drawn as a glossy, shaded interface icon, often with a small accent sign such as a green plus or a red target ring. Every file has a dark outline and a soft dark shadow, and about 29 percent of the canvas is covered. There is no badge or disc behind the object. The rule before 0.3.2 asked for a round badge, which vanilla does not use.
+
 | | |
 |---|---|
 | Group and tool | icon, `hoi4.image_icon` |
@@ -397,6 +403,8 @@ common/ideas/army_spirits.txt:4 bold_attack_spirit has no picture -> interface/o
 ### operation_icon
 
 <img src="gallery/operation_icon.webp" alt="Example operation_icon asset made by hoi4-imagegen" width="236">
+
+**Vanilla form (since 0.3.2).** This family is the 59x58 operation phase icon, and only that. All 71 vanilla ones (`operations/phases_small/phase_bruneval_attack_small`, `phase_capture_tito_infiltration_small`) are a round sepia photograph whose edge is worn and slightly darkened, with no ring and no colour (median saturation 0.15, under 0.1 percent of the pixels coloured). The 85x85 square colour illustrations and the 48x48 ringed colour paintings in the same folder are a different form: they are no longer accepted sizes and never references. The example above predates this rule and shows a loose object, which is not the vanilla form.
 
 | | |
 |---|---|
@@ -611,6 +619,8 @@ events/*.txt: 830 of 833 picture values are full GFX_ names (interface/eventpict
 ### operation_picture
 
 <img src="gallery/operation_picture.webp" alt="Example operation_picture asset made by hoi4-imagegen" width="420">
+
+**Vanilla form (since 0.3.2).** This family is the 210x176 operation phase picture, and only that. All 71 vanilla ones (`operations/images/phase_bruneval_attack`, `phase_capture_cyphers_raid`) are period photographs in sepia or warm black and white, never paintings and never colour. In vanilla they sit on the same tilted, worn photo card as the report event pictures, with transparent corners (86 percent of the canvas covered). The prompt asks for the photograph and says it is not the round phase icon. The example above is a painted illustration and predates this rule.
 
 | | |
 |---|---|
@@ -886,6 +896,8 @@ common/intelligence_agencies/00_intelligence_agencies.txt:719 picture = GFX_inte
 
 <img src="gallery/building.webp" alt="Example building asset made by hoi4-imagegen" width="256">
 
+**Vanilla form (since 0.3.2).** Measured on the 27 vanilla 128x64 landmark strips (`eiffel_tower_icon`, `big_ben_icon`, `colosseum_icon`): frame 1 is the building as a small, detailed painted miniature in muted stone colours with a dark outline, seen from the front at a slightly raised angle, with at most a thin strip of ground under it. Frame 2 is the same building as ruins with one small orange flame above it. There is no hill, landscape or backdrop. References come from these 128x64 strips only, because vanilla's 64x32 small strips are flat orange pictograms, a different form. The citadel above predates this rule and stands on a hill.
+
 | | |
 |---|---|
 | Group and tool | unit, `hoi4.image_unit` |
@@ -977,6 +989,8 @@ interface/subuniticons.gfx:201 GFX_unit_infantry_icon_medium_white (noOfFrames =
 
 <img src="gallery/division_emblem.webp" alt="Example division_emblem asset made by hoi4-imagegen" width="228">
 
+**Vanilla form (since 0.3.2).** Measured on the 101 vanilla symbols (`custom_template_000` to `custom_template_121`): one plain heraldic or unit symbol, such as an animal head, a skull, a helmet, a star or wings, shown as an embossed grey-green metal sign that covers about 21 percent of the canvas. The model draws it as one black silhouette and the `division_symbol` recipe renders vanilla's material. The red symbol above was imported before the recipe existed and is not the vanilla form.
+
 | | |
 |---|---|
 | Group and tool | unit, `hoi4.image_unit` |
@@ -1036,6 +1050,8 @@ Planned with `hoi4.image_interface`.
 ### gui_texture
 
 <img src="gallery/gui_texture.webp" alt="Example gui_texture asset made by hoi4-imagegen" width="300">
+
+**Vanilla form and references (since 0.3.2).** Vanilla GUI textures are flat interface material seen straight on: dark charcoal, gunmetal, olive green or worn leather with thin bevelled edges. Pass `texture_kind` (`button`, `frame`, `panel` or `background`) to add that kind's form to the prompt and to take vanilla references of that kind: buttons from `gfx/interface/button_*` and `gfx/interface/buttons/` (34 files), frames from `gfx/interface/*_frame*` without the multi-frame strips (empty-middle borders), panels from `gfx/interface/tiles/tiled_*` (48 stretchable plates) and backgrounds from the `gfx/interface/*_bg` files of at least 256 px a side (71 window backgrounds). Without a kind there is no automatic reference.
 
 | | |
 |---|---|
