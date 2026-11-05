@@ -265,6 +265,9 @@ def make_standard(job, attempt):
     req = {"family": family, "feature_slug": family, "asset": asset, "brief": brief, "approve": True, "idempotency_key": f"big-{family}-{asset}-{attempt}"}
     if family in MOD_CANVAS:
         req["canvas"] = MOD_CANVAS[family]
+    if job.get("references"):
+        # caller references (the TNO section's style anchors); from 0.3.2 their form wins over vanilla's
+        req["references"] = job["references"]
     if style:
         req["style"] = style
         style_on(style, family)
