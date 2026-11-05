@@ -609,19 +609,38 @@ fn a_strip_family_can_be_imported_as_two_frame_files() {
         }
         f
     };
-    put(&h, "incoming/f1.png", &frame(40));
-    put(&h, "incoming/f2.png", &frame(200));
+    // frames in vanilla's material (a glyph and the NATO box) are finished art and kept as they are
+    use imagegen_core::recipes::unit_art::{nato_box, unit_glyph, BoxSize, Mark, UnitArtKind};
+    let mut drawing = Rgba::filled(400, 200, [255, 255, 255, 255]);
+    for y in 60..140 {
+        for x in 60..340 {
+            drawing.set_px(x, y, [10, 10, 10, 255]);
+        }
+    }
+    let (g1, g2) = (unit_glyph(&drawing, UnitArtKind::CounterLarge).unwrap(), nato_box(BoxSize::Large, &[Mark::Cross]));
+    put(&h, "incoming/g1.png", &g1);
+    put(&h, "incoming/g2.png", &g2);
     let p = h
         .engine
-        .process(serde_json::from_value(json!({"import": {"frames": ["incoming/f1.png", "incoming/f2.png"], "family": "counter_large", "feature_slug": "iron_pact", "asset": "inf"}})).unwrap())
+        .process(serde_json::from_value(json!({"import": {"frames": ["incoming/g1.png", "incoming/g2.png"], "family": "counter_large", "feature_slug": "iron_pact", "asset": "inf"}})).unwrap())
         .unwrap();
     assert_eq!(p["size"], json!([152, 42]));
     assert_eq!(names(&p, "steps"), vec!["conform"]);
     assert_eq!(p["recipe"]["id"], "unit_counter");
     let strip = png_of(&h, p["path"].as_str().unwrap());
     let parts = strip.split_frames(2).unwrap();
-    assert_eq!(parts[0], frame(40));
-    assert_eq!(parts[1], frame(200));
+    assert_eq!(parts[0], g1);
+    assert_eq!(parts[1], g2);
+    assert_eq!(h.validate(p["artifact_id"].as_str().unwrap())["status"], "pass");
+    // frames in any other look are not finished art: frame 1 is drawn again as a silhouette in vanilla's material
+    put(&h, "incoming/f1.png", &frame(40));
+    put(&h, "incoming/f2.png", &frame(200));
+    let p = h
+        .engine
+        .process(serde_json::from_value(json!({"import": {"frames": ["incoming/f1.png", "incoming/f2.png"], "family": "counter_large", "feature_slug": "iron_pact", "asset": "inf2"}})).unwrap())
+        .unwrap();
+    assert_eq!(names(&p, "steps"), vec!["frame_of", "unit_glyph", "nato_frame"]);
+    assert!(p["notes"][0].as_str().unwrap().contains("drawn again"), "{p:#}");
     assert_eq!(h.validate(p["artifact_id"].as_str().unwrap())["status"], "pass");
 
     // the wrong number of files, a wrong frame size, a single-frame family and both inputs at once are all refused
@@ -907,7 +926,10 @@ fn an_on_map_counter_registers_the_vanilla_name_and_its_text_icon() {
     assert_eq!((icon.width, icon.height), (60, 12));
     let px = icon.px(15, 6);
     assert!(px[1] > px[0] && px[0] == px[2], "frame 1 of the text icon is tinted green: {px:?}");
-    assert_eq!(icon.px(45, 6), [190, 190, 190, 255], "frame 2 is kept");
+    // the imported grey block is not vanilla's material, so the strip was drawn again: frame 2 is the NATO box of the
+    // symbol the key suggests, and the text icon keeps it
+    use imagegen_core::recipes::unit_art::{infer_symbol, nato_box, BoxSize};
+    assert_eq!(icon.px(45, 6), nato_box(BoxSize::Small, &infer_symbol("mountain_rangers")).px(15, 6), "frame 2 is kept");
     assert!(out["script"].as_str().unwrap().contains("name the sub-unit mountain_rangers"));
     // the battalion icon is GFX_unit_<key>_icon_medium
     let out = import_and_install(&h, "counter_large", "mountain_rangers", &shape(76, 42, 2, [90, 120, 90]));

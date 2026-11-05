@@ -94,6 +94,12 @@ pub enum Op {
         /// Grain seed.
         seed: i64,
     },
+    /// The operation phase card: the report card's tone, grain and shadow on vanilla's phase picture mask (tilted
+    /// clockwise, a little smaller and lower). See `recipes::report_card::ReportCardParams::phase`.
+    PhaseCard {
+        /// Grain seed.
+        seed: i64,
+    },
     /// Two-frame strip: the fitted icon, then the same icon with the selected-state stroke and glow
     /// (faction and agency logos).
     SelectedFrame {
@@ -127,6 +133,26 @@ pub enum Op {
         width: u32,
         /// Canvas height.
         height: u32,
+    },
+    /// Raid icons: the fitted subject recoloured on vanilla's gold ramp, light at the top and dark at the bottom, with
+    /// the black outline on its edge. See `recipes::raid`.
+    GoldGradient,
+    /// Doctrine icons: the units of the fitted subject filled black, warm accents kept, vanilla's pale outline and glow
+    /// around the black and a dark shadow around the accents. See `recipes::doctrine`.
+    DoctrineLook,
+    /// Technology pictures: stamp the tier numeral (and the capital-ship gem) where vanilla bakes it into the texture.
+    /// See `recipes::tech_overlay`.
+    TechOverlay {
+        /// What to stamp.
+        overlay: crate::recipes::tech_overlay::TechOverlay,
+    },
+    /// Keep frame `index` (from 0) of a strip of `frames` equal frames: the silhouette of an imported counter strip
+    /// that is not in vanilla's material, which the unit art recipe then draws again.
+    FrameOf {
+        /// Frames in the strip.
+        frames: u32,
+        /// The frame kept, from 0.
+        index: u32,
     },
     /// Light on black to alpha: alpha is the brightest channel, colour is divided by it (blend glows).
     BlackToAlpha,
@@ -173,11 +199,16 @@ impl Op {
             Op::FlattenOn { .. } => "flatten_on",
             Op::Conform { .. } => "conform",
             Op::ReportCard { .. } => "report_card",
+            Op::PhaseCard { .. } => "phase_card",
             Op::SelectedFrame { .. } => "selected_frame",
             Op::DisabledFrame { .. } => "disabled_frame",
             Op::UnitGlyph { .. } => "unit_glyph",
             Op::NatoFrame { .. } => "nato_frame",
             Op::LineArt { .. } => "line_art",
+            Op::GoldGradient => "gold_gradient",
+            Op::DoctrineLook => "doctrine_look",
+            Op::TechOverlay { .. } => "tech_overlay",
+            Op::FrameOf { .. } => "frame_of",
             Op::BlackToAlpha => "black_to_alpha",
             Op::GlowFrames { .. } => "glow_frames",
             Op::ScrollFrames { .. } => "scroll_frames",
@@ -244,6 +275,10 @@ pub fn apply(img: &Rgba, op: &Op) -> Result<Rgba> {
         Op::ReportCard { seed } => {
             crate::recipes::report_card::report_card(img, &crate::recipes::report_card::ReportCardParams { seed: *seed, ..Default::default() })
         }
+        Op::PhaseCard { seed } => crate::recipes::report_card::report_card(
+            img,
+            &crate::recipes::report_card::ReportCardParams { seed: *seed, ..crate::recipes::report_card::ReportCardParams::phase() },
+        ),
         Op::SelectedFrame { frames } => crate::recipes::frames::selected_strip(img, *frames),
         Op::DisabledFrame { frames } => crate::recipes::frames::disabled_strip(img, *frames),
         Op::UnitGlyph { kind } => crate::recipes::unit_art::unit_glyph(img, *kind),
@@ -252,6 +287,13 @@ pub fn apply(img: &Rgba, op: &Op) -> Result<Rgba> {
             crate::recipes::unit_art::counter_strip(img, *kind, &marks)
         }
         Op::LineArt { width, height } => crate::recipes::line_art::line_art(img, *width, *height),
+        Op::GoldGradient => crate::recipes::raid::gold_gradient(img),
+        Op::DoctrineLook => crate::recipes::doctrine::doctrine_look(img),
+        Op::TechOverlay { overlay } => crate::recipes::tech_overlay::stamp(img, overlay),
+        Op::FrameOf { frames, index } => {
+            let parts = img.split_frames(*frames)?;
+            parts.into_iter().nth(*index as usize).ok_or_else(|| Error::Invalid(format!("frame {index} of a {frames}-frame strip does not exist")))
+        }
         Op::BlackToAlpha => Ok(crate::animation::black_to_alpha(img)),
         Op::GlowFrames { frames, dim } => crate::animation::glow_strip(img, *frames, *dim),
         Op::ScrollFrames { frames } => crate::animation::scroll_strip(img, *frames),
@@ -783,6 +825,10 @@ mod tests {
             Op::UnitGlyph { kind: crate::recipes::unit_art::UnitArtKind::CounterSmall },
             Op::NatoFrame { kind: crate::recipes::unit_art::UnitArtKind::CounterLarge, symbol: "cross".into() },
             Op::LineArt { width: 161, height: 98 },
+            Op::GoldGradient,
+            Op::DoctrineLook,
+            Op::TechOverlay { overlay: crate::recipes::tech_overlay::TechOverlay { tier: 2, gem: false, position: None } },
+            Op::FrameOf { frames: 2, index: 0 },
         ] {
             let tag = serde_json::to_value(&op).unwrap()["op"].as_str().unwrap().to_string();
             assert_eq!(tag, op.name(), "name() is the serde tag");
