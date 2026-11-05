@@ -117,6 +117,10 @@ pub fn script_usage(profile: &Profile, canvas: [u32; 2], feature_slug: &str, ass
     if let Some(n) = number {
         text = text.replace("{n}", &n.to_string());
     }
+    if profile.family == Family::Technology {
+        text.push_str(". ");
+        text.push_str(&crate::lookup::tech_box_note(canvas));
+    }
     Ok(text)
 }
 
@@ -547,6 +551,12 @@ mod tests {
         assert_eq!(usage(Family::DecisionCategoryPicture, "council"), "decision category: picture = council");
         assert!(usage(Family::CounterLarge, "mountain_rangers").contains("name the sub-unit mountain_rangers"));
         assert!(usage(Family::Technology, "rifle_tech").contains("name the technology rifle_tech"));
+        let tech = usage(Family::Technology, "rifle_tech");
+        assert!(tech.contains("countrytechtreeview.gui") && tech.contains("tech_support_tree"), "{tech}");
+        assert!(tech.contains("146x54") && tech.contains("183x84") && tech.contains("The game picks the item from the technology"), "{tech}");
+        let small = script_usage(&p(Family::Technology), [64, 64], "iron_pact", "rifle_tech", None).unwrap();
+        assert!(small.contains("64x64") && small.contains("72x72") && small.contains("neither equipment nor sub-units"), "{small}");
+        assert!(tech.contains("Found no grid box for tech") && tech.contains("path from an existing vanilla technology"), "{tech}");
         let landmark = usage(Family::Building, "iron_gate");
         assert!(
             landmark.contains("gfx/entities") && landmark.contains("building_<building key>") && landmark.contains("building_landmark_eiffel_tower"),

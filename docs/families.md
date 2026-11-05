@@ -685,13 +685,17 @@ events/*.txt: 830 of 833 picture values are full GFX_ names (interface/eventpict
 
 <img src="gallery/technology.webp" alt="Example technology asset made by hoi4-imagegen" width="292">
 
+**Tree box (since 0.3.5).** The install writes the picture sprite only. The technology also needs a box in a tree, or the game logs "Found no grid box for tech <key>" and never draws it: a `path` from an existing vanilla technology (with a mod copy of that technology file), or the mod's own gridbox in a copy of `interface/countrytechtreeview.gui` (vanilla names its gridboxes like `tech_support_tree`). The install output, the handoff note and the receipt carry this note.
+
+**Picture size (since 0.3.5).** The game picks the tree item from the technology, not from the picture. Pass `canvas` `[146, 54]` (default) for a technology that enables equipment or sub-units in the land and air folders (183x84 item), `[64, 64]` for any other technology (the small 72x72 item) and `[285, 56]` for naval, artillery and electronics equipment (204x72 item). The sizes are vanilla's most common for each kind, measured on 1.19.4.1 (see the reference). The install note names the item the art is sized for.
+
 | | |
 |---|---|
 | Group and tool | picture, `hoi4.image_picture` |
 | Canvas and frames | 146x54, 1 frame; DDS |
 | Also accepted | 131x52 |
 | Names the game looks up | the game builds the sprite name from the key of the object it belongs to. The example installs `GFX_heavy_tank_medium`. |
-| Script | name the technology heavy_tank (its picture is GFX_<technology key>_medium) |
+| Script | name the technology heavy_tank (its picture is GFX_<technology key>_medium). The picture alone does not put the technology in the tech tree: it needs a box in a tree, either a path from an existing vanilla technology (which needs a mod copy of that vanilla technology file under common/technologies) or the mod's own gridbox in a copy of interface/countrytechtreeview.gui (vanilla names its gridboxes like tech_support_tree). Without one the game logs "Found no grid box for tech <technology key>" and never draws the technology, whatever its x and y are. This tool writes neither |
 | Installed files (example) | `gfx/interface/technologies/gallery/heavy_tank.dds` |
 | Processing | recipe `icon` v1: trim, fit to the canvas with the profile margin, grayscale where the family needs it. Ran: `defringe` (erosion 1) → `trim_to_subject` → `fit_subject` (height 54, margin 2, width 146) |
 | Checks | `size`, `alpha`, `opaque_canvas`, `fringe`, `margin`, `fill`, `checker`, `style`, `dds` |

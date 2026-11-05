@@ -1079,3 +1079,61 @@ fn a_landmark_install_says_it_needs_a_building_entity() {
         assert!(text.contains("building_landmark_eiffel_tower") && text.contains("landmarks.asset"), "{what}: {text}");
     }
 }
+
+#[test]
+fn a_technology_install_says_it_needs_a_tree_box() {
+    let h = chain_harness();
+    let rel = "incoming/rifle_tech.png";
+    put(&h, rel, &shape(146, 54, 1, [150, 140, 120]));
+    let p = h
+        .engine
+        .process(
+            serde_json::from_value(json!({"import": {"path": rel, "family": "technology", "feature_slug": "iron_pact", "asset": "rifle_tech"}}))
+                .unwrap(),
+        )
+        .unwrap();
+    let id = p["artifact_id"].as_str().unwrap().to_string();
+    let approval = approve(&h, &id, "technology");
+    let out = h.install(&id, &approval, json!({})).unwrap();
+    let note = std::fs::read_to_string(h.dir.path().join("docs/assets/iron_pact/gfx_handoff.md")).unwrap();
+    let record = std::fs::read_to_string(h.dir.path().join(out["record_path"].as_str().unwrap())).unwrap();
+    for (what, text) in [("output", out["script"].as_str().unwrap().to_string()), ("handoff", note), ("receipt", record)] {
+        assert!(text.contains("Found no grid box for tech") && text.contains("countrytechtreeview.gui"), "{what}: {text}");
+        assert!(text.contains("tech_support_tree") && text.contains("path from an existing vanilla technology"), "{what}: {text}");
+    }
+}
+
+#[test]
+fn a_technology_can_be_made_for_the_small_or_the_wide_box() {
+    let h = chain_harness();
+    // the default is vanilla's 146x54 for the 183x84 item
+    let req = |canvas: serde_json::Value| -> PlanRequest {
+        serde_json::from_value(
+            json!({"family": "technology", "feature_slug": "iron_pact", "asset": "rifle_tech", "brief": "x", "provider": "openai", "canvas": canvas}),
+        )
+        .unwrap()
+    };
+    assert_eq!(h.engine.plan(req(json!([146, 54]))).unwrap().canvas, [146, 54]);
+    assert_eq!(h.engine.plan(req(json!([64, 64]))).unwrap().canvas, [64, 64]);
+    let wide = h.engine.plan(req(json!([285, 56]))).unwrap();
+    assert_eq!((wide.canvas, wide.source_canvas), ([285, 56], Some([168, 56])), "the model is asked for 3:1, the chain fits it");
+    let err = h.engine.plan(req(json!([100, 100]))).unwrap_err();
+    assert!(err.message.contains("146x54") && err.message.contains("64x64") && err.message.contains("285x56"), "{}", err.message);
+    // a finished 64x64 picture is kept at its size, installs, and the note names the small item
+    let rel = "incoming/small_tech.png";
+    put(&h, rel, &shape(64, 64, 1, [150, 140, 120]));
+    let p = h
+        .engine
+        .process(
+            serde_json::from_value(json!({"import": {"path": rel, "family": "technology", "feature_slug": "iron_pact", "asset": "small_tech"}}))
+                .unwrap(),
+        )
+        .unwrap();
+    let id = p["artifact_id"].as_str().unwrap().to_string();
+    let approval = approve(&h, &id, "technology");
+    let out = h.install(&id, &approval, json!({})).unwrap();
+    let script = out["script"].as_str().unwrap();
+    assert!(script.contains("64x64") && script.contains("72x72"), "{script}");
+    let tex = dds::decode(&h.read("gfx/interface/technologies/iron_pact/small_tech.dds")).unwrap();
+    assert_eq!((tex.width, tex.height), (64, 64));
+}

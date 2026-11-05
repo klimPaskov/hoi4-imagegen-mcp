@@ -91,7 +91,7 @@ pub fn lookup_of(family: Family) -> Lookup {
         CommanderTrait | PersonalTrait => l(EngineKey, "name the unit leader trait {asset} in common/unit_leader (its icon is GFX_trait_<trait key>)", "common/unit_leader/*.txt: 189 of 196 leader traits have GFX_trait_<key>; traits have no icon field; hoi4.exe has GFX_trait_; interface/aat_traits.gfx:10 GFX_trait_jaeger", Some("jaeger")),
         Doctrine => l(FullName, "doctrine: icon = {sprite}", "common/doctrines/subdoctrines/land/combat_support_subdoctrines.txt:282 icon = GFX_doctrine_air_cavalry_medium", None),
         ReportEvent | NewsEvent => l(FullName, "event: picture = {sprite}", "events/*.txt: 830 of 833 picture values are full GFX_ names (interface/eventpictures.gfx:14 GFX_news_event_polish_army)", None),
-        Technology => l(EngineKey, "name the technology {asset} (its picture is GFX_<technology key>_medium)", "interface/Technologies.gfx:183 GFX_infantry_weapons_medium for technology infantry_weapons; 429 of 552 technologies have GFX_<key>_medium; hoi4.exe pairs tech_icon with _medium", Some("infantry_weapons")),
+        Technology => l(EngineKey, "name the technology {asset} (its picture is GFX_<technology key>_medium). The picture alone does not put the technology in the tech tree: it needs a box in a tree, either a path from an existing vanilla technology (which needs a mod copy of that vanilla technology file under common/technologies) or the mod's own gridbox in a copy of interface/countrytechtreeview.gui (vanilla names its gridboxes like tech_support_tree). Without one the game logs \"Found no grid box for tech <technology key>\" and never draws the technology, whatever its x and y are. This tool writes neither", "interface/Technologies.gfx:183 GFX_infantry_weapons_medium for technology infantry_weapons; 429 of 552 technologies have GFX_<key>_medium; hoi4.exe pairs tech_icon with _medium", Some("infantry_weapons")),
         Achievement => l(FileName, "name the achievement {asset} in common/achievements.txt (the game loads gfx/achievements/<key>.dds, _grey.dds and _not_eligible.dds)", "gfx/achievements: 292 achievement keys have <key>.dds, <key>_grey.dds and (291) <key>_not_eligible.dds; no .gfx registers them", None),
         LeaderPortrait | CommanderPortrait | OperativePortrait | ScientistPortrait => l(FullName, "character portraits: large = {sprite}", "common/characters/*.txt: 2,045 of 2,047 large values are full GFX_ names (interface/_scientists_portraits.gfx:7 GFX_portrait_AST_lawrence_wackett)", None),
         AdvisorCard => l(FullName, "character portraits: small = {sprite} (in the civilian or army block of the advisor)", "common/characters/*.txt: all 2,887 small values are full GFX_ names (interface/ideas.gfx:6562 GFX_portrait_ETH_amha_selassie_small)", None),
@@ -151,6 +151,61 @@ pub const VANILLA_LEGACY_LAZY_LOAD: &[(&str, u32, u32)] = &[
     ("agency_logo", 0, 72),
     ("modifier_stat_icon", 0, 47),
 ];
+
+/// One box of the tech tree a technology picture is sized for. The game picks the box from the technology, not
+/// from the picture: a technology that enables equipment or sub-units gets the large item of its folder, any
+/// other gets the small 72x72 item. Measured on HOI4 1.19.4.1 with all DLC: 549 technologies, 428 with a
+/// `GFX_<tech>_medium` sprite whose DDS header was read. Item sizes are the `containerWindowType` sizes in
+/// `interface/countrytechtreeview.gui` (`techtree_<folder>_folder_small_item` 72x72, `_folder_item` 183x84 for the
+/// infantry, support, armour, NSB armour and both air folders, 204x72 for the naval, artillery, industry and
+/// electronics folders). Picture sizes by technology type:
+///
+/// | type | pictures | dominant size | other sizes |
+/// |---|---|---|---|
+/// | neither equipment nor sub-units | 237 | 64x64 (138) | 62x62 (38), 60x60 (14), 62x61 (12) |
+/// | enables sub-units only | 18 | 64x64 (18) | none |
+/// | enables equipment, 183x84 item | 114 | 146x54 (25) | 64x64 (20), 173x77 (12), 131x52 (5), 123x38 (3) |
+/// | enables equipment, 204x72 item | 64 | 285x56 (39) | 64x64 (5), 249x54 (4), 306x56 (2), 286x54 (2) |
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TechBox {
+    /// Stable id of the option.
+    pub key: &'static str,
+    /// Canvas of the picture.
+    pub canvas: [u32; 2],
+    /// Size of the tree item the game draws it in.
+    pub item: [u32; 2],
+    /// Which technologies get this item.
+    pub when: &'static str,
+}
+
+/// The boxes, the default (`equipment`, vanilla's 146x54 in the 183x84 item) first.
+pub const TECH_BOXES: [TechBox; 3] = [
+    TechBox {
+        key: "equipment",
+        canvas: [146, 54],
+        item: [183, 84],
+        when: "enables equipment or sub-units, in the infantry, support, armour, NSB armour or air folders",
+    },
+    TechBox { key: "small", canvas: [64, 64], item: [72, 72], when: "enables neither equipment nor sub-units" },
+    TechBox { key: "equipment_wide", canvas: [285, 56], item: [204, 72], when: "enables equipment, in the naval, artillery or electronics folders" },
+];
+
+/// The canvases of [`TECH_BOXES`].
+pub const TECH_BOX_CANVASES: [[u32; 2]; 3] = [TECH_BOXES[0].canvas, TECH_BOXES[1].canvas, TECH_BOXES[2].canvas];
+
+/// The box a technology canvas is sized for, as a sentence for the install note. The game picks the box from
+/// the technology (equipment or sub-units, and its folder), not from the picture.
+pub fn tech_box_note(canvas: [u32; 2]) -> String {
+    let mut s = match TECH_BOXES.iter().find(|b| b.canvas == canvas) {
+        Some(b) => format!(
+            "This picture is {}x{}, sized for the {}x{} tech tree item that a technology gets when it {}.",
+            canvas[0], canvas[1], b.item[0], b.item[1], b.when
+        ),
+        None => format!("This picture is {}x{}, which is not one of vanilla's tech tree item sizes.", canvas[0], canvas[1]),
+    };
+    s.push_str(" The game picks the item from the technology, not from the picture: one that enables equipment or sub-units gets the large item of its folder (183x84 or 204x72), any other gets the small 72x72 item. A picture wider than its item overflows it. Make the picture with the canvas option that matches the technology (equipment 146x54, small 64x64, equipment_wide 285x56).");
+    s
+}
 
 /// A companion image the game looks up next to the main sprite, derived from the main art at processing time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -296,6 +351,15 @@ mod tests {
         assert!(derived_companions(Family::Focus, [100, 88]).is_empty());
         assert_eq!(derived_companion(Family::Building, "small").map(|d| d.frames), Some(2));
         assert!(derived_companion(Family::Focus, "small").is_none());
+    }
+
+    #[test]
+    fn tech_boxes_follow_vanillas_measured_sizes() {
+        assert_eq!(TECH_BOXES[0].canvas, [146, 54], "the default stays vanilla's 146x54 for the 183x84 item");
+        assert_eq!(TECH_BOX_CANVASES, [[146, 54], [64, 64], [285, 56]]);
+        assert!(tech_box_note([64, 64]).contains("72x72") && tech_box_note([64, 64]).contains("neither equipment nor sub-units"));
+        assert!(tech_box_note([285, 56]).contains("204x72") && tech_box_note([146, 54]).contains("183x84"));
+        assert!(tech_box_note([146, 54]).contains("The game picks the item from the technology"));
     }
 
     #[test]
