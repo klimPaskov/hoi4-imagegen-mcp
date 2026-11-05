@@ -284,4 +284,33 @@ mod tests {
         all.families.clear();
         assert!(all.applies_to(Family::IdeaSpirit));
     }
+
+    #[test]
+    fn automatic_use_needs_a_listed_family_or_default_true() {
+        let listed = style("a"); // families = [Focus], default unset
+        assert_eq!(listed.auto_applies_to(Family::Focus), Some(StyleWhy::FamilyList));
+        assert_eq!(listed.auto_applies_to(Family::IdeaSpirit), None);
+        let mut none = style("b");
+        none.families.clear();
+        assert_eq!(none.auto_applies_to(Family::Focus), None, "no families and no default: available by name, never automatic");
+        none.default = Some(true);
+        assert_eq!(none.auto_applies_to(Family::IdeaSpirit), Some(StyleWhy::Default));
+        let mut dl = style("c");
+        dl.default = Some(true);
+        assert_eq!(dl.auto_applies_to(Family::Focus), Some(StyleWhy::Default));
+        assert_eq!(dl.auto_applies_to(Family::IdeaSpirit), None, "default applies only to the listed families when there are some");
+        dl.default = Some(false);
+        assert_eq!(dl.auto_applies_to(Family::Focus), None);
+        assert!(dl.applies_to(Family::Focus), "default = false still allows naming it");
+    }
+
+    #[test]
+    fn the_default_key_is_optional_and_not_written_when_unset() {
+        let old: StyleProfile = serde_json::from_str(r#"{"name":"old","categories":["focus"]}"#).unwrap();
+        assert_eq!(old.default, None);
+        assert_eq!(old.auto_applies_to(Family::Focus), Some(StyleWhy::FamilyList));
+        assert!(!serde_json::to_string(&old).unwrap().contains("\"default\""));
+        let new: StyleProfile = serde_json::from_str(r#"{"name":"new","default":true}"#).unwrap();
+        assert_eq!(new.default, Some(true));
+    }
 }
