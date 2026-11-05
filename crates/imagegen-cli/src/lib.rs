@@ -400,6 +400,27 @@ fn route_text(r: &Value) -> Option<String> {
     if let Some(m) = r["fallback"]["message"].as_str() {
         t.push_str(&format!("  warning: {m}\n"));
     }
+    if let Some(m) = r["model_access_unverified"].as_object() {
+        t.push_str(&format!(
+            "  \"Unable to verify model access\" answers: {} so far, the last at {} ({} ago); a slot waits {} s after one, two within {} min drop the route to one at a time for {} min
+",
+            m["count"],
+            m["last_at"].as_str().unwrap_or("?"),
+            ago(m["last_ago_secs"].as_i64().unwrap_or(0)),
+            m["pause_secs"],
+            m["window_secs"].as_i64().unwrap_or(0) / 60,
+            m["hold_secs"].as_i64().unwrap_or(0) / 60
+        ));
+        for p in m["slot_pauses"].as_array().into_iter().flatten() {
+            t.push_str(&format!(
+                "  slot {} is paused until {} ({} left)
+",
+                p["slot"],
+                p["until"].as_str().unwrap_or("?"),
+                ago(p["remaining_secs"].as_i64().unwrap_or(0))
+            ));
+        }
+    }
     match r["last_request_at"].as_str() {
         Some(at) => t.push_str(&format!("  last request: {at} ({} ago)\n", ago(r["last_request_ago_secs"].as_i64().unwrap_or(0)))),
         None => t.push_str("  last request: none recorded on this machine\n"),
@@ -750,6 +771,41 @@ mod tests {
         note_route_state(&mut s, &env, now - 10 + provider_chatgpt_login::route::FALLBACK_HOLD_SECS);
         let text = doctor_text(&s);
         assert!(text.contains("requests at once: up to 3 on this machine") && !text.contains("warning:"), "{text}");
+    }
+
+    #[test]
+    fn the_doctor_shows_the_model_access_answers_and_the_slot_pause() {
+        let (_dir, env, route) = work_env("dm");
+        let now = 1_793_000_000;
+        route
+            .acquire(&CancelToken::new(), &RealSleeper)
+            .unwrap()
+            .update(|st| {
+                let _ = st.record_model_access(0, now - 20);
+            })
+            .unwrap();
+        let mut s = json!({"chatgpt_login": {"state": "signed in"}});
+        note_route_state(&mut s, &env, now);
+        let text = doctor_text(&s);
+        assert!(text.contains("\"Unable to verify model access\" answers: 1 so far, the last at"), "{text}");
+        assert!(text.contains("a slot waits 60 s after one, two within 15 min drop the route to one at a time for 60 min"), "{text}");
+        assert!(text.contains("slot 0 is paused until") && text.contains("(40 s left)"), "{text}");
+        assert!(!text.contains("warning:"), "{text}");
+        route
+            .acquire(&CancelToken::new(), &RealSleeper)
+            .unwrap()
+            .update(|st| {
+                let _ = st.record_model_access(0, now - 10);
+            })
+            .unwrap();
+        let mut s = json!({"chatgpt_login": {"state": "signed in"}});
+        note_route_state(&mut s, &env, now);
+        let text = doctor_text(&s);
+        assert!(
+            text.contains("requests at once: 1 (configured 3)") && text.contains("warning: the ChatGPT-login route dropped to one request at a time"),
+            "{text}"
+        );
+        assert!(text.contains("(model_access_unverified)"), "{text}");
     }
 
     #[test]
