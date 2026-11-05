@@ -71,13 +71,17 @@ const ICON_RULES: &[&str] = &[
 // Per-family form and medium. The general icon rules ask for a loose subject with no frame, which is wrong for the
 // families below: their vanilla art (the kit's 1.19.4.1 reference shelf) has a fixed form. Each rule states that
 // form so the model draws it, and those families drop "a frame or border" from the negative list.
+/// Vanilla focus icons have no single frame. On a look at 160 vanilla `goal_*` and `focus_*` files (HOI4 1.19.4.1, 80
+/// drawn from all of them and 80 from the generic ones) about seven in ten sit on a round plaque or medallion, about
+/// one in ten on a diamond, square or rectangular plaque, about one in fifteen on a heraldic shield, and about one in
+/// eight have no frame at all. Frames, colours and compositions vary, so the rule names the range.
 const FOCUS_RULES: &[&str] = &[
-    "The Hearts of Iron IV national focus emblem form: the subject sits inside a round or shield-shaped metal plaque or medallion, often with a laurel wreath, ribbons or flags around it.",
+    "The Hearts of Iron IV national focus icon form: one emblem in aged painterly metal and enamel. Vanilla focus icons do not share one frame. Most (about seven in ten) set the subject on a round plaque or medallion, often with a laurel wreath, ribbons, crossed swords or flags around it. Others use a diamond, square or rectangular plaque (about one in ten), a heraldic shield (about one in fifteen), or no frame at all, a free-standing subject such as a flag, a star, a crown, a document, a building or an aircraft (about one in eight). Pick the form, frame colour and composition that suit this brief instead of defaulting to a round plaque.",
     "Flags and ribbons use invented colours, never a real country's flag, unless the brief names that country.",
-    "The subject is large: it fills most of the plaque's face and may overlap its rim, never a small figure inside a wide empty plaque.",
-    "A strong central symbol that supports the focus's story, aged painterly metal and enamel, readable contrast at {w}x{h} pixels.",
-    "Real transparent background outside the plaque: no backdrop behind it.",
-    "Leave a small empty margin around the plaque.",
+    "The subject is large: it fills most of the emblem and may overlap its frame, never a small figure inside a wide empty plaque.",
+    "A strong central symbol that supports the focus's story, readable contrast at {w}x{h} pixels.",
+    "Real transparent background around the emblem: no backdrop behind it.",
+    "Leave a small empty margin around the emblem.",
 ];
 /// National spirits may be emblems, figures, objects or small scenes, so the form stays open and only readability at
 /// the native size is required.
@@ -95,7 +99,7 @@ const CONCERN_RULES: &[&str] = &[
     "Leave a small empty margin around the badge.",
 ];
 const CATEGORY_ICON_RULES: &[&str] = &[
-    "The Hearts of Iron IV decision category icon form: one symbol on a small dark round disc with a metal rim.",
+    "The Hearts of Iron IV decision category icon form: one symbol on a small round disc with a dark riveted metal rim. The disc face varies between steel blue, dark red, tan and dark grey, so pick the one that suits the brief.",
     "The symbol is large: it fills most of the disc and may overlap the rim, never a small mark inside a wide empty disc.",
     "Painted, slightly aged, readable at {w}x{h} pixels.",
     "Real transparent background outside the disc.",
@@ -1257,7 +1261,17 @@ mod tests {
     #[test]
     fn reviewed_families_state_their_vanilla_form() {
         let set = by_family();
-        let cases: [(Family, &str, &[&str]); 12] = [
+        let cases: [(Family, &str, &[&str]); 14] = [
+            (
+                Family::Focus,
+                "national focus icon form: one emblem",
+                &["do not share one frame", "round plaque or medallion", "heraldic shield", "no frame at all", "Pick the form", "invented colours"],
+            ),
+            (
+                Family::DecisionCategoryIcon,
+                "decision category icon form: one symbol on a small round disc",
+                &["steel blue, dark red, tan and dark grey"],
+            ),
             (Family::AgencyUpgrade, "intelligence agency upgrade form: a round painted vignette", &["no ring, rim, frame or border around the disc"]),
             (Family::Building, "landmark building form: one real-world landmark", &["no ground, rock or hill", "Frame 2", "ruins", "orange flame"]),
             (Family::CommanderTrait, "unit leader trait form: a small military medal", &["ribbon", "monochrome metal"]),
