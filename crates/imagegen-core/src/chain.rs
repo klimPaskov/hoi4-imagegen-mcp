@@ -14,7 +14,8 @@
 //! |---|---|---|
 //! | `icon` v1 | transparent icons, technology, modifier icon, GUI texture | `fit_subject` (`conform` when finished art was imported at an accepted size), `grayscale` for grayscale families; technology adds `tech_overlay` when the caller asks for a tier numeral |
 //! | `raid` v1 | raid | `fit_subject`, `gold_gradient` (vanilla's gold ramp and black outline), or one `conform` for imported finished art |
-//! | `doctrine` v1 | doctrine | `fit_subject`, `doctrine_look` (black units, pale outline and glow), or one `conform` for imported finished art |
+//! | `doctrine` v2 | doctrine | `fit_subject`, `doctrine_look` (black units, pale outline and glow), or one `conform` for imported finished art |
+//! | `vignette` v1 | agency upgrade | `round_vignette` (the disc in vanilla's muted palette with its darkened edge), `fit_subject`, or one `conform` for imported finished art |
 //! | `picture` v1 | opaque pictures, news, super event | `flatten_on`, `cover_resize` or `conform`, `grayscale` for news |
 //! | `report_card` v2 | report event | `report_card` or `conform` (an imported finished card) |
 //! | `phase_card` v1 | operation picture | `phase_card` (the report card on vanilla's phase picture mask) or `conform` (an imported finished card) |
@@ -110,6 +111,8 @@ pub enum Recipe {
     Raid,
     /// A doctrine icon: black units with vanilla's pale outline and glow, warm accents kept.
     Doctrine,
+    /// An agency upgrade: the subject cut to vanilla's round, muted vignette with its darkened edge.
+    Vignette,
     /// Portraits.
     Portrait,
     /// Advisor card.
@@ -143,6 +146,7 @@ impl Recipe {
             Recipe::LineArt => "line_art",
             Recipe::Raid => "raid",
             Recipe::Doctrine => "doctrine",
+            Recipe::Vignette => "vignette",
             Recipe::Portrait => "portrait",
             Recipe::AdvisorCard => "advisor_card",
             Recipe::Achievement => "achievement",
@@ -162,6 +166,7 @@ impl Recipe {
             Recipe::LineArt => crate::recipes::line_art::RECIPE_VERSION,
             Recipe::Raid => crate::recipes::raid::RECIPE_VERSION,
             Recipe::Doctrine => crate::recipes::doctrine::RECIPE_VERSION,
+            Recipe::Vignette => crate::recipes::vignette::RECIPE_VERSION,
             Recipe::AnimGlow | Recipe::AnimKeyframes | Recipe::AnimScroll | Recipe::AnimSpin => crate::animation::RECIPE_VERSION,
             _ => 1,
         }
@@ -189,6 +194,7 @@ pub fn recipe_of(profile: &Profile) -> Recipe {
         Family::SpecialProjectIcon => Recipe::LineArt,
         Family::Raid => Recipe::Raid,
         Family::Doctrine => Recipe::Doctrine,
+        Family::AgencyUpgrade => Recipe::Vignette,
         Family::LeaderPortrait | Family::CommanderPortrait | Family::OperativePortrait | Family::ScientistPortrait => Recipe::Portrait,
         Family::AdvisorCard => Recipe::AdvisorCard,
         Family::Achievement => Recipe::Achievement,
@@ -380,6 +386,20 @@ pub fn plan_finishing_with(
                 ops.push(if recipe == Recipe::Raid { Op::GoldGradient } else { Op::DoctrineLook });
             }
         }
+        Recipe::Vignette => {
+            if imported && accepted_single(size) {
+                ops.push(Op::Conform { width: size[0], height: size[1] });
+            } else {
+                // the vignette cuts its own disc and lays clear pixels over vanilla's backdrop, so an opaque picture is
+                // as good a source as a disc on transparency
+                if img.has_transparency() && edge_stats(img).1 > 0 {
+                    ops.push(Op::Defringe { erosion: 1 });
+                }
+                ops.push(Op::TrimToSubject { min_alpha: 16 });
+                ops.push(Op::RoundVignette);
+                ops.push(Op::FitSubject { width: canvas[0], height: canvas[1], margin: profile.margin, min_alpha: 16 });
+            }
+        }
         Recipe::Picture => {
             ops.push(Op::FlattenOn { background: FLATTEN_BACKGROUND });
             if imported && accepted_single(size) {
@@ -568,6 +588,7 @@ pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
         Recipe::LineArt => vec![vec!["line_art", "conform"]],
         Recipe::Raid => vec![vec!["fit_subject", "conform"], vec!["gold_gradient", "conform"]],
         Recipe::Doctrine => vec![vec!["fit_subject", "conform"], vec!["doctrine_look", "conform"]],
+        Recipe::Vignette => vec![vec!["round_vignette", "conform"], vec!["fit_subject", "conform"]],
         Recipe::Portrait => vec![vec!["flatten_on"], vec!["extract_portrait", "conform"]],
         Recipe::AdvisorCard => vec![vec!["advisor_card", "conform"]],
         Recipe::Achievement => vec![vec!["fit_subject", "conform"], vec!["achievement_triplet"]],
@@ -980,6 +1001,83 @@ mod tests {
         let (b, a) = (crate::recipes::doctrine::doctrine_stats(&[&warfare]), crate::recipes::doctrine::doctrine_stats(&[&out]));
         eprintln!("gallery mobile_warfare: before {b:?}\n  after {a:?}");
         assert!(a.black_share > b.black_share + 0.2, "units turn black: {b:?} -> {a:?}");
+    }
+
+    /// Every transparent family's own processing keeps the margin its `margin` check reads (`profile.margin`), on a
+    /// subject that fills the whole source: a dark one, and a warm accent, whose doctrine shadow reaches furthest. The
+    /// doctrine fit leaves room for the glow ([`crate::recipes::doctrine::GLOW_PX`], which is the glow's computed
+    /// reach). Only finished frames are measured: frame 1, and every frame of a strip the ops make whole, except the
+    /// selected frame 2 whose glow runs to the edge as vanilla's does (the check skips it too). Families whose last
+    /// stage is an engine finisher that fits the frames itself (blend key frames) have no fitted output here.
+    #[test]
+    fn every_familys_processing_keeps_the_margin_the_check_reads() {
+        assert_eq!(crate::recipes::doctrine::glow_reach(), crate::recipes::doctrine::GLOW_PX);
+        let mut checked = Vec::new();
+        let set = ProfileSet::builtin();
+        for p in set.all() {
+            if p.imagegen.background != Background::Transparent || !p.imagegen.checks.iter().any(|c| c == "margin") || p.margin == 0 {
+                continue;
+            }
+            let canvas = if p.canvas == [0, 0] { [64, 64] } else { p.canvas };
+            for colour in [[60, 60, 60, 255], [230, 140, 20, 255]] {
+                // a solid block in a clear 8 px border, at four times the canvas: trimmed, it fills the whole canvas
+                let (w, h) = (canvas[0] * 4, canvas[1] * 4);
+                let mut src = Rgba::new(w, h);
+                for y in 8..h - 8 {
+                    for x in 8..w - 8 {
+                        src.set_px(x, y, colour);
+                    }
+                }
+                let plan = plan_finishing(p, canvas, &src, false, false, "").unwrap();
+                let (out, _) = crate::process::run_chain(&src, &plan.ops).unwrap_or_else(|e| panic!("{}: {e}", p.family));
+                if out.height != canvas[1] || !out.width.is_multiple_of(canvas[0]) {
+                    assert!(plan.finishers.contains(&Finisher::KeyFrames), "{}: {}x{} out of the ops", p.family, out.width, out.height);
+                    continue;
+                }
+                let frames = out.split_frames(out.width / canvas[0]).unwrap();
+                let selected = crate::recipes::frames::selected_fit_margin(p.family) > 0;
+                for (i, f) in frames.iter().enumerate() {
+                    if i > 0 && selected {
+                        continue;
+                    }
+                    let Some(b) = f.alpha_bbox(16) else { continue };
+                    let m = [b[0], b[1], f.width - b[2], f.height - b[3]];
+                    assert!(
+                        m.iter().all(|x| *x >= p.margin),
+                        "{} frame {}: margins {m:?} under the checked minimum {} (colour {colour:?})",
+                        p.family,
+                        i + 1,
+                        p.margin
+                    );
+                }
+            }
+            checked.push(p.family);
+        }
+        assert!(checked.contains(&Family::Doctrine) && checked.contains(&Family::AgencyUpgrade) && checked.len() > 20, "{checked:?}");
+    }
+
+    /// An agency upgrade runs the round vignette before the fit, from a disc on transparency or from an opaque
+    /// picture, and the audit wants the vignette. Imported finished art of the canvas size is taken as it is.
+    #[test]
+    fn agency_upgrades_get_the_round_vignette_and_the_audit_wants_it() {
+        let p = prof(Family::AgencyUpgrade);
+        assert_eq!(recipe_of(&p).id(), "vignette");
+        for src in [blob(), Rgba::filled(200, 160, [150, 90, 40, 255])] {
+            let plan = plan_finishing(&p, p.canvas, &src, false, false, "").unwrap();
+            let n = plan.ops.len();
+            assert_eq!(plan.ops[n - 2], Op::RoundVignette, "{:?}", plan.ops);
+            assert_eq!(plan.ops[n - 1], Op::FitSubject { width: 68, height: 68, margin: 8, min_alpha: 16 });
+            let (out, _) = crate::process::run_chain(&src, &plan.ops).unwrap();
+            let report = crate::validate::validate_image(&out, &p, &p.imagegen.checks, &Default::default());
+            assert!(report.findings.iter().all(|f| f.level != crate::validate::Level::Error), "{:?}", report.findings);
+        }
+        let fit = Op::FitSubject { width: 68, height: 68, margin: 8, min_alpha: 16 };
+        assert!(audit(&record(&p, &[Op::RoundVignette, fit.clone()], &[], &[], ""), &p).is_empty());
+        let missing = audit(&record(&p, &[fit], &[], &[], ""), &p);
+        assert!(missing.iter().any(|m| m.contains("round_vignette")), "{missing:?}");
+        assert!(audit(&record(&p, &[Op::Conform { width: 68, height: 68 }], &[], &[], ""), &p).is_empty());
+        let finished = Rgba::filled(68, 68, [10, 10, 10, 0]);
+        assert_eq!(plan_finishing(&p, p.canvas, &finished, true, false, "").unwrap().ops, vec![Op::Conform { width: 68, height: 68 }]);
     }
 
     /// The 0.3.1 riveted cruiser tank (judged wrong: a three-quarter view) gets the side-view hint; the side views do
