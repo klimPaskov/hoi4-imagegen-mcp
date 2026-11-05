@@ -21,7 +21,7 @@ status -> families -> icon | picture | portrait | flag | unit | interface   (fre
 |---|---|
 | `hoi4.image_status` | Providers (key present or not, never the value), model tables with their date, game folder, profile source, ledger chain, ChatGPT-login state |
 | `hoi4.image_families` | The catalogue: every family (or one) with its group and tool, the vanilla-measured canvas and frames, accepted sizes, the mod's override, naming, checks, review rubric, final paths and the style sources that exist for it. `calibrate: true` compares the table with the installed game's file headers |
-| `hoi4.image_references` | Reference images with role and rights note, and project style profiles pinned by SHA-256 |
+| `hoi4.image_references` | Reference images with role and rights note, project style profiles pinned by SHA-256, and style packs (`pack_list`, `pack_get`, `pack_save`, `pack_validate`) |
 | `hoi4.image_icon`, `hoi4.image_picture`, `hoi4.image_portrait`, `hoi4.image_flag`, `hoi4.image_unit`, `hoi4.image_interface`, `hoi4.image_animation` | One tool per group of families. Each has a **required `family`** whose schema enum lists only that group's families. Without `approve`: a free plan (prompt, references, provider, model, size, cost estimate with its basis, output paths) and a `plan_id`. With `approve: true` and an `idempotency_key`: plan and generate in one call |
 | `hoi4.image_generate` | Runs a stored plan. One provider call per variant. The same `idempotency_key` replays instead of paying again |
 | `hoi4.image_edit` | Refines a candidate with an instruction, an optional mask and extra references. Also makes the ruined second frame of a building and the further key frames of an `anim_blend_keyframes` strip |
@@ -101,8 +101,13 @@ A chain is the caller's optional pre-steps followed by the family's mandatory fi
 | `flag` | `flag` | flatten, then the 82x52, 41x26 and 10x7 ladder | three TGA, bottom-left origin |
 | `selected_strip` | `faction_logo`, `agency_logo` | fit with a margin, then frame 2 as the selected state. A faction logo also gets its 32x32 `_miniature` | one two-frame DDS, plus the miniature for a faction logo |
 | `landmark_strip` | `building` | fit, then frame 2 as the ruined landmark, made from a second candidate of the same asset (`hoi4.image_edit` on the first, passed as `second_frame_candidate`). A 64x64 landmark also gets the 32x32 `_small` strip, a flat orange pictogram like vanilla's small landmarks | one or two two-frame DDS |
+| `upright_print` | `report_event`, `operation_picture` with a style pack's `upright_print` | the art fitted to the pack's canvas as it is: no tilt, mask, tone or shadow (see [style packs](#processing-switches)) | one DDS |
+| `kept_unit_art` | counters and `division_emblem` with a style pack's `keep_colours` | the art fitted into vanilla's glyph box in its own colours, and a counter's NATO box as an outline in the glyph's colour | one DDS, or two |
+| `filled_icon` | transparent icon families with a style pack's `fill_canvas` | the art cover-resized to the whole canvas, opaque allowed | one DDS |
 | `unit_counter` | `counter_large`, `counter_small` | `unit_glyph`: the silhouette in vanilla's green (or the on-map grey) material, then `nato_frame`: the NATO box as frame 2. The on-map counter also gets its text icon | one DDS, or two |
 | `division_symbol` | `division_emblem` | `unit_glyph` in vanilla's green material, and the 30x12 small symbol | two DDS |
+
+A style pack's `crisp` switch keeps the recipe and swaps each Lanczos3 fit for an area-filter fit (`area_fit`, `area_cover`), with no defringe.
 
 A medal is made as one 56x84 frame, registered as `GFX_medal_icon_<asset>_large`, and its 28x42 `GFX_medal_icon_<asset>` is derived from it. The medal is fitted into vanilla's 33x56 box in that frame (`fit_in_box`), so it spans two thirds of the frame as vanilla's do.
 
@@ -195,6 +200,95 @@ With automatic references (tiers 2 to 4) the prompt adds a line: they show the s
 
 Vanilla references may always be sent to a provider (a maintainer decision of 2026-11-01), and the tool never copies a vanilla file into a mod. Vanilla art is left out of the contact sheet that is written into the mod. The vanilla side-by-side sheet (see the review below) goes to the user's cache folder instead.
 
+## Style packs
+
+A mod with a house style of its own needs that style in many families at once, not one style profile at a time. A total conversion such as The New Order (TNO) draws decisions, counters, commander traits, technology and GUI panels as a flat teal terminal, its operations and super events as teal archival photographs, and its events on an upright print or a tall press strip. Vanilla's processing and checks would pull every one of those back to the vanilla look. A **style pack** carries the mod's look for every family it covers, in one named file.
+
+A pack lives in `.hoi4-imagegen/packs/<name>/pack.toml`, with its reference images in the mod, usually in the same folder. It has no authority of its own: it changes which references, prompt text, canvas and finishing a plan uses, never what an agent may do.
+
+```toml
+schema = 1
+name = "tno"
+description = "TNO house style"
+
+[families.decision]
+look = "flat teal pictogram on transparent, crisp pixel edges, white and salmon red accents only, no frame and no shading"
+form = ["A flat pictogram for a {w}x{h} canvas, drawn in thin teal lines (#4cc6c0) with white and salmon accents, with no frame, plate or shading."]
+negative = ["painted texture", "a frame or plate", "gradients"]
+processing = { crisp = true }
+
+[[families.decision.references]]
+path = ".hoi4-imagegen/packs/tno/decision/tno_decision_ref_1.png"
+sha256 = "5f0c..."
+note = "imported with the pack from decision/tno_decision_ref_1.png"
+
+[families.report_event]
+look = "black and white photograph printed on a slightly tilted white paper print with a soft shadow, upright frame"
+form = ["A black and white photograph on a white paper print, slightly tilted, on a transparent background, filling a {w}x{h} upright frame."]
+canvas = [175, 204]
+processing = { upright_print = true }
+
+[families.gui_texture]
+look = "near-black navy panel with 1 px teal and green lines, terminal look, no ornament"
+
+[families.gui_texture.kinds.panel]
+look = "a near-black navy panel with a 1 px teal border"
+
+[[families.gui_texture.kinds.panel.references]]
+path = ".hoi4-imagegen/packs/tno/gui_texture/tno_gui_texture_ref_3.png"
+sha256 = "9a41..."
+```
+
+Each family entry holds:
+
+| Key | What it does |
+|---|---|
+| `references` | Images inside the mod, pinned by SHA-256. A plan checks every hash and refuses a changed file (`pack_reference_changed`) or a missing one (`pack_reference_missing`), as pinned styles do. At most 16 |
+| `look` | One line appended to the prompt's style |
+| `form` | Form rules that replace the family's vanilla form rules in the prompt, one sentence each (`{w}` and `{h}` are the canvas). Without it the vanilla rules stand |
+| `negative` | Negatives that replace the family's vanilla negatives. Without it the vanilla negatives stand |
+| `canvas` | The canvas of one frame, replacing the family's (the vanilla size stays accepted) |
+| `processing` | Processing switches, all off by default (below) |
+| `kinds` | `gui_texture` only: `references`, `look`, `form` and `negative` per texture kind (`button`, `frame`, `panel`, `background`). A kind without its own value uses the family's |
+
+**Applying a pack.** A plan's `style_pack: "<name>"` applies a pack, and so does the project default:
+
+```toml
+[defaults]
+style_pack = "tno"
+```
+
+`style_pack: "none"` plans without the default. With a pack that covers the family:
+
+* the pack's references for the family (or the request's texture kind) go to the provider as style anchors, at most 8 and within the model's reference limit. They count as the caller's own anchors: the prompt says their form wins, and with `style_mode` `replace` (the default) no automatic reference goes with them, while `style_mode: "add"` sends the automatic tiers beside them. The sub-family is still inferred and recorded, but the pack decides the references, and its form note stays out when the pack's form replaces the family's,
+* the look line goes into the prompt's style, and the form override replaces the vanilla form rules and negatives. A pack form also replaces a GUI texture kind's vanilla form,
+* the pack's canvas and processing switches apply to the plan, the candidate, processing, validation, the review and the install. They are part of the effective profile, so its hash ties every step to the pack,
+* references the request sends itself with the role `style_anchor` still win: the pack's references are then not sent, and its look, form and switches still apply,
+* the plan reports the pack, why it applied (`explicit` or `project_default`), the entry (`decision`, or `gui_texture.panel` for a kind), the look, whether the form and negatives were replaced, the canvas, the switches and each reference with whether it was sent (`style_pack` in the plan, and a tier 0 contribution in `style_selection`).
+
+A family the pack does not cover falls back to the normal tiers above, and the plan says so. A pack entry without references keeps the automatic references, but a pack form drops the vanilla ones. An import (`hoi4.image_process` with `import`) applies the pack's canvas and switches the same way, and takes `style_pack` too.
+
+`hoi4.image_references` manages packs: `pack_list` (with the project default), `pack_get`, `pack_save` (pins every reference, keeps a backup of a replaced file) and `pack_validate`. The validation checks the pinned hashes and the switches, reports each family's reference sizes beside its canvas (and suggests a canvas when three quarters of the references share another size), says which checks and recipe the family then has, and runs the pack-match check of each reference against ranges fitted on the others. On the command line: `hoi4-imagegen pack list`, `pack get <name>`, `pack validate <name>` and `pack import` (see the [how-to](how-to.md#5-make-a-style-pack-for-a-mod-with-its-own-look)).
+
+### Processing switches
+
+Each switch is off by default and applies only to the families named. Each was measured on the references of a mod whose art differs from vanilla processing (TNO's, 8 files per family, read in place and never copied into this repository) and on synthetic images in the tests (`crates/imagegen-mcp/tests/packs.rs`). The validation checks a switch would contradict follow it.
+
+| Switch | Families | What changes | Why (measured) |
+|---|---|---|---|
+| `keep_colours` | `counter_large`, `counter_small`, `division_emblem` | The `kept_unit_art` recipe: no redraw in vanilla's green (or grey) material. Finished art at the accepted size is kept as it is (`conform`). Other art is fitted into vanilla's glyph box in its own colours, and a counter's frame 2 is the NATO box drawn as an outline in the glyph's colour, with no fill and no shadow. Size, frames and alpha still conform. The `unit_material` check is left out | TNO's 8 battalion strips are 152x42 like vanilla's, but their glyph is flat teal (median colour 89, 199, 194) beside an unfilled teal NATO box. None of their 3612 frame-1 glyph pixels has red within 14 levels of blue, which vanilla's material requires, so the vanilla chain would redraw every one in green |
+| `upright_print` | `report_event`, `operation_picture` | The `upright_print` recipe: no tilt, mask, sepia tone or shadow. Art with alpha is fitted to the canvas with its own alpha kept, opaque art is cover-resized. The `card_corners` check is left out | 6 of TNO's 8 report pictures are 175x204, upright, with the photograph's print drawn in the art itself on transparency (16 percent of each is transparent around the print), and black and white (median saturation 0.03). The vanilla card would tilt, tone and mask it a second time. TNO's operation pictures are 150x150 opaque archival photographs |
+| `fill_canvas` | transparent icon families such as `technology` and `gui_texture` | The `filled_icon` recipe: the art is cover-resized to the whole canvas and may be opaque, and the model is asked for an opaque picture. The margin, fill, opaque-corner and side-view checks are left out | TNO's 8 technology pictures are 239x117 blueprint panels, 93 percent opaque (dark navy with teal lines, median saturation 0.77). The vanilla chain refuses an opaque source (`no_transparency_in_source`), and the side-view check measures vanilla's painted form |
+| `crisp` | transparent icon families, and the unit families with `keep_colours` | Every resize uses an area (box) filter (`area_fit`, `area_cover`) instead of Lanczos3, and no defringe erosion runs. The `fringe` check is left out | The icon chain adds no blur filter and no shading: it is a defringe (only when edge pixels carry a key colour), a trim, one resample and, for some families, grayscale. The resample is what changes flat art: a 640 px flat teal pictogram fitted to the 33x32 decision canvas keeps 148 visible pixels off its own colour with Lanczos3 (ringing at hard edges), and none with the area filter. Green line art, which the defringe reads as key colour, is refused by the vanilla chain ("no uncontaminated opaque interior"). Anti-aliasing stays: TNO's decision icons are soft-edged on 44 to 81 percent of their visible pixels |
+
+A news strip needs no switch: a pack `canvas = [161, 420]` makes the tall press strip (TNO's 8 news pictures are all 161x420, vanilla's 397x153), and the picture recipe cover-resizes and greys it at that size. Technology needs a form override too: the pack's form and look replace vanilla's painted side-view rule. `pack_validate` warns when `keep_colours`, `upright_print` or `fill_canvas` is on without a form override, because the vanilla rules then still ask for the vanilla form.
+
+### The review with a pack
+
+An artifact made with a pack is measured against the pack's references for its family (and texture kind), not vanilla's, because art in the mod's style rightly fails vanilla's ranges. Measured on TNO's references as raw candidates against the installed game: all 8 report pictures, battalion counters, news strips, technology pictures and operation pictures, and 7 of 8 commander traits, fail the vanilla-match check, while its decision icons and 7 of 8 focus icons pass it. The preview's side-by-side sheet shows the pack's references, and the review records the set it used (`reference_set` in `vanilla_check`: `kind` `style_pack`, the pack, the entry and the rule).
+
+The features and the checked list are the vanilla-match check's. Only the ranges differ: a pack has about 8 references a family, too few for percentiles, so the rule `pack_match_v1` takes each feature's minimum to maximum over the pack's references and widens it on each side by that whole width, never narrower than twice the vanilla rule's floor. For a normally distributed feature the range of 8 samples is about 2.85 standard deviations on average, so the accepted span is about 8.5 of them, close to the 9.3 of the vanilla rule (1st to 99th percentile widened by half on each side). It needs at least 3 measurable references. `pack_validate` reports, per family, how many references pass ranges fitted on the others: on the 14 TNO families with at least 4 references that was 104 of 110 references, measured with the `vanilla_match_v1` features. The override with a reason stays available and is recorded as before.
+
 ## Validation and install
 
 Install is the last step and the strictest.
@@ -232,7 +326,9 @@ Thirteen features can fail a candidate of any family: the form features and the 
 
 The check is a gate, not a verdict. Art that looks wrong in a way these features cannot see still passes it, and must then fail the rubric. For example, on the gallery the loose steel gate (focus), the war economy cluster (idea spirit) and the bread basket (industrial concern) measure inside vanilla's own spread. The v3 rubric questions are asked against the vanilla sheet for that reason.
 
-**Families without vanilla art** (`gui_texture`, `super_event` and the animation families) cannot be checked. Approve them with an override.
+**Families without vanilla art** (`gui_texture`, `super_event` and the animation families) cannot be checked against vanilla. Approve them with an override, or make them with a [style pack](#style-packs) whose references the review then measures against.
+
+**With a style pack** the check measures the file against the pack's references instead of vanilla's, with a rule for small sets (see [the review with a pack](#the-review-with-a-pack)).
 
 **Override.** A deliberate mod style can be approved past a failing or unavailable check with `"override_vanilla_check": true` and an `"override_reason"` of 10 to 1000 characters. Both are recorded in the ledger and the reply (`vanilla_override`, with the status it overrode). Every review, approving or not, records the check it ran (`vanilla_check`).
 
@@ -330,6 +426,7 @@ To build from source, use Rust 1.88 or newer and run `cargo build --release`. Th
 ```toml
 [defaults]
 provider = "openai"                  # optional; without it the provider order above applies
+style_pack = "tno"                   # optional: the style pack every plan uses unless it names another or "none"
 
 [policy]
 forbidden_families = []              # for example ["leader_portrait"]
@@ -349,7 +446,7 @@ workflow = ".hoi4-imagegen/comfyui/text_to_image.json"
 canvas = [94, 86]
 ```
 
-Project state lives in `.hoi4-imagegen/`: config, styles, plans, the ledger (`ledger.jsonl`) and records. Working files go in `docs/assets/<feature>/`, as the kit's asset skill describes.
+Project state lives in `.hoi4-imagegen/`: config, styles, style packs (`packs/`), plans, the ledger (`ledger.jsonl`) and records. Working files go in `docs/assets/<feature>/`, as the kit's asset skill describes.
 
 ## Rules the tools enforce
 

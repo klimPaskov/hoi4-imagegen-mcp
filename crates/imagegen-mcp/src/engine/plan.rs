@@ -4,9 +4,10 @@ use imagegen_core::error::RetryClass;
 use imagegen_core::export;
 use imagegen_core::family::{Family, Group};
 use imagegen_core::naming::{self, asset_id};
+use imagegen_core::pack;
 use imagegen_core::plan::{
-    aspect_of, build_prompt_with_form, plan_path, FormPrecedence, GenerationPlan, Plan, PlanEstimate, PlanPaths, PlanRequest, StyleContribution,
-    StyleMode, StyleSelection,
+    aspect_of, build_prompt_with_look, plan_path, FormPrecedence, GenerationPlan, PackReference, PackReport, Plan, PlanEstimate, PlanPaths,
+    PlanRequest, StyleContribution, StyleMode, StyleSelection,
 };
 use imagegen_core::records::{kind, RefSummary};
 use imagegen_core::refs::{self, LoadedRef, RefRole, ReferenceInput};
@@ -33,11 +34,24 @@ impl Engine {
         if brief.is_empty() || brief.chars().count() > 4000 || brief.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
             return Err(EngineError::invalid("brief must be 1 to 4000 characters of plain text"));
         }
-        let profile = self
+        let base_profile = self
             .profiles
             .for_family(req.family)
             .ok_or_else(|| EngineError::new("not_found", format!("no profile for {}", req.family), RetryClass::Terminal))?
             .clone();
+        // the style pack: the named one, else the project default. Its entry for the family (narrowed to the texture
+        // kind) sets the canvas, the processing switches, the references, the look line and the form override; a
+        // family it does not cover keeps the normal tiers
+        let pack_choice = self.choose_pack(req.style_pack.as_deref())?;
+        let pack_entry = pack_choice.as_ref().and_then(|c| c.pack.families.get(&req.family));
+        let pack_resolved = pack_choice.as_ref().and_then(|c| c.pack.resolve(req.family, req.texture_kind));
+        let profile = match (&pack_choice, pack_entry) {
+            (Some(c), Some(e)) => pack::apply_profile(&base_profile, &c.pack.name, e),
+            _ => base_profile,
+        };
+        if let (Some(c), Some(r)) = (&pack_choice, &pack_resolved) {
+            pack::verify_references(&self.fs, &c.pack.name, &r.references)?;
+        }
 
         let canvas = match (profile.canvas, req.canvas) {
             (_, Some(c)) if profile.free_canvas() && (1..=4096).contains(&c[0]) && (1..=4096).contains(&c[1]) => c,
@@ -120,22 +134,33 @@ impl Engine {
         let mut sources = self.resolve_style(&profile, pinned.as_ref(), stylesrc::DEFAULT_SEND, false, req.texture_kind, Some(request));
         let explicit_model = req.model.clone().or_else(|| style_profile.as_ref().and_then(|s| s.model.clone()));
         let explicit_refs = req.references.len();
-        let wants_refs = explicit_refs > 0 || !sources.send_paths().is_empty();
+        // the caller's own style anchors show the form to match, and vanilla art beside them pulls the image back to
+        // the vanilla form. They also win over a style pack's references
+        let caller_style = req.references.iter().any(|r| r.role == RefRole::StyleAnchor);
+        let pack_refs: Vec<imagegen_core::style::StyleRef> =
+            if caller_style { Vec::new() } else { pack_resolved.as_ref().map(|r| r.references.clone()).unwrap_or_default() };
+        let wants_refs = explicit_refs > 0 || !pack_refs.is_empty() || !sources.send_paths().is_empty();
         let mut model_id = explicit_model.clone().unwrap_or_else(|| provider.default_model(wants_refs));
         let model_refs = |m: &str| provider.descriptor().model(m).map(|x| if x.supports_edit { usize::from(x.max_refs) } else { 0 }).unwrap_or(0);
-        let cap = model_refs(&model_id).saturating_sub(explicit_refs).min(stylesrc::DEFAULT_SEND);
+        let pack_cap = model_refs(&model_id).min(refs::MAX_REFERENCES).saturating_sub(explicit_refs).min(pack::MAX_SEND);
+        let pack_sent: Vec<imagegen_core::style::StyleRef> = pack_refs.iter().take(pack_cap).cloned().collect();
+        let cap = model_refs(&model_id).saturating_sub(explicit_refs + pack_sent.len()).min(stylesrc::DEFAULT_SEND);
         sources.limit_send(cap, &format!("{provider_id} {model_id} takes at most {} reference images", model_refs(&model_id)));
-        // the caller's own style anchors show the form to match, and vanilla art beside them pulls the image back to
-        // the vanilla form
-        // with style_mode replace (the default) only the caller's references are sent: every automatic tier is left out,
-        // and a pinned style too unless the request named it. Vanilla or shelf art beside the anchors pulls the image
-        // back to that art's frame.
-        let caller_style = req.references.iter().any(|r| r.role == RefRole::StyleAnchor);
+        // the caller's own style anchors, or a style pack's references in their place, show the form to match, and
+        // vanilla or shelf art beside them pulls the image back to that art's frame. With style_mode replace (the
+        // default) only the anchors are sent: every automatic tier is left out, and a pinned style too unless the
+        // request named it. style_mode add sends the automatic tiers beside them
         let style_mode = req.style_mode.unwrap_or_default();
-        if caller_style && style_mode == StyleMode::Replace {
-            let why = "the request sends its own style anchors (style_mode replace)";
+        let anchors = caller_style || !pack_sent.is_empty();
+        if anchors && style_mode == StyleMode::Replace {
+            let why = match (&pack_choice, &pack_resolved) {
+                (Some(c), Some(r)) if !caller_style => {
+                    format!("the style pack '{}' sends its own references for {} (style_mode replace)", c.pack.name, r.entry)
+                }
+                _ => "the request sends its own style anchors (style_mode replace)".to_string(),
+            };
             for tier in 2..=4 {
-                sources.drop_tier(tier, why);
+                sources.drop_tier(tier, &why);
             }
             if req.style.is_none() {
                 sources.drop_tier(1, &format!("{why} and names no style"));
@@ -143,15 +168,25 @@ impl Engine {
             for t in sources.report.tiers.iter_mut().filter(|t| t.scanned && (t.tier > 1 || req.style.is_none())) {
                 t.note = format!("{}; nothing sent: {why}", t.note);
             }
+        } else if !anchors {
+            if let (Some(c), Some(r)) = (&pack_choice, &pack_resolved) {
+                if !r.form.is_empty() {
+                    sources.drop_tier(4, &format!("the style pack '{}' replaces the vanilla form of {}", c.pack.name, r.entry));
+                }
+            }
         }
-        if explicit_model.is_none() && explicit_refs == 0 && sources.send_paths().is_empty() {
+        if explicit_model.is_none() && explicit_refs == 0 && pack_sent.is_empty() && sources.send_paths().is_empty() {
             model_id = provider.default_model(false);
         }
 
+        let mut loaded: Vec<LoadedRef> = Vec::new();
+        // the pack's references go first; a pinned file that cannot be read fails the plan, as a caller's would
+        for r in &pack_sent {
+            loaded.push(refs::load_reference(&self.fs, game.as_deref(), &ReferenceInput { path: r.path.clone(), role: RefRole::StyleAnchor })?);
+        }
         let mut inputs: Vec<ReferenceInput> =
             sources.send_paths().into_iter().map(|path| ReferenceInput { path, role: RefRole::StyleAnchor }).collect();
         inputs.extend(req.references.iter().cloned());
-        let mut loaded: Vec<LoadedRef> = Vec::new();
         for input in &inputs {
             let is_auto = !req.references.contains(input);
             match refs::load_reference(&self.fs, game.as_deref(), input) {
@@ -203,7 +238,7 @@ impl Engine {
         let prompt_style = style_profile.as_ref().or(pinned.as_ref());
         // the mod's own references (tier 2 or 3) show the mod's form: it wins over the vanilla form the rules state
         let mod_form_refs = sources.report.chosen.iter().any(|c| c.sent_to_provider && (c.tier == 2 || c.tier == 3));
-        let form = if caller_style {
+        let form = if caller_style || !pack_sent.is_empty() {
             FormPrecedence::CallerReferences
         } else if mod_form_refs {
             FormPrecedence::ModReferences
@@ -211,17 +246,30 @@ impl Engine {
             FormPrecedence::VanillaRule
         };
         // the measured paragraph describes the tier's images, which are not sent beside the caller's anchors when vanilla
-        let measured = if sources.report.chosen.iter().any(|c| c.sent_to_provider) { sources.report.style_paragraph.as_deref() } else { None };
+        // it stays when nothing is attached at all (a model that takes no references), and goes when the request sends
+        // references and none of them is automatic
+        let automatic_sent = sources.report.chosen.iter().any(|c| c.sent_to_provider);
+        let measured = if !loaded.is_empty() && !automatic_sent { None } else { sources.report.style_paragraph.as_deref() };
         // a GUI texture's kind adds the kind's vanilla form to the prompt (the profile itself, and its hash, stay as
-        // they are)
+        // they are). A style pack's form and negatives replace the vanilla ones, the kind's form included
         let mut prompt_profile = profile.clone();
-        if let Some(kind) = req.texture_kind {
-            prompt_profile.imagegen.prompt.rules.insert(1, kind.form_rule().to_string());
+        let pack_form = pack_resolved.as_ref().is_some_and(|r| !r.form.is_empty());
+        if let Some(r) = &pack_resolved {
+            let (rules, negative) = pack::prompt_rules(&profile, r);
+            prompt_profile.imagegen.prompt.rules = rules;
+            prompt_profile.imagegen.prompt.negative = negative;
         }
-        // the sub-family's measured form note follows the family's form sentence, except beside the caller's anchors
+        if let Some(kind) = req.texture_kind {
+            if !pack_form {
+                let at = 1.min(prompt_profile.imagegen.prompt.rules.len());
+                prompt_profile.imagegen.prompt.rules.insert(at, kind.form_rule().to_string());
+            }
+        }
+        // the sub-family's measured form note follows the family's form sentence, except beside anchors (the caller's
+        // or a pack's) and where a pack's form replaces the family's
         let sub_note = subfamily
             .and_then(|id| imagegen_core::subfamily::for_family(req.family)?.get(id)?.form_note.clone())
-            .filter(|_| form != FormPrecedence::CallerReferences);
+            .filter(|_| form != FormPrecedence::CallerReferences && !pack_form);
         if let Some(note) = &sub_note {
             let at = prompt_profile.imagegen.prompt.rules.len().min(1 + usize::from(req.texture_kind.is_some()));
             prompt_profile.imagegen.prompt.rules.insert(at, note.clone());
@@ -229,6 +277,9 @@ impl Engine {
         let subfamily_choice = subfamily.map(|id| {
             let used = sources.report.subfamily.as_ref().is_some_and(|u| u.used) && sources.report.chosen.iter().any(|c| c.sent_to_provider);
             let note = match (sub_how, sources.report.subfamily.as_ref()) {
+                _ if !pack_sent.is_empty() && !used => {
+                    format!("the sub-family {id} is recorded, and the style pack decides the references")
+                }
                 (_, Some(u)) => {
                     format!("{} sub-family {id}: {}", if sub_how == "named" { "the request names the" } else { "the brief points to the" }, u.note)
                 }
@@ -242,18 +293,81 @@ impl Engine {
                 note,
             }
         });
-        let sub_warning = (req.subfamily.is_none() && subfamily.is_none() && imagegen_core::subfamily::for_family(req.family).is_some()).then(|| {
-            format!(
-                "the brief points to no sub-family of {}, so references come from the whole family (name one with subfamily: {})",
-                req.family,
-                imagegen_core::subfamily::for_family(req.family).map(|f| f.ids().join(", ")).unwrap_or_default()
-            )
-        });
-        // references the tool chose itself (tiers 2 to 4) show the style only; the caller's own anchors are matched
-        let automatic_refs = !caller_style && sources.report.chosen.iter().any(|c| c.sent_to_provider && c.tier >= 2);
-        let prompt = build_prompt_with_form(&prompt_profile, ask, &brief, prompt_style, &loaded, transparent, measured, form, automatic_refs);
+        let sub_warning =
+            (req.subfamily.is_none() && subfamily.is_none() && pack_sent.is_empty() && imagegen_core::subfamily::for_family(req.family).is_some())
+                .then(|| {
+                    format!(
+                        "the brief points to no sub-family of {}, so references come from the whole family (name one with subfamily: {})",
+                        req.family,
+                        imagegen_core::subfamily::for_family(req.family).map(|f| f.ids().join(", ")).unwrap_or_default()
+                    )
+                });
+        // references the tool chose itself (tiers 2 to 4) show the style only; anchors (the caller's or a pack's) are matched
+        let automatic_refs = !anchors && sources.report.chosen.iter().any(|c| c.sent_to_provider && c.tier >= 2);
+        let look = pack_resolved.as_ref().and_then(|r| r.look.as_deref());
+        let prompt = build_prompt_with_look(&prompt_profile, ask, &brief, prompt_style, &loaded, transparent, measured, form, automatic_refs, look);
         let mut style_selection = describe_selection(applied.as_ref(), &sources.report, form, req.family);
-        style_selection.style_mode = caller_style.then_some(style_mode);
+        style_selection.style_mode = anchors.then_some(style_mode);
+        let pack_report = pack_choice.as_ref().map(|c| {
+            let sent: Vec<&str> = pack_sent.iter().map(|r| r.path.as_str()).collect();
+            let all = pack_resolved.as_ref().map(|r| r.references.clone()).unwrap_or_default();
+            let references: Vec<PackReference> =
+                all.iter().map(|r| PackReference { path: r.path.clone(), sha256: r.sha256.clone(), sent_to_provider: sent.contains(&r.path.as_str()) }).collect();
+            let why = if c.why == "explicit" { "named in the request" } else { "the project's default ([defaults] style_pack)" };
+            let detail = match &pack_resolved {
+                None => format!("style pack '{}' ({why}) has no entry for {}, so the normal style tiers apply", c.pack.name, req.family),
+                Some(r) if caller_style && !r.references.is_empty() => format!(
+                    "style pack '{}' ({why}) applies its entry {}: the request's own style anchors win, so the pack's references are not sent; its look, form and processing still apply",
+                    c.pack.name, r.entry
+                ),
+                Some(r) => format!(
+                    "style pack '{}' ({why}) applies its entry {}: {} of its {} references are sent as style anchors{}{}",
+                    c.pack.name,
+                    r.entry,
+                    pack_sent.len(),
+                    r.references.len(),
+                    if r.look.is_some() { ", its look line is added to the style" } else { "" },
+                    if r.form.is_empty() { "" } else { ", and its form rules replace the vanilla form rules" }
+                ),
+            };
+            PackReport {
+                name: c.pack.name.clone(),
+                sha256: c.sha256.clone(),
+                why: c.why.to_string(),
+                covered: pack_resolved.is_some(),
+                entry: pack_resolved.as_ref().map(|r| r.entry.clone()),
+                look: pack_resolved.as_ref().and_then(|r| r.look.clone()),
+                form_override: pack_form,
+                negative_override: pack_resolved.as_ref().is_some_and(|r| !r.negative.is_empty()),
+                canvas: pack_entry.and_then(|e| e.canvas),
+                processing: profile.processing().names().into_iter().map(str::to_string).collect(),
+                references,
+                detail,
+            }
+        });
+        if let (Some(c), Some(r)) = (&pack_choice, &pack_resolved) {
+            if !pack_sent.is_empty() {
+                style_selection.contributions.insert(
+                    0,
+                    StyleContribution {
+                        source: format!("style pack '{}' ({})", c.pack.name, r.entry),
+                        tier: 0,
+                        references: pack_sent.iter().map(|x| x.path.clone()).collect(),
+                    },
+                );
+                style_selection.form_note = format!(
+                    "the style pack '{}' sends its references for {} as style anchors: the prompt says their form and framing win{}, {}",
+                    c.pack.name,
+                    r.entry,
+                    if r.form.is_empty() { " over the vanilla form rule" } else { ", and the pack's form rules replace the vanilla ones" },
+                    if style_mode == StyleMode::Add {
+                        "and style_mode add sends the automatic references beside them"
+                    } else {
+                        "and no automatic reference is sent beside them"
+                    }
+                );
+            }
+        }
 
         let probe = ImageRequest {
             model: model_id.clone(),
@@ -354,6 +468,17 @@ impl Engine {
                 ));
             }
         }
+        if let Some(rep) = &pack_report {
+            warnings.push(rep.detail.clone());
+            if pack_cap < pack_refs.len() {
+                warnings.push(format!(
+                    "{provider_id} {model_id} takes {} reference images in all here, so only the first {} of the pack's {} references are sent",
+                    model_refs(&model_id),
+                    pack_cap,
+                    pack_refs.len()
+                ));
+            }
+        }
         if est.usd > self.config.policy.max_usd_per_call {
             approvals.push(format!(
                 "one call is estimated at ${:.4}, above the project's per-call limit of ${:.2}: pass approve_cost to hoi4.image_generate",
@@ -407,6 +532,7 @@ impl Engine {
             style_sources: Some(sources.report.clone()),
             style_selection: Some(style_selection),
             subfamily: subfamily_choice,
+            style_pack: pack_report,
             style_sha256: match &req.style {
                 Some(n) => Some(imagegen_core::hashing::sha256_hex(&self.fs.read(&style::style_path(n)?, 256 * 1024)?)),
                 None => None,

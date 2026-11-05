@@ -113,6 +113,9 @@ macro_rules! group_request {
             /// The sub-family to draw references and the form note from (listed by hoi4.image_families). Inferred from the brief when omitted.
             #[serde(default)]
             pub subfamily: Option<String>,
+            /// Style pack to apply (`.hoi4-imagegen/packs/<name>/pack.toml`): its references for this family are sent as style anchors, its look line and form override go into the prompt, and its canvas and processing switches apply. Without it the project's default pack applies; `none` turns that off. A family the pack does not cover uses the normal style tiers.
+            #[serde(default)]
+            pub style_pack: Option<String>,
             /// Candidates to produce in one go (1 to 4); each is a separate provider call.
             #[serde(default)]
             pub variants: Option<u8>,
@@ -158,6 +161,7 @@ macro_rules! group_request {
                     texture_kind: self.texture_kind,
                     style_mode: self.style_mode,
                     subfamily: self.subfamily,
+                    style_pack: self.style_pack,
                 };
                 (req, follow)
             }
@@ -210,6 +214,15 @@ pub enum ReferencesAction {
     StyleGet,
     /// Save a style profile; references are pinned by SHA-256.
     StyleSave,
+    /// List saved style packs and the project's default pack.
+    PackList,
+    /// Read one style pack.
+    PackGet,
+    /// Save a style pack; every reference is pinned by SHA-256.
+    PackSave,
+    /// Check a saved style pack: pinned hashes, switches, and per family the references' sizes and how well they agree
+    /// with each other (the review's pack-match check, left one out).
+    PackValidate,
 }
 
 /// `hoi4.image_references`
@@ -230,15 +243,18 @@ pub struct ReferencesParams {
     /// Who approves (`approve`).
     #[serde(default)]
     pub approver: Option<String>,
-    /// Style name (`style_get`).
+    /// Style or pack name (`style_get`, `pack_get`, `pack_validate`).
     #[serde(default)]
     pub name: Option<String>,
     /// Style profile to save (`style_save`). Reference hashes are filled in for you.
     #[serde(default)]
     pub style: Option<StyleProfile>,
-    /// Replace an existing style; the old file is backed up (`style_save`).
+    /// Replace an existing style or pack; the old file is backed up (`style_save`, `pack_save`).
     #[serde(default)]
     pub replace: Option<bool>,
+    /// Style pack to save (`pack_save`). Reference hashes are filled in for you.
+    #[serde(default)]
+    pub pack: Option<imagegen_core::pack::StylePack>,
 }
 
 /// `hoi4.image_generate`
@@ -301,6 +317,10 @@ pub struct ImportSpec {
     pub feature_slug: String,
     /// Asset name.
     pub asset: String,
+    /// Style pack whose canvas and processing switches apply to the imported art. Without it the project's default
+    /// pack applies when it covers the family; `none` turns that off.
+    #[serde(default)]
+    pub style_pack: Option<String>,
 }
 
 /// `hoi4.image_process`
