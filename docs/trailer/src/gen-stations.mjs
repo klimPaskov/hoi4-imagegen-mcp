@@ -183,9 +183,7 @@ S.forEach((s) => {
     // notes, each easing smoothly into place; beat 2: the line. Then everything holds still.
     tl.fromTo("#${s.id}-wash", { opacity: 0 }, { opacity: 1, duration: b(1), ease: "sine.out" }, 0);
     tl.fromTo(".${s.id}-w", { opacity: 0, y: 34, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: b(1), ease: "expo.out", stagger: b(0.5) }, 0);
-${entrance(s)}    // once the visual has landed it kicks on every beat, a little more on downbeats, until the camera moves on
-    for (let i = 4; i < Math.round(DUR / BEAT) - 2; i++) tl.fromTo("#${s.id}-vis", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
-${s.line ? `    tl.fromTo("#${s.id}-line", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: b(1), ease: "expo.out" }, b(2));\n` : ""}${extra(s.id)}
+${entrance(s)}${s.line ? `    tl.fromTo("#${s.id}-line", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: b(1), ease: "expo.out" }, b(2));\n` : ""}${extra(s.id)}
     window.__timelines["${s.id}"] = tl;
   </script>
 </template>

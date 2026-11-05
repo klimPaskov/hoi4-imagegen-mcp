@@ -79,8 +79,6 @@
     tl.fromTo(".audit-w", { opacity: 0, y: 34, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: b(1), ease: "expo.out", stagger: b(0.5) }, 0);
     tl.fromTo("#audit-vis", { opacity: 0 }, { opacity: 1, duration: b(0.25) }, b(0.5));
     tl.fromTo("#audit-vis .nums > div", { opacity: 0, y: 60, scale: 0.92, rotation: -2 }, { opacity: 1, y: 0, scale: 1, rotation: 0, duration: b(1.25), ease: "expo.out", stagger: b(0.25) }, b(0.5));
-    // once the visual has landed it kicks on every beat, a little more on downbeats, until the camera moves on
-    for (let i = 4; i < Math.round(DUR / BEAT) - 2; i++) tl.fromTo("#audit-vis", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
     tl.fromTo("#audit-vis .finding", { opacity: 0, scale: 1.15 }, { opacity: 1, scale: 1, duration: b(0.5), ease: "back.out(1.8)" }, b(2));
     window.__timelines["audit"] = tl;
   </script>

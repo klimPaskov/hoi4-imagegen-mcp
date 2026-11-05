@@ -4,11 +4,11 @@ For r/hoi4modding. Post as a video or link post, with the YouTube link in place 
 
 ## Title
 
-I made a free tool that turns AI images into finished HOI4 art files
+I made a free MCP that generates HOI4 art and wires it into your mod
 
 ## Post
 
-I've been building HOI4 Imagegen, a free and open-source tool for coding agents like Claude Code and Codex. You describe the asset you need, and it hands back a file the game actually loads, instead of a big picture you still have to cut, convert and register yourself.
+I've been building HOI4 Imagegen, a free and open-source MCP server for coding agents like Claude Code and Codex. You describe the asset you need, and it generates the art and wires it into your mod as a file the game actually loads, instead of a big picture you still have to cut, convert and register yourself.
 
 Trailer: <VIDEO LINK>
 

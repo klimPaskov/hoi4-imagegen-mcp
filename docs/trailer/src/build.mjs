@@ -15,10 +15,6 @@ const grain = (id) =>
   `<svg class="grain" width="1920" height="1080"><filter id="${id}-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#${id}-n)"/></svg>`;
 const r3 = (x) => Math.round(x * 1000) / 1000;
 
-const KICKS = {
-  hook: ["#hk-hero", 5], oldway: ["#ow-raw", 2], reveal: ["#rv-name", 2], drop: [".dr-box", 3], more: [".grid", 3],
-  portraits: [".grid", 2], animated: [".an-c", 2], workflow: ["#wf-app", 4], endcard: ["#ec-mark", 2],
-};
 mkdirSync(join(root, "compositions"), { recursive: true });
 let t = cfg.offset;
 const hosts = [];
@@ -30,23 +26,16 @@ for (const s of cfg.scenes) {
     .replaceAll("{{GRAIN}}", grain(s.id))
     .replaceAll("{{BEAT}}", String(beat))
     .replaceAll("{{DUR}}", String(dur));
+  // every scene renders without motion blur: blur draws boxes around shadowed art while it moves
   // a soft steel dip at every scene change: the scene rises out of it and settles back into it
   const dip = `<div class="dip" id="${s.id}-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>`;
   const dipJs = `    tl.fromTo("#${s.id}-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#${s.id}-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
 `;
-  // kicks: once a scene's main element has landed, it kicks on every beat and a little more on downbeats, until the
-  // beat before the scene ends. Only that element moves, never the whole frame. The pipeline's stations kick their own
-  // visuals (src/gen-stations.mjs). [selector, first beat]
-  const kick = KICKS[s.id];
-  const kickJs = kick
-    ? `    for (let i = ${kick[1]}; i < Math.round(DUR / BEAT) - 1; i++) tl.fromTo(${JSON.stringify(kick[0])}, { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
-`
-    : "";
   const vi = src.lastIndexOf('<div class="vig"></div>');
   const ti = src.lastIndexOf(`    window.__timelines["${s.id}"]`);
   if (vi < 0 || ti < 0) throw new Error(`no vignette or timeline registration in ${s.id}`);
-  const out = src.slice(0, vi) + dip + "\n    " + src.slice(vi, ti) + dipJs + kickJs + src.slice(ti);
+  const out = src.slice(0, vi) + dip + "\n    " + src.slice(vi, ti) + dipJs + src.slice(ti);
   writeFileSync(join(root, "compositions", `${s.id}.html`), out);
   hosts.push(
     `      <div id="${s.id}" data-composition-id="${s.id}" data-composition-src="compositions/${s.id}.html" data-start="${r3(t)}" data-duration="${r3(dur)}" data-track-index="1" data-track-kind="graphics" data-motion-blur="off" data-width="1920" data-height="1080"></div>`,

@@ -106,7 +106,6 @@ function wordsIn(sel, at, gap) {
     tl.fromTo(".mo-c", { opacity: 0, y: 60, scale: 0.85, rotation: -3 }, { opacity: 1, y: 0, scale: 1, rotation: 0, duration: b(1.25), ease: "expo.out", stagger: { amount: b(2), grid: "auto", from: "start" } }, b(0.5));
     tl.fromTo("#more-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#more-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
-    for (let i = 3; i < Math.round(DUR / BEAT) - 1; i++) tl.fromTo(".grid", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
     window.__timelines["more"] = tl;
   </script>
 </template>

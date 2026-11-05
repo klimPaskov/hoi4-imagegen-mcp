@@ -96,7 +96,6 @@ function wordsIn(sel, at, gap) {
     tl.fromTo(["#wf-n", "#wf-d"], { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: b(0.5), ease: "power3.out", stagger: b(0.5) }, b(3));
     tl.fromTo("#workflow-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#workflow-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
-    for (let i = 4; i < Math.round(DUR / BEAT) - 1; i++) tl.fromTo("#wf-app", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
     window.__timelines["workflow"] = tl;
   </script>
 </template>
