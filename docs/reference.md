@@ -162,13 +162,35 @@ A pinned style profile is tier 1 only when it applies to the family. A plan's `s
 
 Tier 4 keeps each family to the vanilla files of its one form. Commander traits leave out the operative traits. operation_icon takes only the 59x58 phase icons and operation_picture only the 210x176 phase pictures, building takes only the 128x64 painted landmark strips, and bop_side leaves out the coloured `_improved` and `_max` state variants. A `gui_texture` takes vanilla references only when the request names its `texture_kind`: `button` (`gfx/interface/button_*` and `gfx/interface/buttons/`), `frame` (`gfx/interface/*_frame*`), `panel` (`gfx/interface/tiles/tiled_*`) or `background` (`gfx/interface/*_bg` of at least 256 px a side). The kind also adds its vanilla form to the prompt.
 
-When the mod's own references (tier 2 or 3) show a form, such as a frame or a background, that form wins over the vanilla form the family rules describe. References the request sends itself with the role `style_anchor` win the same way. Then no vanilla reference and no vanilla style paragraph go with them, because vanilla art beside them pulls the image back to the vanilla form.
+When the mod's own references (tier 2 or 3) show a form, such as a frame or a background, that form wins over the vanilla form the family rules describe.
 
-The first tier with at least 3 usable images is used. A pinned style is always sent, even with fewer images, but then gives no statistics. The plan reports every reference with its tier, reason, SHA-256 and whether it goes to the provider (`style_sources` in the plan, also in `hoi4.image_families`).
+**Caller anchors.** References the request sends itself with the role `style_anchor` replace every automatic tier (`style_mode: "replace"`, the default). Only the caller's references are sent, a pinned style stays only when the request names it, and each tier's entry says why nothing of it was sent. The family's form sentence in the prompt gives way to a neutral one (take the frame and form from the anchors), while the size, transparency, margin and readability rules stay. `style_mode: "add"` sends the automatic references beside the anchors instead. The plan's `style_selection.style_mode` says which mode applied. Until 0.3.3 anchors dropped only tier 4, so a mod with the kit's shelf copy sent four shelf files ahead of the anchors.
 
-Selection is deterministic. Each candidate is measured (colour, saturation, edge density, alpha, outline share, hue histogram), and a fixed k-medoids picks up to 4 images to send, within the model's reference limit. The same images give the same choice. The measured statistics also become a short style paragraph in the prompt.
+The first tier with at least 3 usable images is used. A pinned style is always sent, even with fewer images, but then gives no statistics. The plan reports every reference with its tier, reason, SHA-256 and whether it goes to the provider, and the candidates it left out with the reason (`style_sources` in the plan, also in `hoi4.image_families`).
+
+**Statistics.** Each candidate of the used tier is measured (colour, saturation, edge density, alpha, outline share, hue histogram). A fixed k-medoids over an even sample of up to 256 of them picks up to 24 images for the statistics and the drift model. These do not depend on the request, so the measured style stays stable. The statistics become a short style paragraph in the prompt, which goes only with at least one sent automatic reference.
+
+**What is sent (since 0.3.4).** Until 0.3.3 the same k-medoids picked the images to send, so every request in a family got the same few files, nation-specific art included. For tiers 2 to 4 the sent set now depends on the request:
+
+1. **Nation-specific files are left out** unless the brief names the country. A file is nation-specific when its name starts with a country tag (`GER_`), has the tag after the family word (`focus_GER_`, `goal_JAP_`, `idea_SOV_`, and in lower case `focus_jap_` as the kit's shelf copy names them), lies in a tag-named folder (`gfx/leaders/JAP/`), or names a country or its adjective (`focus_generic_attack_romania`). Tags come from the game's `common/country_tags/*.txt` plus a built-in list of the vanilla tags, names from the game's `countries_l_english.yml` plus built-in names of the major powers. A lower-case tag that is also an ordinary word (`cat`, `can`, `car`, `gen`) is not read as a tag. A brief names a country by its tag in capitals or by its name or adjective (`JAP`, `Japan`, `Japanese`). On 1.19.4.1 only 274 of the 2,733 focus files are not nation-specific.
+2. **The sub-family** (below) limits the pool when the request has one.
+3. **About half the slots are theme matches.** The brief's words are matched with each file's name and folder tokens, directly (3 points) and through a built-in synonym table (2 points per shared theme: industry, naval, air, army, politics, research, economy, intelligence, diplomacy, war, defence, infrastructure, agriculture, population, religion). A brief that names a country adds 3 points to that country's files. The picks are drawn from the best matches and must lie within the family's style distribution.
+4. **The other slots are style-typical**, drawn from the more typical half of the eligible files (generic files such as `goal_generic_*` first). Each pick takes, of the next six, the one furthest in style from the images already chosen.
+5. **A hash of the family, asset and brief seeds every draw.** The same request gives the same set and the same plan. Two different briefs rarely share a set. Over 50 focus briefs on 1.19.4.1 the mean overlap between sets is 0.016, where the fixed set of 0.3.3 gave 1. The mean pairwise spread of the sent images (64-bit dHash bits, frame shape, palette) is 22.9, 34.9 and 0.25, against 23.7, 38.2 and 0.30 for vanilla and 17.7, 20.8 and 0.24 for the 0.3.3 set.
+
+With automatic references (tiers 2 to 4) the prompt adds a line: they show the style only, so the model never copies their frame, emblem, subject or composition and varies them within the family's range. The line is left out beside caller anchors.
+
+**Sub-families (since 0.3.4).** Large families split into kinds: `naval`, `air`, `industry`, `economy`, `research`, `intelligence`, `politics`, `diplomacy`, `society`, `army` and `other`. A file's sub-family is the group its name and folder tokens hit most in the theme table. `crates/imagegen-core/data/subfamilies.json` holds, for the 17 families with at least 60 vanilla files and themed names, each sub-family's file count, example names, style groups (a k-medoids of the style descriptors) and measured form and palette numbers, with a form note written from them. Flags, portraits, advisor cards and achievements are not split. The `subfamilies_data` test regenerates the file from the game and fails when it is stale (`UPDATE_SUBFAMILIES=1` rewrites it).
+
+* A plan or a group tool takes `subfamily`. Without it the brief's words pick one, or none when they match no theme. The plan then warns and uses the whole family.
+* References come from that sub-family only. When it has too few eligible files the whole family is used, and `style_sources.subfamily` says so.
+* The sub-family's form note goes into the prompt after the family's form sentence, except beside caller anchors.
+* The vanilla-match check compares with the sub-family's own spread when it has at least 20 measured vanilla files, else with the whole family, and records which in `compared_with`.
+* The plan (`subfamily`) and the candidate record, and so the ledger, keep it. `hoi4.image_families` lists each family's sub-families with counts, examples and form notes.
 
 `style` is part of every family's check set. It warns with `GFX-STYLE-DRIFT` when a candidate is far from the family's style distribution. It is a warning, never an error, and never blocks an install.
+
+**Near-duplicates (since 0.3.4).** Processing and validation compare an output with the project's earlier outputs of the same family: the latest processed artifact of each other asset, up to 200, or the latest raw candidate for a raw one. The measure is a 128-bit dHash of the image over mid grey at its own size, which sees the frame and the placement of the large shapes. The threshold is the family's own: the 1st percentile of the distances between distinct images of the used reference set, at least 6 bits (16 when there is no set). On 1.19.4.1 it is 28 bits for focus, 31 for national spirits, 27 for decisions, 15 for decision categories, 41 for report events, 22 for unit leader traits and 24 for technologies. An output that close to an earlier one gets the warning `GFX-NEAR-DUPLICATE`, naming it and the reference images both used. It is a warning, never an error. The candidate record lists the references each image was made with, and the recorded validation keeps the finding.
 
 Vanilla references may always be sent to a provider (a maintainer decision of 2026-11-01), and the tool never copies a vanilla file into a mod. Vanilla art is left out of the contact sheet that is written into the mod. The vanilla side-by-side sheet (see the review below) goes to the user's cache folder instead.
 
@@ -243,15 +265,15 @@ Details, the sign-in steps and the recorded evidence are in [docs/chatgpt-login.
 
 ## Install
 
-The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/releases>. Version 0.3.3 has one archive per platform:
+The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/releases>. Version 0.3.4 has one archive per platform:
 
 | Platform | Archive |
 |---|---|
-| Windows x64 | `hoi4-imagegen-v0.3.3-x86_64-pc-windows-msvc.zip` |
-| macOS arm64 | `hoi4-imagegen-v0.3.3-aarch64-apple-darwin.tar.gz` |
-| macOS x64 | `hoi4-imagegen-v0.3.3-x86_64-apple-darwin.tar.gz` |
-| Linux x64 | `hoi4-imagegen-v0.3.3-x86_64-unknown-linux-gnu.tar.gz` |
-| Linux arm64 | `hoi4-imagegen-v0.3.3-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows x64 | `hoi4-imagegen-v0.3.4-x86_64-pc-windows-msvc.zip` |
+| macOS arm64 | `hoi4-imagegen-v0.3.4-aarch64-apple-darwin.tar.gz` |
+| macOS x64 | `hoi4-imagegen-v0.3.4-x86_64-apple-darwin.tar.gz` |
+| Linux x64 | `hoi4-imagegen-v0.3.4-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux arm64 | `hoi4-imagegen-v0.3.4-aarch64-unknown-linux-gnu.tar.gz` |
 
 Each archive holds both programs, `LICENSE`, `NOTICE`, `README.md` and `UPSTREAM.md`. The release also has a `SHA256SUMS` file. The binaries are **unsigned**, so Windows SmartScreen and macOS Gatekeeper may warn. The archives and `SHA256SUMS` carry GitHub build attestations. To check a download:
 

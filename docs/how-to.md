@@ -50,6 +50,8 @@ The example is one focus icon. An AI client calls the tools below. Each is also 
 
    The reply is a plan: the prompt, the style references with their tier and reason, the provider and model, the cost estimate with its basis, the output paths and a `plan_id`. Read it. Nothing has been spent yet.
 
+   The style references depend on the brief. They come from the family's sub-family the brief points to (here none matches, so the whole focus family), leave out nation-specific art such as `focus_JAP_*` unless the brief names that country, and mix files whose names match the brief's theme with style-typical ones. The same brief always gets the same set. To pick the kind yourself, add `"subfamily": "army"` (`hoi4.image_families` lists each family's sub-families). To use only your own style images, pass them as `references` with the role `style_anchor`: they replace every automatic reference. Add `"style_mode": "add"` to keep the automatic ones beside them.
+
 3. **Approve.** Send the same request again with approval, or run the stored plan.
 
    ```json
@@ -116,6 +118,7 @@ Install says "installed", not "verified in game". Start the game yourself to che
 | The canvas is not what you expected | Run `hoi4.image_families { "family": "..." }`. The size is the vanilla default unless the mod's `.tools/gfx/profiles.json` or `[profiles.<family>]` overrides it. Fix the override or the file. `hoi4-imagegen calibrate` compares the table with the game |
 | `chain_steps_empty` or `chain_step_not_allowed` | Only four pre-steps are accepted, and an empty list is refused. Leave `pre_steps` out for none |
 | `GFX-STYLE-DRIFT` | A warning only. The art is far from the family's style. Look at the preview next to the references |
+| `GFX-NEAR-DUPLICATE` | A warning only. The frame and composition nearly repeat an earlier output of the family, which the message names. Plan again with a different brief or `subfamily`, or edit the frame |
 | Install refuses | The gate names the reason: validation missing or stale, no approving review of this exact file, or a hash that changed. Validate and review again |
 | `review_vanilla_mismatch` | The file does not measure like the family's vanilla art. The message lists each feature outside vanilla's range. Compare it with the vanilla side-by-side sheet and fix the art or its processing. Override only for a deliberate mod style |
 | `review_needs_vanilla_preview` or `review_needs_vanilla_check` | The preview did not show the vanilla references, or the check cannot run. Usually the installed game was not found: set `HOI4_GAME_DIR`, preview again and review. Families without vanilla art (`gui_texture`, `super_event`, the animations) need an override |
