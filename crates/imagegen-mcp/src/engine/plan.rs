@@ -53,6 +53,11 @@ impl Engine {
             }
         };
 
+        // only a GUI texture has kinds
+        if req.texture_kind.is_some() && req.family != Family::GuiTexture {
+            return Err(EngineError::invalid(format!("texture_kind is for gui_texture, not {}", req.family)));
+        }
+
         let style_profile = match &req.style {
             Some(name) => {
                 let s = style::load(&self.fs, name)?;
@@ -99,7 +104,7 @@ impl Engine {
         let game = self.game_dir();
         let applied = self.applied_style_for(req.family, style_profile.as_ref());
         let pinned = applied.as_ref().map(|(s, _)| s.clone());
-        let mut sources = self.resolve_style(&profile, pinned.as_ref(), stylesrc::DEFAULT_SEND, false);
+        let mut sources = self.resolve_style(&profile, pinned.as_ref(), stylesrc::DEFAULT_SEND, false, req.texture_kind);
         let explicit_model = req.model.clone().or_else(|| style_profile.as_ref().and_then(|s| s.model.clone()));
         let explicit_refs = req.references.len();
         let wants_refs = explicit_refs > 0 || !sources.send_paths().is_empty();
@@ -182,7 +187,13 @@ impl Engine {
         // the measured paragraph describes the tier's images, which are not sent beside the caller's anchors when vanilla
         let measured =
             if caller_style && sources.report.chosen.iter().all(|c| !c.sent_to_provider) { None } else { sources.report.style_paragraph.as_deref() };
-        let prompt = build_prompt_with_form(&profile, ask, &brief, prompt_style, &loaded, transparent, measured, form);
+        // a GUI texture's kind adds the kind's vanilla form to the prompt (the profile itself, and its hash, stay as
+        // they are)
+        let mut prompt_profile = profile.clone();
+        if let Some(kind) = req.texture_kind {
+            prompt_profile.imagegen.prompt.rules.insert(1, kind.form_rule().to_string());
+        }
+        let prompt = build_prompt_with_form(&prompt_profile, ask, &brief, prompt_style, &loaded, transparent, measured, form);
         let style_selection = describe_selection(applied.as_ref(), &sources.report, form, req.family);
 
         let probe = ImageRequest {

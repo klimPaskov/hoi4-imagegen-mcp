@@ -122,6 +122,9 @@ pub struct PlanArgs {
     /// Canvas WxH for families with none.
     #[arg(long)]
     pub canvas: Option<String>,
+    /// GUI textures only: button, frame, panel or background.
+    #[arg(long)]
+    pub texture_kind: Option<String>,
 }
 
 /// `generate` arguments.
@@ -290,6 +293,7 @@ pub fn execute(engine: &Engine, cli: &Cli, out: &mut dyn Write) -> i32 {
                 "provider": a.provider, "model": a.model, "quality": a.quality, "style": a.style,
                 "references": refs, "variants": a.variants, "budget_usd": a.budget,
                 "canvas": a.canvas.as_deref().map(parse_canvas).transpose()?,
+                "texture_kind": a.texture_kind,
             });
             let fam: imagegen_core::Family = a.family.parse().map_err(EngineError::from)?;
             let v = dispatch(engine, fam.group().tool_name(), params)?;

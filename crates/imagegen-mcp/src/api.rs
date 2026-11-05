@@ -104,6 +104,9 @@ macro_rules! group_request {
             /// Canvas `[width, height]` of one frame, for families whose size the mod defines (GUI textures, super events, and animated strips, which take the size of the element they sit on). Refused for the others.
             #[serde(default)]
             pub canvas: Option<[u32; 2]>,
+            /// GUI textures only: the kind of texture (`button`, `frame`, `panel` or `background`). It adds that kind's vanilla form to the prompt and picks vanilla references of that kind. Refused for the others.
+            #[serde(default)]
+            pub texture_kind: Option<imagegen_core::GuiTextureKind>,
             /// Candidates to produce in one go (1 to 4); each is a separate provider call.
             #[serde(default)]
             pub variants: Option<u8>,
@@ -146,6 +149,7 @@ macro_rules! group_request {
                     budget_usd: self.budget_usd,
                     quality: self.quality,
                     canvas: self.canvas,
+                    texture_kind: self.texture_kind,
                 };
                 (req, follow)
             }

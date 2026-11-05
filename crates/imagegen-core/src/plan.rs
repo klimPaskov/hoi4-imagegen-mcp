@@ -55,6 +55,11 @@ pub struct PlanRequest {
     /// Canvas for families that have none (`gui_texture`, `super_event`): the mod defines it.
     #[serde(default)]
     pub canvas: Option<[u32; 2]>,
+    /// The kind of a `gui_texture` (button, frame, panel, background): adds the kind's vanilla form to the prompt and
+    /// picks vanilla references of that kind. Refused for other families. Left out when unset, so plans made before
+    /// the field existed keep their hash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub texture_kind: Option<crate::family::GuiTextureKind>,
 }
 
 /// The prompt a plan will send.
@@ -375,6 +380,7 @@ mod tests {
                 budget_usd: None,
                 quality: None,
                 canvas: None,
+                texture_kind: None,
             },
             asset_id: "iron.wall".into(),
             profile: ProfileRef { id: "focus".into(), hash: "h".into(), kit_sha256: None },
