@@ -97,6 +97,8 @@ Install says "installed", not "verified in game". Start the game yourself to che
 | A plan that names a different model for the ChatGPT login | Refused at plan time. Leave `model` out |
 | The image looks low quality or has an odd size | The route cannot force image quality. The backend's image tool chooses quality and size. Regenerate, or use an API provider where you set `quality` |
 | `retry class reconcile_first` after an error | A call may have gone through. Run `hoi4.image_cancel` with `reconcile: true` before retrying |
+| `uncertain_previous_attempt` for an idempotency key | An earlier attempt with that key was cut off and may have been charged. Check the provider's usage page, then retire the key with `hoi4.image_cancel` and `{idempotency_key, abandon: true}`, or use a new key. The ledger records the abandonment |
+| The ChatGPT route keeps failing | `doctor` shows the route's recorded state without making a request: a revoked sign-in, the reasoning efforts the backend refused and when they are tried again, the last request and any rate-limit wait |
 | A provider is missing from `doctor` | For an API provider, the key variable is not set and Setup's credential store has none. Set the variable in the environment that starts your AI client |
 
 ### Processing and validation

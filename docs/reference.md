@@ -31,7 +31,7 @@ status -> families -> icon | picture | portrait | flag | unit | interface   (fre
 | `hoi4.image_review` | The visual review against the family's rubric. An approval returns the `approval_id` that install needs |
 | `hoi4.image_install` | Writes the DDS or TGA files and the sprite. Refuses unless the gate is open |
 | `hoi4.image_ledger` | Which references, settings and outputs belong together, lineage, and the chain check |
-| `hoi4.image_cancel` | Cancels a running job, or reconciles one that a crashed run left behind |
+| `hoi4.image_cancel` | Cancels a running job, reconciles one that a crashed run left behind, or retires an uncertain idempotency key (`abandon: true`) |
 
 | `hoi4.image_audit` | Audits the whole mod on the shared engine (hoi4-agent-tools): which families use each sprite and texture, cross-family reuse (`GFX-FAMILY-REUSE`, a warning, with a per-mod allowlist), missing textures, undefined sprites, missing focus shine (an error: the game then draws a `?`), wrong canvas sizes and report cards without transparent corners. Read only |
 
@@ -140,6 +140,10 @@ A plan picks style references for the family on its own. The mod comes first and
 | 2 | The mod's own copy of the asset skill's shelf, `.claude/skills/*/assets/*/<shelf folder>/`. It holds vanilla art but is the mod's copy |
 | 3 | The mod's own installed assets: the family's texture folders, plus textures its `.gfx` files register under the family's sprite pattern |
 | 4 | Vanilla art from the installed game |
+
+A pinned style profile is tier 1 only when it applies to the family. A plan's `style: <name>` always applies it. Otherwise a profile applies by itself only when its `families` list names the family, or when it has `default: true` (then it covers the families it lists, or every family when it lists none). A profile with an empty `families` list and no `default` is available by name to any family but never applied by itself. `default: false` turns automatic use off. A profile that names the family ranks above a `default: true` profile for all families. The plan says which profile it applied and why.
+
+When the mod's own references (tier 2 or 3) show a form, such as a frame or a background, that form wins over the vanilla form the family rules describe.
 
 The first tier with at least 3 usable images is used. A pinned style is always sent, even with fewer images, but then gives no statistics. The plan reports every reference with its tier, reason, SHA-256 and whether it goes to the provider (`style_sources` in the plan, also in `hoi4.image_families`).
 
