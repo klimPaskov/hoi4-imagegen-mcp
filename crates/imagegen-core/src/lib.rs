@@ -26,6 +26,7 @@ pub mod lock;
 pub mod lookup;
 pub mod measurement;
 pub mod naming;
+pub mod pack;
 pub mod pixels;
 pub mod plan;
 pub mod process;

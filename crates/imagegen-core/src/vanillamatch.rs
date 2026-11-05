@@ -559,6 +559,37 @@ pub fn calibrate(family: Family, rows: &[Features]) -> Option<Calibration> {
     Some(Calibration { family, version: VERSION.to_string(), files: rows.len(), ranges })
 }
 
+/// Fit ranges from a small set (a style pack's references): each feature's minimum to maximum, widened on each side
+/// by `widening` times that width, and never narrower than `floor_factor` times the feature's floor. `version` names
+/// the rule in the result. `None` with fewer than [`MIN_FILES`] rows. The median is reported as for [`calibrate`].
+pub fn calibrate_min_max(family: Family, rows: &[Features], widening: f64, floor_factor: f64, version: &str) -> Option<Calibration> {
+    if rows.len() < MIN_FILES {
+        return None;
+    }
+    let mut ranges = Vec::with_capacity(N);
+    for d in 0..N {
+        let mut col: Vec<f64> = rows.iter().map(|r| r[d]).collect();
+        col.sort_by(f64::total_cmp);
+        let (min, max) = (col[0], col[col.len() - 1]);
+        let pad = widening * (max - min);
+        let (mut lo, mut hi) = (min - pad, max + pad);
+        let mid = (lo + hi) / 2.0;
+        let floor = floor_factor * FLOOR[d];
+        if hi - lo < 2.0 * floor {
+            lo = mid - floor;
+            hi = mid + floor;
+        }
+        ranges.push(FeatureRange {
+            feature: NAMES[d].to_string(),
+            min: round(lo),
+            max: round(hi),
+            median: round(quantile(&col, 0.5)),
+            checked: CHECKED.contains(&NAMES[d]),
+        });
+    }
+    Some(Calibration { family, version: version.to_string(), files: rows.len(), ranges })
+}
+
 impl Calibration {
     /// Check a candidate's features against the ranges.
     pub fn check(&self, f: &Features) -> MatchResult {

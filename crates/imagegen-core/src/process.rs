@@ -198,6 +198,37 @@ pub enum Op {
         /// Degrees turned over one loop.
         degrees: f64,
     },
+    /// Trim to the subject, scale it with an area (box) filter to fit inside a `box_width` x `box_height` box (aspect
+    /// kept), and centre it on a transparent `width` x `height` canvas. The style pack switch `crisp`: no ringing and
+    /// no colour outside the art's own palette (see `resize::resize_area`).
+    AreaFit {
+        /// Canvas width.
+        width: u32,
+        /// Canvas height.
+        height: u32,
+        /// Box width.
+        box_width: u32,
+        /// Box height.
+        box_height: u32,
+        /// Alpha threshold for the subject bounds.
+        #[serde(default = "default_min_alpha")]
+        min_alpha: u8,
+    },
+    /// Centre-crop to the target aspect, then resize with an area filter (the `crisp` form of `cover_resize`).
+    AreaCover {
+        /// Target width.
+        width: u32,
+        /// Target height.
+        height: u32,
+    },
+    /// The counter strip of a style pack that keeps the art's own colours: frame 1 as it is, then the NATO box as an
+    /// outline in the glyph's colour, with no fill. See `recipes::unit_art::outline_strip`.
+    NatoOutline {
+        /// Which counter (`counter_large` or `counter_small`).
+        kind: crate::recipes::unit_art::UnitArtKind,
+        /// The NATO symbol: marks joined by `+`.
+        symbol: String,
+    },
 }
 
 impl Op {
@@ -230,6 +261,9 @@ impl Op {
             Op::GlowFrames { .. } => "glow_frames",
             Op::ScrollFrames { .. } => "scroll_frames",
             Op::SpinFrames { .. } => "spin_frames",
+            Op::AreaFit { .. } => "area_fit",
+            Op::AreaCover { .. } => "area_cover",
+            Op::NatoOutline { .. } => "nato_outline",
         }
     }
 }
@@ -318,6 +352,15 @@ pub fn apply(img: &Rgba, op: &Op) -> Result<Rgba> {
         Op::SpinFrames { width, height, margin, frames, degrees } => {
             crate::animation::spin_strip(img, *width, *height, *margin, *frames, *degrees, default_min_alpha())
         }
+        Op::AreaFit { width, height, box_width, box_height, min_alpha } => area_fit(img, [*width, *height], [*box_width, *box_height], *min_alpha),
+        Op::AreaCover { width, height } => {
+            let cropped = crop_to_aspect(img, *width, *height)?;
+            crate::resize::resize_area(&cropped, *width, *height)
+        }
+        Op::NatoOutline { kind, symbol } => {
+            let marks = crate::recipes::unit_art::parse_symbol(symbol)?;
+            crate::recipes::unit_art::outline_strip(img, *kind, &marks)
+        }
     }
 }
 
@@ -332,7 +375,7 @@ pub const UPSCALE_CODE: &str = "GFX-UPSCALE-LIMIT";
 pub fn upscale_factor(img: &Rgba, op: &Op) -> Option<f64> {
     match op {
         Op::Resize { width, height } => Some((f64::from(*width) / f64::from(img.width)).max(f64::from(*height) / f64::from(img.height))),
-        Op::CoverResize { width, height } => {
+        Op::CoverResize { width, height } | Op::AreaCover { width, height } => {
             let c = crop_to_aspect(img, *width, *height).ok()?;
             Some((f64::from(*width) / f64::from(c.width)).max(f64::from(*height) / f64::from(c.height)))
         }
@@ -346,7 +389,7 @@ pub fn upscale_factor(img: &Rgba, op: &Op) -> Option<f64> {
             Some((aw / sw).min(ah / sh))
         }
         Op::LineArt { width, height } => crate::recipes::line_art::fit_scale(img, *width, *height),
-        Op::FitInBox { box_width, box_height, min_alpha, .. } => {
+        Op::FitInBox { box_width, box_height, min_alpha, .. } | Op::AreaFit { box_width, box_height, min_alpha, .. } => {
             let b = img.alpha_bbox(*min_alpha)?;
             Some((f64::from(*box_width) / f64::from(b[2] - b[0])).min(f64::from(*box_height) / f64::from(b[3] - b[1])))
         }
@@ -404,6 +447,22 @@ fn crop_to_aspect(img: &Rgba, aw: u32, ah: u32) -> Result<Rgba> {
     };
     let (cw, ch) = (cw.max(1) as u32, ch.max(1) as u32);
     img.crop((img.width - cw) / 2, (img.height - ch) / 2, cw, ch)
+}
+
+fn area_fit(img: &Rgba, canvas: [u32; 2], fit: [u32; 2], min_alpha: u8) -> Result<Rgba> {
+    let [w, h] = canvas;
+    if fit[0] == 0 || fit[1] == 0 || fit[0] > w || fit[1] > h {
+        return Err(Error::Invalid(format!("a {}x{} box does not fit a {w}x{h} canvas", fit[0], fit[1])));
+    }
+    let b = img.alpha_bbox(min_alpha).ok_or_else(|| Error::Image("no visible subject to fit".into()))?;
+    let subject = img.crop(b[0], b[1], b[2] - b[0], b[3] - b[1])?;
+    let scale = (f64::from(fit[0]) / f64::from(subject.width)).min(f64::from(fit[1]) / f64::from(subject.height));
+    let tw = ((f64::from(subject.width) * scale).round() as u32).clamp(1, fit[0]);
+    let th = ((f64::from(subject.height) * scale).round() as u32).clamp(1, fit[1]);
+    let scaled = crate::resize::resize_area(&subject, tw, th)?;
+    let mut out = Rgba::new(w, h);
+    out.paste(&scaled, i64::from((w - tw) / 2), i64::from((h - th) / 2));
+    Ok(out)
 }
 
 fn fit_in_box(img: &Rgba, canvas: [u32; 2], fit: [u32; 2], min_alpha: u8) -> Result<Rgba> {

@@ -60,6 +60,11 @@ pub struct PlanRequest {
     /// the field existed keep their hash.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub texture_kind: Option<crate::family::GuiTextureKind>,
+    /// Style pack to apply (`.hoi4-imagegen/packs/<name>/pack.toml`). Without it the project's default pack
+    /// (`[defaults] style_pack`) applies; `"none"` turns the default off. Left out when unset, so plans made before
+    /// packs existed keep their hash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_pack: Option<String>,
 }
 
 /// The prompt a plan will send.
@@ -164,6 +169,9 @@ pub struct Plan {
     /// Which style was applied and why, what each source contributed and which form wins (new in 0.3.2).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_selection: Option<StyleSelection>,
+    /// The style pack this plan applied, and which of its entries (new in 0.3.4).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_pack: Option<PackReport>,
     /// Estimate.
     pub estimate: PlanEstimate,
     /// Output paths.
@@ -176,12 +184,56 @@ pub struct Plan {
     pub warnings: Vec<String>,
 }
 
+/// One reference of a style pack, as a plan used it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PackReference {
+    /// Project-relative path.
+    pub path: String,
+    /// SHA-256 of the file, as pinned in the pack and checked at plan time.
+    pub sha256: String,
+    /// True when it goes to the provider as a style anchor.
+    pub sent_to_provider: bool,
+}
+
+/// What a style pack did to a plan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct PackReport {
+    /// Pack name.
+    pub name: String,
+    /// SHA-256 of the pack file.
+    pub sha256: String,
+    /// `explicit` (the request named it) or `project_default` (`[defaults] style_pack`).
+    pub why: String,
+    /// True when the pack has an entry for the family. Otherwise nothing of it applies and the normal style tiers
+    /// stand.
+    pub covered: bool,
+    /// The entry that applied: the family id, or `gui_texture.<kind>` for a kind entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entry: Option<String>,
+    /// The look line added to the prompt's style.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub look: Option<String>,
+    /// True when the pack's form rules replaced the family's vanilla form rules in the prompt.
+    pub form_override: bool,
+    /// True when the pack's negatives replaced the family's vanilla negatives.
+    pub negative_override: bool,
+    /// The pack's canvas, when it sets one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub canvas: Option<[u32; 2]>,
+    /// Processing switches in force.
+    pub processing: Vec<String>,
+    /// The pack's references for this entry, and whether each is sent.
+    pub references: Vec<PackReference>,
+    /// One sentence for a person.
+    pub detail: String,
+}
+
 /// The references one source contributed to a plan.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct StyleContribution {
-    /// `style 'name'` for a pinned style, else the tier name.
+    /// `style 'name'` for a pinned style, `style pack 'name'` for a pack, else the tier name.
     pub source: String,
-    /// Tier (1 to 4).
+    /// Tier (1 to 4), or 0 for a style pack.
     pub tier: u8,
     /// Paths of the references this source sends to the provider.
     pub references: Vec<String>,
@@ -292,6 +344,22 @@ pub fn build_prompt_with_form(
     measured_style: Option<&str>,
     form: FormPrecedence,
 ) -> PromptPlan {
+    build_prompt_with_look(profile, canvas, brief, style, refs, transparent, measured_style, form, None)
+}
+
+/// [`build_prompt_with_form`] with a style pack's look line, appended to the prompt's style.
+#[allow(clippy::too_many_arguments)]
+pub fn build_prompt_with_look(
+    profile: &Profile,
+    canvas: [u32; 2],
+    brief: &str,
+    style: Option<&StyleProfile>,
+    refs: &[LoadedRef],
+    transparent: bool,
+    measured_style: Option<&str>,
+    form: FormPrecedence,
+    look: Option<&str>,
+) -> PromptPlan {
     let subst = |s: &str| s.replace("{w}", &canvas[0].to_string()).replace("{h}", &canvas[1].to_string());
     let mut text = format!("Create one Hearts of Iron IV {}: {}\n", profile.family.label(), brief.trim());
     text.push_str("\nRequirements:\n");
@@ -302,7 +370,7 @@ pub fn build_prompt_with_form(
         text.push_str("- Real transparent background (alpha), not a drawn checkerboard.\n");
     }
     let note = style.filter(|s| !s.description.is_empty() || !s.prompt_fragments.is_empty() || !s.palette_notes.is_empty());
-    if note.is_some() || measured_style.is_some() {
+    if note.is_some() || measured_style.is_some() || look.is_some() {
         text.push_str("\nStyle:\n");
     }
     if let Some(s) = note {
@@ -318,6 +386,9 @@ pub fn build_prompt_with_form(
     }
     if let Some(m) = measured_style {
         text.push_str(&format!("- {m}\n"));
+    }
+    if let Some(l) = look {
+        text.push_str(&format!("- {}\n", subst(l.trim())));
     }
     if !refs.is_empty() {
         text.push_str("\nReference images, in the order attached:\n");
@@ -381,9 +452,10 @@ mod tests {
                 quality: None,
                 canvas: None,
                 texture_kind: None,
+                style_pack: None,
             },
             asset_id: "iron.wall".into(),
-            profile: ProfileRef { id: "focus".into(), hash: "h".into(), kit_sha256: None },
+            profile: ProfileRef { id: "focus".into(), hash: "h".into(), kit_sha256: None, style_pack: None },
             canvas: [100, 88],
             source_canvas: None,
             frames: 1,
@@ -397,6 +469,7 @@ mod tests {
             style_sha256: None,
             style_sources: None,
             style_selection: None,
+            style_pack: None,
             estimate: PlanEstimate {
                 usd_per_call: 0.006,
                 calls: 1,

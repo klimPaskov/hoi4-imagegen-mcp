@@ -30,8 +30,9 @@ pub struct Cli {
     pub command: Command,
 }
 
-/// Commands.
+/// Commands. Parsed once per run, so the size of the largest variant does not matter.
 #[derive(Subcommand, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum Command {
     /// Check the setup: providers and keys, game folder, profiles, ledger.
     Doctor,
@@ -52,6 +53,9 @@ pub enum Command {
     Install(InstallArgs),
     /// Trace the sprites and textures the mod uses to their families and report reuse, missing and mis-sized art. Read only.
     Audit(AuditArgs),
+    /// Style packs: a mod's house style across families (`.hoi4-imagegen/packs/<name>/pack.toml`).
+    #[command(subcommand)]
+    Pack(PackCommand),
     /// Run any hoi4.image_* operation with JSON parameters (a string, or @file).
     Call {
         /// Tool name, for example hoi4.image_process.
@@ -80,6 +84,40 @@ pub enum Command {
     ChatgptLogin {
         /// login, status or logout
         action: String,
+    },
+}
+
+/// `pack` subcommands.
+#[derive(Subcommand, Debug)]
+pub enum PackCommand {
+    /// Build a pack from a folder with one sub-folder of reference images per family id (`decision/`,
+    /// `gui_texture/`...). Each may hold `references.json` (a `references` list of `{ref}` objects, optionally with
+    /// `texture_kind`) and `look.txt`; a top-level `gallery-plan.json` may give the looks. The images are copied into
+    /// the mod under the pack's folder and pinned by SHA-256.
+    Import {
+        /// Pack name (snake_case).
+        name: String,
+        /// The folder to read.
+        #[arg(long)]
+        from: PathBuf,
+        /// The family of images listed by a top-level manifest.json or references.json (for example focus).
+        #[arg(long)]
+        top_family: Option<String>,
+        /// Import over an existing pack (its file is backed up; each entry keeps its form, canvas and switches).
+        #[arg(long)]
+        replace: bool,
+    },
+    /// List the saved packs and the project's default.
+    List,
+    /// Print one pack.
+    Get {
+        /// Pack name.
+        name: String,
+    },
+    /// Check a pack: pinned hashes, switches, reference sizes and how well each family's references agree.
+    Validate {
+        /// Pack name.
+        name: String,
     },
 }
 
@@ -125,6 +163,9 @@ pub struct PlanArgs {
     /// GUI textures only: button, frame, panel or background.
     #[arg(long)]
     pub texture_kind: Option<String>,
+    /// Style pack to apply (`none` turns the project default off).
+    #[arg(long)]
+    pub style_pack: Option<String>,
 }
 
 /// `generate` arguments.
@@ -294,12 +335,28 @@ pub fn execute(engine: &Engine, cli: &Cli, out: &mut dyn Write) -> i32 {
                 "references": refs, "variants": a.variants, "budget_usd": a.budget,
                 "canvas": a.canvas.as_deref().map(parse_canvas).transpose()?,
                 "texture_kind": a.texture_kind,
+                "style_pack": a.style_pack,
             });
             let fam: imagegen_core::Family = a.family.parse().map_err(EngineError::from)?;
             let v = dispatch(engine, fam.group().tool_name(), params)?;
             let text = plan_text(&v["plan"]);
             Ok((v, 0, Some(text)))
         }
+        Command::Pack(cmd) => match cmd {
+            PackCommand::Import { name, from, top_family, replace } => {
+                let top = top_family.as_deref().map(str::parse::<imagegen_core::Family>).transpose().map_err(EngineError::from)?;
+                let v = engine.import_pack_folder(name, from, top, *replace)?;
+                let ok = v["validation"]["ok"] == json!(true);
+                Ok((v, i32::from(!ok), None))
+            }
+            PackCommand::List => Ok((dispatch(engine, "hoi4.image_references", json!({"action": "pack_list"}))?, 0, None)),
+            PackCommand::Get { name } => Ok((dispatch(engine, "hoi4.image_references", json!({"action": "pack_get", "name": name}))?, 0, None)),
+            PackCommand::Validate { name } => {
+                let v = dispatch(engine, "hoi4.image_references", json!({"action": "pack_validate", "name": name}))?;
+                let ok = v["ok"] == json!(true);
+                Ok((v, i32::from(!ok), None))
+            }
+        },
         Command::Generate(a) => Ok((
             dispatch(engine, "hoi4.image_generate", json!({"plan_id": a.plan_id, "idempotency_key": a.key, "approve_cost": a.approve_cost}))?,
             0,

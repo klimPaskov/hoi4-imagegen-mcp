@@ -922,6 +922,7 @@ pub fn profiles() -> Vec<Profile> {
                     source_canvas: r.source_canvas,
                     animation: animation_of(r.family),
                 },
+                pack: None,
             }
         })
         .collect()

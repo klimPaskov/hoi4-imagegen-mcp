@@ -119,7 +119,7 @@ impl Engine {
                 ));
             }
         }
-        let profile = self.profile_of(&artifact)?;
+        let profile = &self.profile_of(&artifact)?;
         let (bytes, sha) = self.read_artifact(&artifact)?;
         // the full check set of the family always runs: there is no way to ask for fewer
         let checks = profile.imagegen.checks.clone();
@@ -289,7 +289,7 @@ fn result_json(
 /// Style models per family for one validation call: each family's sources are scanned once.
 #[derive(Default)]
 struct StyleModels {
-    by_family: HashMap<Family, Option<StyleModel>>,
+    by_family: HashMap<(Family, Option<String>), Option<StyleModel>>,
 }
 
 impl StyleModels {
@@ -298,6 +298,7 @@ impl StyleModels {
         if !checks.iter().any(|c| c == "style") {
             return None;
         }
-        Some(self.by_family.entry(profile.family).or_insert_with(|| engine.style_model(profile)).as_ref())
+        let key = (profile.family, profile.pack.as_ref().map(|p| p.name.clone()));
+        Some(self.by_family.entry(key).or_insert_with(|| engine.style_model(profile)).as_ref())
     }
 }

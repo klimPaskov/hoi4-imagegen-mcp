@@ -229,7 +229,7 @@ impl Engine {
                 self.collect_reference_files("references", 0, &mut files)?;
                 let recorded: Vec<Value> = self.ledger.entries()?.into_iter().filter(|e| e.kind == kind::REFERENCE).map(|e| e.data).collect();
                 Ok(
-                    json!({"files": files, "recorded": recorded, "styles": style::list(&self.fs)?, "note": "Put approved reference images under references/. References are also chosen automatically from the mod first, then vanilla (see hoi4.image_families for a family). Paradox art may be sent to a provider and its origin is recorded."}),
+                    json!({"files": files, "recorded": recorded, "styles": style::list(&self.fs)?, "packs": imagegen_core::pack::list(&self.fs)?, "note": "Put approved reference images under references/. References are also chosen automatically from the mod first, then vanilla (see hoi4.image_families for a family). Paradox art may be sent to a provider and its origin is recorded."}),
                 )
             }
             ReferencesAction::Add | ReferencesAction::Approve => {
@@ -281,6 +281,13 @@ impl Engine {
                 )?;
                 Ok(json!({"saved": rel, "style": s}))
             }
+            ReferencesAction::PackList => self.pack_list(),
+            ReferencesAction::PackGet => self.pack_get(&need(&p.name, "name")?),
+            ReferencesAction::PackSave => {
+                let pack = p.pack.clone().ok_or_else(|| EngineError::invalid("pack is required for pack_save"))?;
+                self.save_pack(pack, p.replace.unwrap_or(false))
+            }
+            ReferencesAction::PackValidate => self.pack_validate(&need(&p.name, "name")?),
         }
     }
 

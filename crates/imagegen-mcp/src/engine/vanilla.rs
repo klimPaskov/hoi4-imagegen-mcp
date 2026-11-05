@@ -53,35 +53,45 @@ impl Engine {
         loaded
     }
 
-    /// The measured vanilla-match check of an image: `status` is `pass`, `fail` or `unavailable` (with `reason`).
-    pub(crate) fn vanilla_check(&self, family: Family, img: &Rgba) -> Value {
-        let set = match self.vanilla_set(family) {
+    /// The review's measured check of an artifact against its reference set: the style pack's references when it
+    /// was made with a pack, else the family's vanilla art. `status` is `pass`, `fail` or `unavailable` (with
+    /// `reason`), and `reference_set` names the set it used.
+    pub(crate) fn reference_check(&self, a: &super::Artifact, img: &Rgba) -> Value {
+        let (set, described) = self.comparison_set(a);
+        self.check_with(a.family, set, described, img)
+    }
+
+    fn check_with(&self, family: Family, set: Result<Arc<VanillaSet>, String>, described: Value, img: &Rgba) -> Value {
+        let rule = described.get("rule").and_then(Value::as_str).unwrap_or(vanillamatch::VERSION).to_string();
+        let set = match set {
             Ok(s) => s,
-            Err(reason) => return json!({"status": "unavailable", "version": vanillamatch::VERSION, "family": family, "reason": reason}),
+            Err(reason) => return json!({"status": "unavailable", "version": rule, "family": family, "reason": reason, "reference_set": described}),
         };
         let game_version = self.game_dir().and_then(|g| imagegen_core::config::game_version(&g));
         let Some(features) = vanillamatch::measure(img) else {
             return json!({
                 "status": "fail",
-                "version": vanillamatch::VERSION,
+                "version": rule,
                 "family": family,
                 "vanilla_images": set.images.len(),
                 "game_version": game_version,
                 "reason": "the image has no opaque pixel to measure",
                 "outside": [],
+                "reference_set": described,
             });
         };
         let res = set.calibration.check(&features);
         let ranges: Vec<&vanillamatch::FeatureRange> = set.calibration.ranges.iter().filter(|r| r.checked).collect();
         json!({
             "status": if res.pass { "pass" } else { "fail" },
-            "version": vanillamatch::VERSION,
+            "version": rule,
             "family": family,
             "vanilla_images": set.images.len(),
             "game_version": game_version,
             "outside": res.outside,
             "features": res.features,
             "checked_ranges": ranges,
+            "reference_set": described,
         })
     }
 
@@ -103,8 +113,9 @@ impl Engine {
     /// The side-by-side sheet: the candidate at native size and enlarged, beside the family's most typical vanilla
     /// images at the same sizes, with the vanilla-match result. `Ok(None)` (with the reason) when there is no vanilla
     /// art to show. The sheet is written outside the mod; its record lists every vanilla file by path and hash.
-    pub(crate) fn vanilla_side_by_side(&self, family: Family, img: &Rgba, stem: &str) -> Result<(Value, Vec<u8>), String> {
-        let set = self.vanilla_set(family)?;
+    pub(crate) fn vanilla_side_by_side(&self, a: &super::Artifact, img: &Rgba, stem: &str) -> Result<(Value, Vec<u8>), String> {
+        let (set, described) = self.comparison_set(a);
+        let set = set?;
         let refs = set.typical(SHEET_REFERENCES);
         let longest = img.width.max(img.height).max(1);
         let scale = (256 / longest).clamp(1, 6);
@@ -154,7 +165,8 @@ impl Engine {
             "scale": scale,
             "layout": "top row: the candidate (under the light bar) then the vanilla references at native size on dark; bottom row: the same, enlarged",
             "references": references,
-            "note": "Written outside the mod: the sheet holds vanilla pixels, and the tool never copies vanilla art into a mod.",
+            "reference_set": described,
+            "note": "Written outside the mod: the sheet can hold vanilla pixels, and the tool never copies vanilla art into a mod.",
         });
         Ok((report, png))
     }
