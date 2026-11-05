@@ -96,7 +96,7 @@
     #root .card.b-dc .sw { background: linear-gradient(90deg, rgba(88,101,242,0), rgba(88,101,242,.3), rgba(88,101,242,0)); }
     #root .card.b-gh .sw { background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.14), rgba(255,255,255,0)); }
   </style>
-  <div id="root" data-composition-id="endcard" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="endcard" data-width="1920" data-height="1080"><div class="grv" id="endcard-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="steel"></div>
     <svg class="grain" width="1920" height="1080"><filter id="endcard-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#endcard-n)"/></svg>
     <div class="left">
@@ -127,7 +127,8 @@
         <div class="tx"><div class="tt">Join the Discord</div><div class="sb">discord.gg/rAXesGcT2t</div></div>
         <svg class="ar" viewBox="0 0 34 34" fill="none" stroke="#e8b54f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6l11 11-11 11" /></svg><div class="sw"></div></div>
     </div>
-    <div class="dip" id="endcard-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="endcard-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="endcard-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -157,6 +158,12 @@ function wordsIn(sel, at, gap) {
     });
     tl.fromTo("#endcard-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#endcard-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#endcard-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#endcard-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["endcard"] = tl;
   </script>
 </template>

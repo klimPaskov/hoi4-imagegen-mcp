@@ -50,7 +50,7 @@
     #root .f img { display: block; filter: drop-shadow(0 30px 40px rgba(0,0,0,.6)); }
     #root .t { position: absolute; left: 96px; right: 96px; top: 400px; text-align: center; font-size: 110px; line-height: .98; opacity: 0; }
   </style>
-  <div id="root" data-composition-id="riser" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="riser" data-width="1920" data-height="1080"><div class="grv" id="riser-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="paper"></div>
     <svg class="grain" width="1920" height="1080"><filter id="riser-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#riser-n)"/></svg>
     <div class="f rs-f"><img src="assets/gallery/processed_png/peace_conference-v1-p1.png" style="width:1191px;height:459px" alt="" /></div>
@@ -64,7 +64,8 @@
     <div class="f rs-f"><img src="assets/gallery/processed_png/IRP_fascism-v1-p1.png" style="width:492px;height:312px" alt="" /></div>
     <div class="f rs-f"><img src="assets/picked/idea_spirit/women_welders-v1-p1.png" style="width:360px;height:408px" alt="" /></div>
     <div class="t hero brass" id="rs-t">The vanilla finish.<br />Built in.</div>
-    <div class="dip" id="riser-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="riser-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="riser-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -96,6 +97,12 @@ function wordsIn(sel, at, gap) {
     tl.fromTo("#rs-t", { opacity: 0, scale: 2.2, filter: "blur(18px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: b(0.4), ease: "expo.out" }, b(4));
     tl.fromTo("#riser-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#riser-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#riser-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#riser-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["riser"] = tl;
   </script>
 </template>

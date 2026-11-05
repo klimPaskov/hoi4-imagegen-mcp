@@ -53,7 +53,7 @@
     #root .c > img, #root .c > div { filter: drop-shadow(0 10px 14px rgba(0,0,0,.55)); }
     #root .c .f { position: absolute; left: 6px; right: 6px; bottom: 8px; text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 16px; line-height: 1.15; color: #c9c2a3; }
   </style>
-  <div id="root" data-composition-id="more" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="more" data-width="1920" data-height="1080"><div class="grv" id="more-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="paper"></div>
     <svg class="grain" width="1920" height="1080"><filter id="more-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#more-n)"/></svg>
     <div class="t hero"><span class="ice">And</span> <span class="brass" id="mo-n">many more</span></div>
@@ -81,7 +81,8 @@
       <div class="c plate mo-c"><div style="width:75px;height:149px;background:url(assets/regen/japanese_five_tier_pagoda/japanese_five_tier_pagoda-v1-p1.png) 0 0/400% 100% no-repeat"></div></div>
       <div class="c plate mo-c"><img src="assets/regen/laurel_wreath_v033/laurel_wreath_v033-v1-p1.png" style="width:99px;height:149px" alt="" /></div>
     </div>
-    <div class="dip" id="more-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="more-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="more-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -105,6 +106,12 @@ function wordsIn(sel, at, gap) {
     tl.fromTo(".mo-c", { opacity: 0, y: 30, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: b(0.75), ease: "expo.out", stagger: { each: b(0.0625), from: "start" } }, b(0.5));
     tl.fromTo("#more-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#more-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#more-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#more-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["more"] = tl;
   </script>
 </template>

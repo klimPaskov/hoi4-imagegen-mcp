@@ -63,7 +63,7 @@
     #root .dr-n span { color: rgba(201,194,163,.4); font-size: 36px; }
     #root .flash { position: absolute; inset: 0; background: #fff1c4; mix-blend-mode: overlay; opacity: 0; }
   </style>
-  <div id="root" data-composition-id="drop" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="drop" data-width="1920" data-height="1080"><div class="grv" id="drop-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="paper" id="dr-paper" data-layout-allow-overflow></div>
     <svg class="grain" width="1920" height="1080"><filter id="drop-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#drop-n)"/></svg>
       <div class="dr-g" id="dr-g01">
@@ -115,7 +115,8 @@
         <div class="dr-fam">normal · grey · locked</div>
       </div>
     <div class="flash" id="dr-flash"></div>
-    <div class="dip" id="drop-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="drop-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="drop-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -154,6 +155,12 @@ function wordsIn(sel, at, gap) {
     }
     tl.fromTo("#drop-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#drop-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#drop-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#drop-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["drop"] = tl;
   </script>
 </template>

@@ -49,6 +49,10 @@
     #root .nums b { font-size: 150px; font-weight: 400; }
     #root .nums span { font-size: 36px; letter-spacing: .1em; text-transform: uppercase; color: #c9c2a3; }
     #root .finding { margin-top: 60px; font-size: 48px; letter-spacing: .04em; color: #fff; padding: 16px 40px; border-radius: 6px; background: #b8342c; box-shadow: 0 0 40px rgba(184,52,44,.5); }
+    #root .burst { display: grid; grid-template-columns: repeat(7, 220px); gap: 26px 20px; }
+    #root .burst .bt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    #root .burst .ba { width: 220px; height: 190px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 14px 18px rgba(0,0,0,.55)); }
+    #root .burst .bl { font-family: "IBM Plex Mono", monospace; font-size: 19px; letter-spacing: .04em; color: #c9c2a3; white-space: nowrap; }
     #root .cl { display: flex; gap: 50px; }
     #root .cl .c1 { width: 520px; height: 360px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
     #root .cl .c1 svg { display: block; filter: drop-shadow(0 10px 18px rgba(0,0,0,.5)); }
@@ -72,6 +76,8 @@
     tl.fromTo("#review-wash", { opacity: 0 }, { opacity: 1, duration: b(1), ease: "sine.out" }, 0);
     tl.fromTo(".review-w", { opacity: 0, filter: "blur(12px)" }, { opacity: 1, filter: "blur(0px)", duration: b(0.5), ease: "power3.out", stagger: b(0.5) }, 0);
     tl.fromTo("#review-vis", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: b(1), ease: "power3.out" }, b(0.5));
+    // groove: once the visual has landed it kicks on every beat, a little more on downbeats, until the camera moves on
+    for (let i = 4; i < Math.round(DUR / BEAT) - 2; i++) tl.fromTo("#review-vis", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
     tl.fromTo("#review-vis .stamp", { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: b(0.5), ease: "back.out(1.8)" }, b(2));
     window.__timelines["review"] = tl;
   </script>

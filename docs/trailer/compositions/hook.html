@@ -58,7 +58,7 @@
     #root .warm { position: absolute; inset: 0; background: radial-gradient(ellipse 55% 50% at 50% 44%, rgba(176,98,30,.55) 0%, rgba(120,60,20,.22) 45%, transparent 75%); }
     #root .ring { position: absolute; left: 50%; top: 42%; width: 760px; height: 760px; margin: -380px 0 0 -380px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(232,181,79,.35); opacity: 0; }
   </style>
-  <div id="root" data-composition-id="hook" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="hook" data-width="1920" data-height="1080"><div class="grv" id="hook-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="steel"></div>
     <div class="warm" data-layout-allow-overflow></div>
     <svg class="grain" width="1920" height="1080"><filter id="hook-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#hook-n)"/></svg>
@@ -71,7 +71,8 @@
     <div class="ring" id="hk-ring"></div>
     <div class="hero-ic" id="hk-hero"><div class="hf"></div><div class="shine" data-layout-allow-overflow><i id="hk-sh"></i></div></div>
     <div class="t1 hero"><span class="ice hook-w">Made by an agent.</span><br /><span class="brass hook-w">Ready for the game.</span></div>
-    <div class="dip" id="hook-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="hook-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="hook-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -107,6 +108,12 @@ function wordsIn(sel, at, gap) {
     tl.fromTo(".hook-w", { opacity: 0, filter: "blur(12px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.15, ease: "power4.out", stagger: b(2) }, b(4));
     tl.fromTo("#hook-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#hook-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#hook-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#hook-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["hook"] = tl;
   </script>
 </template>

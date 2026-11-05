@@ -58,7 +58,7 @@
     #root .left .d b { color: #e8b54f; font-weight: 500; }
     #root .left .s { margin-top: 30px; white-space: nowrap; font-family: "IBM Plex Mono", monospace; font-size: 24px; color: #a8a18f; }
   </style>
-  <div id="root" data-composition-id="workflow" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="workflow" data-width="1920" data-height="1080"><div class="grv" id="workflow-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="steel"></div>
     <svg class="grain" width="1920" height="1080"><filter id="workflow-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#workflow-n)"/></svg>
     <div class="top hero"><span class="ice wf-w">Works best inside the full</span><br /><span class="brass wf-w">Agentic HOI4 Modding</span> <span class="ice wf-w">workflow</span></div>
@@ -69,7 +69,8 @@
       <div class="d" id="wf-d">installs it all <b>in one go</b></div>
     </div>
     <div class="app" id="wf-app"><img src="assets/setup/setup_components.png" alt="" /></div>
-    <div class="dip" id="workflow-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="workflow-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="workflow-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -96,6 +97,12 @@ function wordsIn(sel, at, gap) {
     tl.fromTo(["#wf-n", "#wf-d"], { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: b(0.5), ease: "power3.out", stagger: b(0.5) }, b(3));
     tl.fromTo("#workflow-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#workflow-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#workflow-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#workflow-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["workflow"] = tl;
   </script>
 </template>

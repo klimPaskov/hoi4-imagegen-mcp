@@ -53,7 +53,7 @@
     #root .t { position: absolute; left: 0; right: 0; top: 52px; text-align: center; font-size: 78px; white-space: nowrap; }
     #root .sw { position: absolute; top: -10%; left: 0; width: 50%; height: 120%; background: linear-gradient(100deg, transparent 20%, rgba(255,231,163,.85) 48%, rgba(232,181,79,.8) 52%, transparent 80%); mix-blend-mode: screen; }
   </style>
-  <div id="root" data-composition-id="ingame" data-width="1920" data-height="1080">
+  <div id="root" data-composition-id="ingame" data-width="1920" data-height="1080"><div class="grv" id="ingame-grv" data-layout-allow-overflow style="position:absolute;inset:0">
     <div class="bg"></div>
     <svg class="grain" width="1920" height="1080"><filter id="ingame-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#ingame-n)"/></svg>
     <div class="t hero"><span class="ice ig-w">Real files.</span> <span class="brass ig-w">Loaded by the game.</span></div>
@@ -62,7 +62,8 @@
     <div class="lab label ig-l">the <b>World News</b> window</div>
     <div class="lab label ig-l">the agency logo · <b>selected</b></div>
     <div class="sw" id="ig-sw" data-layout-allow-overflow></div>
-    <div class="dip" id="ingame-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    </div>
+    <div id="ingame-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="ingame-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -98,6 +99,12 @@ function wordsIn(sel, at, gap) {
     });
     tl.fromTo("#ingame-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#ingame-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
+    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
+      const down = i % 4 === 0;
+      tl.fromTo("#ingame-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
+
+      if (down) tl.fromTo("#ingame-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
+    }
     window.__timelines["ingame"] = tl;
   </script>
 </template>
