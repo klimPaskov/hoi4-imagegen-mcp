@@ -60,7 +60,7 @@ ORDER = [
 PAUSE = threading.Event()  # set while a rate limit pause is running
 PAUSE_LOCK = threading.Lock()
 ABORT = threading.Event()
-STATE = {"backoff": 0}
+STATE = {"backoff": 0, "single_until": float(os.environ.get("GALLERY_SINGLE_UNTIL", "0"))}
 
 
 class Blocked(Exception):
@@ -108,6 +108,33 @@ def throttle():
         LAST["t"] = time.time()
 
 
+ONE = threading.Lock()
+MODEL_ACCESS = [float(x) for x in os.environ.get("GALLERY_MODEL_ACCESS_TIMES", "").split(",") if x]  # answer times, earlier processes included
+MODEL_ACCESS_LOCK = threading.Lock()
+
+
+def model_access_backoff(msg):
+    """The backend's "Unable to verify model access right now" (coordinator, 2026-11-05, until the tool's fallback
+    covers it): one answer pauses this worker 5 minutes, a second within 15 minutes drops the run to one worker for 30
+    minutes, and a third within 15 minutes stops the run, because it may come before a sign-out."""
+    with MODEL_ACCESS_LOCK:
+        t = time.time()
+        MODEL_ACCESS.append(t)
+        recent = [x for x in MODEL_ACCESS if t - x <= 15 * 60]
+        n = len(recent)
+        print(f"[{now()}] MODEL_ACCESS error {n} in 15 minutes: {msg[:160]}", flush=True)
+        if n >= 3:
+            ABORT.set()
+            open(os.path.join(WORK, "STOP"), "w").close()
+            print(f"[{now()}] BLOCKED model access errors keep coming: the run stops (no retry) until someone looks", flush=True)
+            return
+        if n == 2:
+            STATE["single_until"] = t + 30 * 60
+            print(f"[{now()}] MODEL_ACCESS backoff: one worker until {time.strftime('%H:%M:%SZ', time.gmtime(t + 1800))}", flush=True)
+            return
+    time.sleep(5 * 60)
+
+
 def call(tool, params):
     """One operation, with pacing: a gap between provider requests, wait out a pause, back off on 429, stop on a rejected token."""
     reconciled = False
@@ -117,15 +144,23 @@ def call(tool, params):
             time.sleep(5)
         if ABORT.is_set():
             raise Blocked("run aborted")
-        if tool in PROVIDER_TOOLS and params.get("approve", True):
+        provider = tool in PROVIDER_TOOLS and params.get("approve", True)
+        if provider:
             throttle()
-        r = cli("call", tool, json.dumps(params))
+        if provider and time.time() < STATE.get("single_until", 0):
+            with ONE:  # one worker at a time while the model-access backoff lasts
+                r = cli("call", tool, json.dumps(params))
+        else:
+            r = cli("call", tool, json.dumps(params))
         err = r.get("error") if isinstance(r, dict) else None
         if not err:
             STATE["backoff"] = 0
             return r
         code = str(err.get("code", ""))
         msg = str(err.get("message", ""))
+        if "unable to verify model access" in msg.lower():
+            model_access_backoff(msg)
+            return r  # the example fails and is retried at the end of the run
         if code == "provider_auth" or "401" in msg and "token" in msg.lower():
             ABORT.set()
             raise Blocked("the ChatGPT token was rejected: " + msg)
@@ -412,7 +447,11 @@ def jobs(families):
                 # per-brief vanilla anchors instead of the family's one automatic set
                 import gallery_anchors
                 info = FAMILY_INFO.get(fam) or FAMILY_INFO.setdefault(fam, cli("families", fam)["family"])
-                item["references"] = gallery_anchors.pick(fam, info, item["asset"], item["brief"], MOD, WORK) or None
+                try:
+                    item["references"] = gallery_anchors.pick(fam, info, item["asset"], item["brief"], MOD, WORK) or None
+                except Exception as e:  # noqa: BLE001 - a family the picker cannot index runs without anchors, logged
+                    print(f"[{now()}] anchors for {fam}/{item['asset']} failed ({type(e).__name__}: {e}); no anchors", flush=True)
+                    item["references"] = None
             if fam in COUNTERS and not os.environ.get("GALLERY_COUNTER_STANDIN"):
                 # the model draws one black silhouette and the tool renders vanilla's material and NATO box
                 item["brief"] = re.sub(r"\bwhite\b", "black", item["brief"], flags=re.I)

@@ -37,7 +37,7 @@ THEMES = {  # a theme word in the brief also matches these file-name words
 # names that point at one country or region even inside generic files (befriend_usa, attack_yugoslavia, italy_propaganda)
 PLACE = re.compile(r"_(befriend|attack|claim|annex|invade|demand|integrate|approach)_|_(usa|germany|italy|britain|england|france|japan|china|soviet|"
                    r"russia|turkey|sweden|bohemia|slovakia|yugoslavia|poland|asia|europe|africa|african|balkan|balkans|nordic|islamic|guyanas|"
-                   r"waziristan|philippines|latin|american|arab|ottoman|baltic|scandinavian|georgia|albania|tuva|saudi|benelux|liechtenstein|iberia|iberian|vatican|scandinavia|scandinavism|coa|london|japanese|spanish|chinese|manchu|siamese)(_|$)")
+                   r"waziristan|philippines|latin|american|arab|ottoman|baltic|scandinavian|georgia|albania|tuva|saudi|benelux|liechtenstein|iberia|iberian|vatican|scandinavia|scandinavism|coa|nordic|london|japanese|spanish|chinese|manchu|siamese)(_|$)")
 # sub-families inside a family (maintainer, 2026-11-05: "the family has its own smaller family as well"): a vanilla
 # file belongs to the sub-family whose words its name shares most, and a brief draws its anchors only from its own
 SUBFAMILIES = {
@@ -84,7 +84,7 @@ def country_tags():
 def nation_file(name, named):
     """True when the file belongs to one country or region; allowed only when the brief names that country."""
     tokens = name.lower().split("_")
-    tagged = {t for t in tokens if t in country_tags()} | {t.lower() for t in TAG.findall(name)}
+    tagged = {t for t in tokens if t in country_tags()}  # real tags only (MODIFIER_ and NORDIC_ are not countries; places are in PLACE)
     placed = bool(PLACE.search(name.lower()))
     if not tagged and not placed:
         return False
@@ -120,22 +120,29 @@ def index(family, info, work):
         _INDEX[family] = json.load(open(cache, encoding="utf-8"))
         return _INDEX[family]
     folder = info["folder"].split("{")[0].rstrip("/")
-    size = (info.get("measured") or {}).get("distribution", [{}])[0].get("size") or info.get("canvas")
+    size = (((info.get("measured") or {}).get("distribution") or [{}])[0] or {}).get("size") or info.get("canvas")
     prefixes = tuple([info.get("prefix") or ""] + list(info.get("alt_prefixes") or []))
-    files = []
     root = os.path.join(GAME, folder)
-    for d, _, fs in os.walk(root):
-        for f in fs:
-            if not f.lower().endswith((".dds", ".png", ".tga")) or (prefixes[0] and not f.startswith(prefixes)):
-                continue
-            p = os.path.join(d, f)
-            try:
-                with Image.open(p) as im:
-                    if size and list(im.size) != list(size):
-                        continue
-            except Exception:  # noqa: BLE001 - a file Pillow cannot open is simply not a candidate
-                continue
-            files.append(os.path.relpath(p, GAME).replace("\\", "/"))
+
+    def scan(prefix_filter):
+        found = []
+        for d, _, fs in os.walk(root):
+            for f in fs:
+                if not f.lower().endswith((".dds", ".png", ".tga")) or (prefix_filter and not f.startswith(prefixes)):
+                    continue
+                p = os.path.join(d, f)
+                try:
+                    with Image.open(p) as im:
+                        if size and list(im.size) != list(size):
+                            continue
+                except Exception:  # noqa: BLE001 - a file Pillow cannot open is simply not a candidate
+                    continue
+                found.append(os.path.relpath(p, GAME).replace("\\", "/"))
+        return found
+
+    files = scan(bool(prefixes[0]))
+    if len(files) < 2 * PER_BRIEF and prefixes[0]:
+        files = scan(False)  # vanilla names some families differently from the mod prefix (MIO, modifiers, GUI)
     os.makedirs(os.path.dirname(cache), exist_ok=True)
     json.dump(sorted(files), open(cache, "w", encoding="utf-8"), indent=0)
     _INDEX[family] = sorted(files)
@@ -156,10 +163,14 @@ def pick(family, info, asset, brief, mod, work):
     generic = [f for f in files if "generic" in os.path.basename(f)]
     if len(generic) >= 30:
         files = generic  # enough generic art: never borrow a country's own icon
+    # a family whose vanilla art is nearly all one country's or another (bop sides, category pictures) may use
+    # country files, still varied per brief, rather than fall back to the one automatic set; the refs say so
+    open_files = [f for f in files if not nation_file(os.path.splitext(os.path.basename(f))[0], named)]
+    nation_fallback = len(open_files) < 2 * PER_BRIEF
     scored, theme = [], {}
     for i, rel in enumerate(files):
         name = os.path.splitext(os.path.basename(rel))[0]
-        if nation_file(name, named):
+        if not nation_fallback and nation_file(name, named):
             continue
         tags = set(TAG.findall(name))
         nw = words(name.replace("_", " "))
@@ -220,7 +231,7 @@ def pick(family, info, asset, brief, mod, work):
         if not os.path.exists(dst):
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             Image.open(os.path.join(GAME, rel)).convert("RGBA").save(dst)
-        refs.append({"path": dst_rel, "role": "style_anchor", "vanilla_source": rel, "subfamily": sub})
+        refs.append({"path": dst_rel, "role": "style_anchor", "vanilla_source": rel, "subfamily": sub, "country_files_allowed": nation_fallback})
     return refs
 
 
