@@ -5,7 +5,7 @@
 //! for agreement only). The vanilla side is read from the installed game and never copied. Without the game every
 //! test prints `SKIPPED` and passes (set `HOI4_GAME_DIR` to point at it).
 //!
-//! Measured on HOI4 1.19.4.1 with `vanilla_match_v1`. Three of the six images labelled bad measure inside
+//! Measured on HOI4 1.19.4.1 with `vanilla_match_v2`. Three of the six images labelled bad measure inside
 //! vanilla's own spread on every feature, so no vanilla-calibrated check can refuse them without refusing a large
 //! share of vanilla itself: `focus.v022.steel_gate` (a loose gate where vanilla has a plaque, but wide, convex and
 //! symmetric enough to sit at vanilla's 60th to 98th percentile), `idea_spirit.v022.war_economy` and
@@ -165,4 +165,61 @@ fn every_family_vanilla_pass_rate() {
         }
     }
     eprintln!("vanilla pass rate per family\n{report}");
+}
+
+/// A saturated, warm painted medallion, like the 0.3.2 gallery's agency upgrades but stronger, at a model's size.
+fn warm_medallion(side: u32) -> imagegen_core::pixels::Rgba {
+    let mut img = imagegen_core::pixels::Rgba::new(side, side);
+    let c = f64::from(side) / 2.0;
+    let r = c - 8.0;
+    for y in 0..side {
+        for x in 0..side {
+            let d = (f64::from(x) + 0.5 - c).hypot(f64::from(y) + 0.5 - c);
+            if d > r {
+                continue;
+            }
+            let band = ((f64::from(x) / f64::from(side) * 9.0).sin() * 0.5 + 0.5) * 0.35;
+            let v = (0.25 + band + 0.2 * (1.0 - d / r)).min(1.0) * if d > r - 6.0 { 0.35 } else { 1.0 };
+            // orange-brown, saturation 0.72: max channel v, min channel v * 0.28, green between
+            let (hi, lo) = (v * 255.0, v * 0.28 * 255.0);
+            let g = lo + (hi - lo) * (0.5 + 0.2 * f64::from(y) / f64::from(side));
+            img.set_px(x, y, [hi.round() as u8, g.round() as u8, lo.round() as u8, 255]);
+        }
+    }
+    img
+}
+
+/// The agency upgrade check refuses a saturated, warm medallion that the 0.3.3 chain (trim and fit) passed on its
+/// form, and the 0.3.4 chain (the round vignette, then the fit) brings it into vanilla's range. On HOI4 1.19.4.1 the
+/// family's vanilla pass rate stays 15 of 15 with the family's palette checks.
+#[test]
+fn a_saturated_warm_agency_medallion_is_refused_until_processed() {
+    let Some(game) = find_game() else {
+        eprintln!("SKIPPED agency medallion vs vanilla: the game is not installed (set HOI4_GAME_DIR); UNAVAILABLE in this run");
+        return;
+    };
+    use imagegen_core::process::{run_chain, Op};
+    let set = vanilla(&game, Family::AgencyUpgrade).expect("vanilla agency upgrades");
+    let passed = set.images.iter().filter(|i| set.calibration.check(&i.features).pass).count();
+    assert_eq!(passed, set.images.len(), "every vanilla agency upgrade passes");
+    for f in ["saturation_mean", "value_mean", "warm_metal_share"] {
+        assert!(set.calibration.ranges.iter().any(|r| r.feature == f && r.checked), "{f} is checked for agency upgrades");
+    }
+    let src = warm_medallion(400);
+    let old = [Op::TrimToSubject { min_alpha: 16 }, Op::FitSubject { width: 68, height: 68, margin: 8, min_alpha: 16 }];
+    let (before, _) = run_chain(&src, &old).unwrap();
+    let res = set.calibration.check(&vanillamatch::measure(&before).unwrap());
+    eprintln!("warm medallion before: {}", vanillamatch::describe(&res.outside));
+    assert!(!res.pass && res.outside.iter().any(|o| o.feature == "saturation_mean"), "{res:?}");
+    let profiles = ProfileSet::builtin();
+    let p = profiles.for_family(Family::AgencyUpgrade).unwrap();
+    let plan = imagegen_core::chain::plan_finishing(p, p.canvas, &src, false, false, "").unwrap();
+    assert!(plan.ops.contains(&Op::RoundVignette), "{:?}", plan.ops);
+    let (after, _) = run_chain(&src, &plan.ops).unwrap();
+    let res = set.calibration.check(&vanillamatch::measure(&after).unwrap());
+    eprintln!(
+        "warm medallion after: saturation {}, value {}, gold tones {}",
+        res.features["saturation_mean"], res.features["value_mean"], res.features["warm_metal_share"]
+    );
+    assert!(res.pass, "{}", vanillamatch::describe(&res.outside));
 }

@@ -156,6 +156,10 @@ pub enum Op {
     /// Doctrine icons: the units of the fitted subject filled black, warm accents kept, vanilla's pale outline and glow
     /// around the black and a dark shadow around the accents. See `recipes::doctrine`.
     DoctrineLook,
+    /// Agency upgrades: the trimmed subject cut to the disc inscribed in its centred square, laid over vanilla's
+    /// backdrop, brought into vanilla's saturation, value and gold-tone range and darkened at the edge like vanilla's
+    /// round vignettes. See `recipes::vignette`.
+    RoundVignette,
     /// Technology pictures: stamp the tier numeral (and the capital-ship gem) where vanilla bakes it into the texture.
     /// See `recipes::tech_overlay`.
     TechOverlay {
@@ -224,6 +228,7 @@ impl Op {
             Op::LineArt { .. } => "line_art",
             Op::GoldGradient => "gold_gradient",
             Op::DoctrineLook => "doctrine_look",
+            Op::RoundVignette => "round_vignette",
             Op::TechOverlay { .. } => "tech_overlay",
             Op::FrameOf { .. } => "frame_of",
             Op::BlackToAlpha => "black_to_alpha",
@@ -307,6 +312,7 @@ pub fn apply(img: &Rgba, op: &Op) -> Result<Rgba> {
         Op::LineArt { width, height } => crate::recipes::line_art::line_art(img, *width, *height),
         Op::GoldGradient => crate::recipes::raid::gold_gradient(img),
         Op::DoctrineLook => crate::recipes::doctrine::doctrine_look(img),
+        Op::RoundVignette => crate::recipes::vignette::round_vignette(img),
         Op::TechOverlay { overlay } => crate::recipes::tech_overlay::stamp(img, overlay),
         Op::FrameOf { frames, index } => {
             let parts = img.split_frames(*frames)?;
@@ -865,6 +871,7 @@ mod tests {
             Op::LineArt { width: 161, height: 98 },
             Op::GoldGradient,
             Op::DoctrineLook,
+            Op::RoundVignette,
             Op::TechOverlay { overlay: crate::recipes::tech_overlay::TechOverlay { tier: 2, gem: false, position: None } },
             Op::FrameOf { frames: 2, index: 0 },
         ] {

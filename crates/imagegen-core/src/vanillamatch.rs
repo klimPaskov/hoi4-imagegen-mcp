@@ -20,6 +20,10 @@
 //! were measured on HOI4 1.19.4.1 against the hand-labelled cases in `tests/fixtures/vanilla_match/`; the test
 //! in `tests/vanilla_match.rs` records each family's vanilla pass rate.
 //!
+//! A family whose vanilla art is one consistent palette can add palette features of its own, with a narrower range
+//! ([`family_checks`]): agency upgrades check their saturation, value and gold tones, so a saturated, warm painted
+//! medallion that the general features passed is refused. The version is `vanilla_match_v2` since that change.
+//!
 //! Everything is a pure function of pixels and the vanilla files, so a check repeats exactly. The vanilla files
 //! are read from the installed game and are never copied anywhere.
 
@@ -33,7 +37,7 @@ use crate::pixels::Rgba;
 use crate::resize::resize_lanczos3;
 
 /// Version of the features and the calibration rule. Recorded with every check, so a later change is visible.
-pub const VERSION: &str = "vanilla_match_v1";
+pub const VERSION: &str = "vanilla_match_v2";
 
 /// Lower and upper percentile of the accepted range.
 pub const RANGE_PERCENTILES: (f64, f64) = (0.01, 0.99);
@@ -101,6 +105,23 @@ pub const CHECKED: [&str; 13] = [
     "mid_tone_share",
     "saturation_mean",
 ];
+
+/// Palette features checked for one family only, each with its own widening (the share of the percentile range added
+/// on each side, in place of [`RANGE_WIDENING`]). The general palette features are left unchecked because the art
+/// labelled good differs from vanilla in them, but where a family's vanilla art is one consistent palette, a
+/// candidate far from it is the wrong medium.
+///
+/// * `agency_upgrade`: vanilla's 15 upgrades are muted vignettes, mean saturation 0.115 to 0.402 (median 0.249), mean
+///   value 0.239 to 0.518 (median 0.423), gold and bronze tones on 0 to 0.399 of the disc (median 0.106) on HOI4
+///   1.19.4.1. With the general widening the saturation range ran from -0.017 to 0.541, so a saturated, warm painted
+///   medallion passed. A quarter of the percentile range on each side keeps every vanilla file inside and refuses
+///   it: saturation 0.053 to 0.471, value 0.179 to 0.586, gold tones up to 0.476.
+pub fn family_checks(family: Family) -> &'static [(&'static str, f64)] {
+    match family {
+        Family::AgencyUpgrade => &[("saturation_mean", 0.25), ("value_mean", 0.25), ("warm_metal_share", 0.25)],
+        _ => &[],
+    }
+}
 
 /// What each feature means, for messages and the docs.
 pub const MEANINGS: [&str; N] = [
@@ -541,7 +562,8 @@ pub fn calibrate(family: Family, rows: &[Features]) -> Option<Calibration> {
         let mut col: Vec<f64> = rows.iter().map(|r| r[d]).collect();
         col.sort_by(f64::total_cmp);
         let (plo, p50, phi) = (quantile(&col, RANGE_PERCENTILES.0), quantile(&col, 0.5), quantile(&col, RANGE_PERCENTILES.1));
-        let pad = RANGE_WIDENING * (phi - plo);
+        let extra = family_checks(family).iter().find(|(n, _)| *n == NAMES[d]);
+        let pad = extra.map_or(RANGE_WIDENING, |(_, w)| *w) * (phi - plo);
         let (mut lo, mut hi) = (plo - pad, phi + pad);
         let mid = (lo + hi) / 2.0;
         if hi - lo < 2.0 * FLOOR[d] {
@@ -553,7 +575,7 @@ pub fn calibrate(family: Family, rows: &[Features]) -> Option<Calibration> {
             min: round(lo),
             max: round(hi),
             median: round(p50),
-            checked: CHECKED.contains(&NAMES[d]),
+            checked: CHECKED.contains(&NAMES[d]) || extra.is_some(),
         });
     }
     Some(Calibration { family, version: VERSION.to_string(), files: rows.len(), ranges })
