@@ -32,10 +32,10 @@ status -> families -> icon | picture | portrait | flag | unit | interface   (fre
 | `hoi4.image_install` | Writes the DDS or TGA files and the sprite. Refuses unless the gate is open |
 | `hoi4.image_ledger` | Which references, settings and outputs belong together, lineage, and the chain check |
 | `hoi4.image_cancel` | Cancels a running job, reconciles one that a crashed run left behind, or retires an uncertain idempotency key (`abandon: true`) |
-
+| `hoi4.image_login` | Opens the ChatGPT sign-in page in the user's browser and returns at once. The sign-in finishes in the background, and `hoi4.image_status` reports it. Signing in accepts the risk note, which the result includes. Local only |
 | `hoi4.image_audit` | Audits the whole mod on the shared engine (hoi4-agent-tools): which families use each sprite and texture, cross-family reuse (`GFX-FAMILY-REUSE`, a warning, with a per-mod allowlist), missing textures, undefined sprites, missing focus shine (an error: the game then draws a `?`), wrong canvas sizes and report cards without transparent corners. Read only |
 
-That is 20 tools.
+That is 21 tools.
 
 ## Families
 

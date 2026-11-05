@@ -59,9 +59,9 @@ pub enum Command {
         /// JSON parameters.
         params: Option<String>,
     },
-    /// Sign in with your own ChatGPT account (opens the browser; shows the risk note once). No project needed.
+    /// Sign in with your own ChatGPT account: opens the browser, and signing in accepts the risk note. No project needed.
     Login {
-        /// Accept the risk note without the interactive question.
+        /// Kept for old scripts: there is no question any more, so it does nothing.
         #[arg(long)]
         accept_risk: bool,
     },
@@ -71,7 +71,7 @@ pub enum Command {
         #[arg(long)]
         check: bool,
     },
-    /// Print the risk note that `login` shows, so a setup tool can show it and then run `login --accept-risk`.
+    /// Print the risk note that `login` shows.
     LoginRiskNote,
     /// Sign out of ChatGPT and remove the stored tokens. No project needed.
     Logout,
@@ -233,6 +233,7 @@ pub fn dispatch(engine: &Engine, tool: &str, params: Value) -> Result<Value, Eng
         "hoi4.image_audit" => engine.audit(serde_json::from_value(params).map_err(bad)?),
         "hoi4.image_ledger" => engine.ledger_query(serde_json::from_value(params).map_err(bad)?),
         "hoi4.image_cancel" => engine.cancel(serde_json::from_value(params).map_err(bad)?),
+        "hoi4.image_login" => engine.login(),
         other => Err(EngineError::invalid(format!("unknown tool '{other}'; the tools are {}", imagegen_mcp::server::TOOL_NAMES.join(", ")))),
     }
 }

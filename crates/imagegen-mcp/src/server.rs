@@ -1,4 +1,4 @@
-//! The rmcp stdio server: twenty tools named `hoi4.image_*`.
+//! The rmcp stdio server: twenty-one tools named `hoi4.image_*`.
 //!
 //! Every tool runs on a blocking worker so a slow provider call never stalls the protocol loop, which is what
 //! lets `hoi4.image_cancel` arrive while a generation is in flight. Failures are tool results with
@@ -17,7 +17,7 @@ use crate::api::*;
 use crate::engine::{EResult, Engine};
 
 /// Instructions shown to the client at start-up.
-pub const INSTRUCTIONS: &str = "HOI4 graphical assets. Work one asset at a time: hoi4.image_status (what is configured), hoi4.image_families (every family's measured canvas, naming, checks and rubric), then the generation tool of the asset's group with a required family: hoi4.image_icon, hoi4.image_picture, hoi4.image_portrait, hoi4.image_flag, hoi4.image_unit, hoi4.image_interface or hoi4.image_animation. Called without approve it returns a free plan; with approve and an idempotency_key it plans and generates (one paid call per variant). The family is fixed from the plan on: hoi4.image_process (the family's own processing always runs and cannot be skipped or replaced: callers may add only the pre-steps chroma_key, crop_to_aspect, defringe and trim_to_subject; import needs a family and refuses another family's size or pixels), hoi4.image_validate (the family's full check set), hoi4.image_preview (contact sheet; look at the native-size panels), hoi4.image_review (rubric answers; an approval returns an approval_id) and hoi4.image_install (writes the DDS or TGA and a sprite handoff) all use the artifact's own family and take no family argument for it. Install refuses unless validation ran the full check set and passed, a review approved this exact file and the hashes are unchanged. Transparency must be proven by pixels, never by the prompt. Outputs are versioned and never overwritten; hoi4.image_ledger shows which references, settings and outputs belong together. hoi4.image_audit (read only) traces which sprites and textures the mod already uses for which family and reports reuse, missing and mis-sized art. Keys are read from environment variables only.";
+pub const INSTRUCTIONS: &str = "HOI4 graphical assets. Work one asset at a time: hoi4.image_status (what is configured; when the ChatGPT login is not signed in, hoi4.image_login opens the sign-in page in the browser), hoi4.image_families (every family's measured canvas, naming, checks and rubric), then the generation tool of the asset's group with a required family: hoi4.image_icon, hoi4.image_picture, hoi4.image_portrait, hoi4.image_flag, hoi4.image_unit, hoi4.image_interface or hoi4.image_animation. Called without approve it returns a free plan; with approve and an idempotency_key it plans and generates (one paid call per variant). The family is fixed from the plan on: hoi4.image_process (the family's own processing always runs and cannot be skipped or replaced: callers may add only the pre-steps chroma_key, crop_to_aspect, defringe and trim_to_subject; import needs a family and refuses another family's size or pixels), hoi4.image_validate (the family's full check set), hoi4.image_preview (contact sheet; look at the native-size panels), hoi4.image_review (rubric answers; an approval returns an approval_id) and hoi4.image_install (writes the DDS or TGA and a sprite handoff) all use the artifact's own family and take no family argument for it. Install refuses unless validation ran the full check set and passed, a review approved this exact file and the hashes are unchanged. Transparency must be proven by pixels, never by the prompt. Outputs are versioned and never overwritten; hoi4.image_ledger shows which references, settings and outputs belong together. hoi4.image_audit (read only) traces which sprites and textures the mod already uses for which family and reports reuse, missing and mis-sized art. Keys are read from environment variables only.";
 
 /// The server.
 #[derive(Clone)]
@@ -266,6 +266,15 @@ impl ImageServer {
     async fn cancel(&self, Parameters(p): Parameters<CancelParams>) -> Result<CallToolResult, ErrorData> {
         self.run(move |e| e.cancel(p)).await
     }
+
+    #[tool(
+        name = "hoi4.image_login",
+        description = "Sign in to the ChatGPT-login provider: opens the sign-in page in the user's default browser and returns at once with its address. The user signs in with their own ChatGPT account there, and nothing is typed in the terminal. Signing in accepts the risk note, which the result includes and the page sums up. The sign-in finishes in the background, and hoi4.image_status reports it. Call it when hoi4.image_status says the ChatGPT login is not signed in or was signed out by the server. Local use only.",
+        annotations(read_only_hint = false, destructive_hint = false, idempotent_hint = true, open_world_hint = true)
+    )]
+    async fn login(&self) -> Result<CallToolResult, ErrorData> {
+        self.run(|e| e.login()).await
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -277,8 +286,8 @@ impl ServerHandler for ImageServer {
     }
 }
 
-/// Names of the twenty tools, in documentation order.
-pub const TOOL_NAMES: [&str; 20] = [
+/// Names of the twenty-one tools, in documentation order.
+pub const TOOL_NAMES: [&str; 21] = [
     "hoi4.image_status",
     "hoi4.image_families",
     "hoi4.image_references",
@@ -299,4 +308,5 @@ pub const TOOL_NAMES: [&str; 20] = [
     "hoi4.image_ledger",
     "hoi4.image_audit",
     "hoi4.image_cancel",
+    "hoi4.image_login",
 ];

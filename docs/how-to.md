@@ -10,7 +10,7 @@ Skip this if you use an API key instead (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `FA
 hoi4-imagegen login
 ```
 
-1. The risk note is printed. It says the route uses your own ChatGPT plan through a backend OpenAI does not document for other tools, that it can stop working without notice, and that heavy use counts against your plan. Type `yes` to go on. The answer is stored once per user, never in a project.
+1. The risk note is printed. It says the route uses your own ChatGPT plan through a backend OpenAI does not document for other tools, that it can stop working without notice, and that heavy use counts against your plan. There is nothing to type: signing in accepts it.
 2. Your browser opens OpenAI's sign-in page. If it does not, open the address that is printed. Your password goes only into OpenAI's page.
 3. The tokens are saved in your operating system's credential store: Windows Credential Manager, the macOS login Keychain, or the Linux Secret Service. A Linux machine without a keyring uses a private file in `~/.local/share/hoi4-imagegen/chatgpt-login/`.
 
@@ -18,7 +18,8 @@ Other commands:
 
 * `hoi4-imagegen login-status` shows whether you are signed in, the account and the plan.
 * `hoi4-imagegen logout` removes the tokens.
-* `hoi4-imagegen login-risk-note` prints the note only. A setup tool can show it and then run `login --accept-risk`.
+* `hoi4-imagegen login-risk-note` prints the note only.
+* An agent, or HOI4 Mod Setup, can call the MCP tool `hoi4.image_login` instead. It opens the same browser sign-in with no terminal.
 
 Once you are signed in, the ChatGPT login is the default provider for this machine. A plan that names a provider uses that one instead.
 
