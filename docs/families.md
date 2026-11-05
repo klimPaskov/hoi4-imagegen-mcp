@@ -59,6 +59,8 @@ common/intelligence_agency_upgrades/intelligence_agency_upgrades.txt:73 picture 
 
 <img src="gallery/bop_side.webp" alt="Example bop_side asset made by hoi4-imagegen" width="216">
 
+**Vanilla form (since 0.3.2).** Measured on the 86 vanilla 72x88 sides (`bop_FIN_mannerheim_good_side`, `bop_ITA_king_side`, `PRC_bop_left_side`): a greyscale head-and-shoulders portrait cut out with no backdrop, a silver bust on a small plinth, or for a side that is not a person a silver symbol in a laurel wreath. 61 of the 86 files are fully grey. The coloured ones are the `_improved` and `_max` state variants, which are left out of the references. Banners and loose objects are not the vanilla form.
+
 | | |
 |---|---|
 | Group and tool | icon, `hoi4.image_icon` |
@@ -298,6 +300,8 @@ common/unit_medals/00_default.txt:41 icon = "GFX_medal_icon_nor" with frame = 1;
 
 <img src="gallery/mio_department.webp" alt="Example mio_department asset made by hoi4-imagegen" width="240">
 
+**Vanilla form (since 0.3.2).** Measured on the 337 vanilla department icons (`generic_mio_department_icon_air_transport`, `generic_mio_department_icon_armored_car_conversion`): one piece of equipment as a bold, flat icon, tinted one saturated colour by its type (aircraft red or blue, land equipment olive green, ships steel blue), with a thin dark outline and often one small accent symbol such as circular arrows, a rising zigzag arrow, a wrench or gears. It covers 57 percent of the canvas, and 31 percent of its pixels are strongly coloured. Grey or metallic shading, scenes and blueprints are never part of it.
+
 | | |
 |---|---|
 | Group and tool | icon, `hoi4.image_icon` |
@@ -323,6 +327,8 @@ common/military_industrial_organization/organizations/00_generic_organization.tx
 ### mio_policy
 
 <img src="gallery/mio_policy.webp" alt="Example mio_policy asset made by hoi4-imagegen" width="240">
+
+**Vanilla form (since 0.3.2).** Measured on the 20 vanilla policy icons (`mio_policy_welding`, `mio_policy_ruthless_contracts`, `mio_policy_modular_assembly`): one object, or two that belong together, as a painted icon with a dark outline and a soft shadow on transparency. There is no room, no factory hall and no view into the distance.
 
 | | |
 |---|---|
@@ -350,7 +356,7 @@ common/military_industrial_organization/policies/_general_policies.txt:77 icon =
 
 <img src="gallery/mio_trait.webp" alt="Example mio_trait asset made by hoi4-imagegen" width="240">
 
-**Vanilla form (since 0.3.2).** Measured on the 44 vanilla trait icons (`generic_mio_trait_icon_armor_value`, `generic_mio_trait_icon_detection`, `generic_mio_trait_icon_build_cost_ic`): one small loose object or symbol drawn as a glossy, shaded interface icon, often with a small accent sign such as a green plus or a red target ring. Every file has a dark outline and a soft dark shadow, and about 29 percent of the canvas is covered. There is no badge or disc behind the object. The rule before 0.3.2 asked for a round badge, which vanilla does not use.
+**Vanilla form (since 0.3.2).** Measured on the 44 vanilla trait icons (`generic_mio_trait_icon_armor_value`, `generic_mio_trait_icon_detection`, `generic_mio_trait_icon_build_cost_ic`): one small, simple glyph of one object or symbol with light shading, often with a small accent sign such as a green plus or a red target ring. Every file has a dark outline and a soft dark shadow, and about 29 percent of the canvas is covered. There is no badge or disc behind the object. The rule before 0.3.2 asked for a round badge, which vanilla does not use.
 
 | | |
 |---|---|
@@ -510,6 +516,8 @@ common/special_projects/projects/air_projects.txt:1071 icon = GFX_sp_air_axial_j
 ### state_modifier
 
 <img src="gallery/state_modifier.webp" alt="Example state_modifier asset made by hoi4-imagegen" width="224">
+
+**Vanilla form (since 0.3.2).** Measured on the 100 vanilla 32x32 state modifiers (`modifier_generic_sabotage`, `modifiers_ETH_state_development`): one bold, simple object or symbol, at most two elements, with chunky shapes, a strong dark outline and one or two saturated accents, covering 62 percent of the canvas. There is no scene or landscape, because small details do not read at 32 px.
 
 | | |
 |---|---|
@@ -896,7 +904,7 @@ common/intelligence_agencies/00_intelligence_agencies.txt:719 picture = GFX_inte
 
 <img src="gallery/building.webp" alt="Example building asset made by hoi4-imagegen" width="256">
 
-**Vanilla form (since 0.3.2).** Measured on the 27 vanilla 128x64 landmark strips (`eiffel_tower_icon`, `big_ben_icon`, `colosseum_icon`): frame 1 is the building as a small, detailed painted miniature in muted stone colours with a dark outline, seen from the front at a slightly raised angle, with at most a thin strip of ground under it. Frame 2 is the same building as ruins with one small orange flame above it. There is no hill, landscape or backdrop. References come from these 128x64 strips only, because vanilla's 64x32 small strips are flat orange pictograms, a different form. The citadel above predates this rule and stands on a hill.
+**Vanilla form (since 0.3.2).** Measured on the 27 vanilla 128x64 landmark strips (`eiffel_tower_icon`, `big_ben_icon`, `colosseum_icon`): frame 1 is a real-world landmark (a monument, a government building, a tower, a statue, a dam or an industrial site) as a small, detailed painted miniature in muted stone colours with a dark outline, seen from the front at a slightly raised angle. It stands on nothing: no ground, rock or hill under it, only water for a dam or a canal. Frame 2 is the same building as ruins with one small orange flame above it. There is no landscape, backdrop or diorama base, and no fantasy castle. References come from these 128x64 strips only, because vanilla's 64x32 small strips are flat orange pictograms, a different form. The citadel above predates this rule and stands on a hill.
 
 | | |
 |---|---|

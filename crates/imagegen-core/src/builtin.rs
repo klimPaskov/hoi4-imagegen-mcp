@@ -110,10 +110,11 @@ const RAID_RULES: &[&str] = &[
     "Leave a small empty margin around the pictogram.",
 ];
 const MIO_DEPARTMENT_RULES: &[&str] = &[
-    "The Hearts of Iron IV military industrial organisation department icon form: ONE piece of equipment (an aircraft, a tracked or wheeled vehicle, a ship or a piece of field equipment) painted in one bold, saturated colour such as red, blue, olive green or steel grey, seen from the side or three quarters.",
+    "The Hearts of Iron IV military industrial organisation department icon form: ONE piece of equipment (an aircraft, a tracked or wheeled vehicle, a ship or a piece of field equipment) as a bold, flat interface icon, seen from the side or three quarters.",
+    "The whole piece is tinted one bold, saturated colour: aircraft red or blue, land equipment olive green, ships steel blue. It is never grey, metallic, natural-coloured or photographic. Simple flat shading and a thin dark outline.",
     "Depict the equipment itself, never plans, blueprints, drawings or models of it, even when the brief names a design bureau, a design team or a department.",
-    "At most one small accent symbol beside it, such as a star, circular arrows, an up arrow or a gem. Simple flat shading only, readable at {w}x{h} pixels.",
-    "The equipment fills nearly the whole canvas. Real transparent background: no scene, no paper, no panel and no plate behind it.",
+    "At most one small accent symbol beside it, such as circular green arrows, a rising yellow zigzag arrow, a wrench, gears, a star, a shield or a gem. Readable at {w}x{h} pixels.",
+    "The equipment fills nearly the whole canvas. Real transparent background: no scene, no workshop, no paper, no panel and no plate behind it.",
 ];
 /// MIO department negatives: the scene and paper the department's name invites.
 const MIO_DEPARTMENT_NEGATIVE: &[&str] = &[
@@ -122,16 +123,17 @@ const MIO_DEPARTMENT_NEGATIVE: &[&str] = &[
     "watermark or signature",
     "a drawn checkerboard pattern",
     "a frame or border",
-    "a scene, landscape or background",
+    "a scene, landscape, workshop or background",
+    "grey or metallic shading, natural colours or a photographic look",
     "a blueprint, plan, technical drawing or paper sheet",
     "panels, dividers or tiles",
     "drafting tools such as a compass or a ruler",
     "a second main object",
 ];
 const MIO_TRAIT_RULES: &[&str] = &[
-    "The Hearts of Iron IV military industrial organisation trait icon form: one small loose object or symbol (a shield, a star, a wrench, binoculars, a shell, an aircraft, a turret, an anvil, rising bars) drawn as a glossy, shaded interface icon, often with one small accent sign beside it, such as a green plus, a green arrow or a red target ring.",
-    "Rendered metal, brass, steel or enamel with soft highlights, mostly muted greys and browns with one or two saturated accents (green, red, gold or orange). A thin dark outline and a soft dark shadow follow the whole shape. Seen from the front or three quarters, readable at {w}x{h} pixels.",
-    "Real transparent background: no badge, disc, plate or square behind the object.",
+    "The Hearts of Iron IV military industrial organisation trait icon form: one small, simple glyph of one object or symbol (a shield, a star, a wrench, binoculars, a shell, an aircraft, a turret, an anvil, rising bars), often with one small accent sign beside it, such as a green plus, a green arrow or a red target ring.",
+    "A compact interface glyph with light shading: metal, brass, steel or enamel, mostly muted greys and browns with one or two saturated accents (green, red, gold or orange). A thin dark outline and a soft dark shadow follow the whole shape. Seen from the front or three quarters, readable at {w}x{h} pixels.",
+    "Real transparent background: no badge, disc, plate or square behind the glyph.",
     "Leave a small empty margin around it.",
 ];
 /// MIO trait negatives: the badge the old rule asked for, and the painted scene a brief invites.
@@ -141,6 +143,7 @@ const MIO_TRAIT_NEGATIVE: &[&str] = &[
     "watermark or signature",
     "a drawn checkerboard pattern",
     "a round badge, disc or plate behind the object",
+    "a detailed, realistically lit object",
     "a scene, landscape or background",
     "flat clip art without shading",
 ];
@@ -192,6 +195,54 @@ const OPERATION_PICTURE_NEGATIVE: &[&str] = &[
     "colour other than sepia",
     "a painted illustration",
     "a round vignette",
+];
+const MIO_POLICY_RULES: &[&str] = &[
+    "The Hearts of Iron IV military industrial organisation policy icon form: one object, or two that belong together, as a painted interface icon (crossed rifles, a ship, a light bulb in a hand, a signed contract, a spirit level, a chart with shells), seen from the front or three quarters.",
+    "Painted semi-realistic metal, wood and paper in muted colours with a few saturated accents, a thin dark outline and a soft dark shadow. No perspective depth and nothing that recedes into the distance. Readable at {w}x{h} pixels.",
+    "Real transparent background: no room, no factory hall, no landscape and no backdrop.",
+    "Leave a small empty margin around the icon.",
+];
+/// MIO policy negatives: the busy scene the brief invites.
+const MIO_POLICY_NEGATIVE: &[&str] = &[
+    "text",
+    "letters or numbers",
+    "watermark or signature",
+    "a drawn checkerboard pattern",
+    "a frame or border",
+    "a scene, room, factory hall or landscape",
+    "a row of many repeated objects or a view into the distance",
+];
+const BOP_SIDE_RULES: &[&str] = &[
+    "The Hearts of Iron IV balance of power side form: one person who leads or stands for the side, as a greyscale head-and-shoulders portrait cut out with no backdrop, or as a silver bust on a small plinth. A side that is not a person is one silver symbol in a laurel wreath.",
+    "Black and white or silver grey only, a painted, photo-like 1930s portrait or polished metal, with a soft dark outline. The figure faces the viewer or three quarters, readable at {w}x{h} pixels.",
+    "Real transparent background: no room, no scene and no plate behind the figure.",
+    "Leave a small empty margin around it.",
+];
+/// Balance of power negatives: the colourful objects and banners the old rules allowed.
+const BOP_SIDE_NEGATIVE: &[&str] = &[
+    "text",
+    "letters or numbers",
+    "watermark or signature",
+    "a drawn checkerboard pattern",
+    "colour",
+    "a banner, flag or loose object instead of a person",
+    "a scene or backdrop",
+];
+const STATE_MODIFIER_RULES: &[&str] = &[
+    "The Hearts of Iron IV state modifier icon form: one bold, simple object or symbol (a factory, a raised fist, a flag, a flame, crossed tools, a helmet, a crown), at most two elements, drawn large with chunky shapes.",
+    "High contrast: a strong dark outline, light shading and one or two saturated accents (red, orange, gold or green). It must read at {w}x{h} pixels, so no small details, no thin lines and no scene.",
+    "Real transparent background: no landscape, no ground and no backdrop.",
+    "Leave a one-pixel empty margin around the icon.",
+];
+/// State modifier negatives: what is unreadable at 32 px.
+const STATE_MODIFIER_NEGATIVE: &[&str] = &[
+    "text",
+    "letters or numbers",
+    "watermark or signature",
+    "a drawn checkerboard pattern",
+    "a frame or border",
+    "a scene, landscape or wide view",
+    "small details, thin lines or low contrast",
 ];
 const COMMANDER_TRAIT_RULES: &[&str] = &[
     "The Hearts of Iron IV unit leader trait form: a small military medal seen straight on. At the top, a short vertical ribbon with two or three coloured stripes under a thin gold bar takes about the top third. Below it hangs the trait's symbol as a grey steel or silver metal piece (a vehicle, an aircraft, a ship, an animal head, a helmet or crossed tools), often set on a small bronze laurel wreath or ring.",
@@ -253,7 +304,7 @@ const FRAME_STRIP_RULES: &[&str] = &[
     "Real transparent background: no backdrop, no frame, no plate. Leave clear space around the emblem: the tool adds the second frame (its highlight or its disabled look) itself.",
 ];
 const BUILDING_RULES: &[&str] = &[
-    "The Hearts of Iron IV landmark building form: one famous building or structure as a small, detailed painted miniature, seen from the front at a slightly raised angle, standing on its own with at most a thin strip of ground (or water, for a dam or a canal) under it.",
+    "The Hearts of Iron IV landmark building form: one real-world landmark (a monument, a government building, a tower, a statue, a dam or an industrial site) as a small, detailed painted miniature, seen from the front at a slightly raised angle. It stands on nothing: the base of the building is the bottom of the drawing, with no ground, rock or hill under it (a dam or a canal keeps only its water).",
     "Muted stone greys, browns and weathered copper green, crisp painted detail and a thin dark outline around the whole silhouette, readable at {w}x{h} pixels.",
     "Real transparent background: no sky, no landscape, no hill and no backdrop. Leave a small empty margin around the building.",
     "Frame 1 is the intact building. Frame 2, a second candidate of the same asset, shows the same building at the same scale and position as ruins (broken walls and rubble, lower than the intact building) with one small stylised orange flame above it.",
@@ -266,6 +317,8 @@ const BUILDING_NEGATIVE: &[&str] = &[
     "a drawn checkerboard pattern",
     "a frame or border",
     "a hill, landscape, sky or backdrop",
+    "ground, rocks or a diorama base under the building",
+    "a fantasy castle",
     "a large smoke cloud",
 ];
 const FLAG_RULES: &[&str] = &[
@@ -446,6 +499,8 @@ fn rows() -> Vec<Row> {
         Row {
             margin: 1,
             note: "Dynamic modifiers use this family (GFX_modifiers_*), sometimes aliased to GFX_idea_*.",
+            rules: STATE_MODIFIER_RULES,
+            negative: STATE_MODIFIER_NEGATIVE,
             ..base(StateModifier, [32, 32], &[[32, 32]], "gfx/interface/state_modifiers/{feature_slug}", "modifiers_", "interface/{feature_slug}_state_modifiers.gfx")
         },
         Row {
@@ -478,10 +533,14 @@ fn rows() -> Vec<Row> {
         },
         Row {
             note: "Policy icons are the 60x60 files of the combined trait and policy measurement, which is why this row is a documented exception in the drift test.",
+            rules: MIO_POLICY_RULES,
+            negative: MIO_POLICY_NEGATIVE,
             ..base(MioPolicy, [60, 60], &[[60, 60]], "gfx/interface/military_industrial_organization/policy_icons/{feature_slug}", "mio_policy_", "interface/military_industrial_organization/{feature_slug}_mio.gfx")
         },
         Row {
             note: "Only the 72x88 side icons are generated; the multi-frame strips in the folder need separate frame art.",
+            rules: BOP_SIDE_RULES,
+            negative: BOP_SIDE_NEGATIVE,
             ..base(BopSide, [72, 88], &[[72, 88]], "gfx/interface/bop/{feature_slug}", "bop_", "interface/{feature_slug}_bop.gfx")
         },
         Row {
@@ -1139,12 +1198,12 @@ mod tests {
     #[test]
     fn reviewed_families_state_their_vanilla_form() {
         let set = by_family();
-        let cases: [(Family, &str, &[&str]); 8] = [
+        let cases: [(Family, &str, &[&str]); 12] = [
             (Family::AgencyUpgrade, "intelligence agency upgrade form: a round painted vignette", &["no ring, rim, frame or border around the disc"]),
-            (Family::Building, "landmark building form: one famous building", &["Frame 2", "ruins", "orange flame"]),
+            (Family::Building, "landmark building form: one real-world landmark", &["no ground, rock or hill", "Frame 2", "ruins", "orange flame"]),
             (Family::CommanderTrait, "unit leader trait form: a small military medal", &["ribbon", "monochrome metal"]),
             (Family::DivisionEmblem, "division template symbol form", &["solid black silhouette"]),
-            (Family::MioTrait, "trait icon form: one small loose object or symbol", &["glossy", "no badge, disc, plate"]),
+            (Family::MioTrait, "trait icon form: one small, simple glyph", &["light shading", "no badge, disc, plate"]),
             (
                 Family::OperationIcon,
                 "operation phase icon form: a round period photograph",
@@ -1152,6 +1211,10 @@ mod tests {
             ),
             (Family::OperationPicture, "operation phase picture form: one period photograph", &["only this form", "operation_icon"]),
             (Family::GuiTexture, "GUI texture form: flat interface material", &["straight on"]),
+            (Family::MioDepartment, "department icon form: ONE piece of equipment", &["one bold, saturated colour", "never grey, metallic"]),
+            (Family::MioPolicy, "policy icon form: one object", &["No perspective depth"]),
+            (Family::BopSide, "balance of power side form: one person", &["greyscale head-and-shoulders portrait", "silver bust"]),
+            (Family::StateModifier, "state modifier icon form: one bold, simple object", &["at most two elements", "no small details"]),
         ];
         for (f, form, more) in cases {
             let p = &set[&f].imagegen.prompt;
@@ -1169,7 +1232,9 @@ mod tests {
         assert!(neg(Family::OperationPicture).contains("round vignette") && neg(Family::OperationPicture).contains("painted illustration"));
         assert!(neg(Family::CommanderTrait).contains("natural colours"));
         assert!(!neg(Family::GuiTexture).contains("frame"), "a frame texture is a frame");
-        assert!(neg(Family::Building).contains("hill, landscape"));
+        assert!(neg(Family::Building).contains("hill, landscape") && neg(Family::Building).contains("diorama base"));
+        assert!(neg(Family::BopSide).contains("colour") && neg(Family::MioPolicy).contains("view into the distance"));
+        assert!(neg(Family::StateModifier).contains("small details") && neg(Family::MioDepartment).contains("grey or metallic"));
         // one form, one size: the 85x85 and 48x48 operation icons are another form
         assert_eq!(set[&Family::OperationIcon].accepted, vec![[59, 58]]);
         // the form rule of each GUI texture kind

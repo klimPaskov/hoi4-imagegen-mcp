@@ -31,20 +31,24 @@ fn request(family: &str, extra: Value) -> imagegen_core::plan::PlanRequest {
 #[test]
 fn each_reviewed_family_prompt_states_its_vanilla_form() {
     let h = openai_harness();
-    let cases: [(&str, &[&str], &[&str]); 7] = [
+    let cases: [(&str, &[&str], &[&str]); 11] = [
+        ("mio_department", &["department icon form: ONE piece of equipment", "never grey, metallic"], &["Simple flat shading only"]),
+        ("mio_policy", &["policy icon form: one object", "view into the distance"], &["One centred subject"]),
+        ("bop_side", &["balance of power side form: one person", "greyscale head-and-shoulders portrait"], &["One centred subject"]),
+        ("state_modifier", &["state modifier icon form: one bold, simple object", "no small details"], &["One centred subject"]),
         (
             "agency_upgrade",
             &["intelligence agency upgrade form: a round painted vignette", "no ring, rim, frame or border around the disc"],
             &["One centred subject", "dark circular frame"],
         ),
-        ("building", &["landmark building form", "Frame 2", "orange flame", "Avoid: text"], &["the tool adds the second frame (its highlight"]),
+        (
+            "building",
+            &["landmark building form: one real-world landmark", "no ground, rock or hill", "Frame 2", "orange flame", "diorama base"],
+            &["the tool adds the second frame (its highlight"],
+        ),
         ("commander_trait", &["unit leader trait form: a small military medal", "monochrome metal", "natural colours"], &["One centred subject"]),
         ("division_emblem", &["division template symbol form", "solid black silhouette"], &[]),
-        (
-            "mio_trait",
-            &["trait icon form: one small loose object or symbol", "round badge, disc or plate behind the object"],
-            &["small round coloured badge"],
-        ),
+        ("mio_trait", &["trait icon form: one small, simple glyph", "round badge, disc or plate behind the object"], &["small round coloured badge"]),
         (
             "operation_icon",
             &["operation phase icon form: a round period photograph", "monochrome sepia", "This family has only this form", "operation_picture"],
@@ -127,7 +131,11 @@ fn tier4_references_are_vanilla_files_of_the_family_form() {
     let (_dir, engine) = game_engine(&game);
     // (family, folder every reference is in, a name rule, the size)
     type Rule = fn(&str) -> bool;
-    let cases: [(&str, &str, Rule, [u32; 2]); 7] = [
+    let cases: [(&str, &str, Rule, [u32; 2]); 11] = [
+        ("mio_department", "/gfx/interface/military_industrial_organization/department_icons/", |_| true, [48, 48]),
+        ("mio_policy", "/gfx/interface/military_industrial_organization/policy_icons/", |_| true, [60, 60]),
+        ("bop_side", "/gfx/interface/bop/", |n| !n.contains("_improved") && !n.contains("_max."), [72, 88]),
+        ("state_modifier", "/gfx/interface/state_modifiers/", |_| true, [32, 32]),
         ("agency_upgrade", "/gfx/interface/operatives/icons/", |n| n.starts_with("agency_"), [68, 68]),
         ("building", "/gfx/interface/buildings/", |_| true, [128, 64]),
         ("commander_trait", "/gfx/interface/traits/", |n| n.starts_with("trait_") && !n.starts_with("trait_operative_"), [23, 33]),

@@ -357,7 +357,8 @@ fn texture_dirs(f: Family, gui_kind: Option<GuiTextureKind>) -> Vec<Dir> {
         MioDepartment => vec![dir("gfx/interface/military_industrial_organization/department_icons", true)],
         MioTrait => vec![dir("gfx/interface/military_industrial_organization/trait_icons", true)],
         MioPolicy => vec![dir("gfx/interface/military_industrial_organization/policy_icons", true)],
-        BopSide => vec![dir("gfx/interface/bop", true)],
+        // the base side is a greyscale portrait or bust; the _improved and _max variants are its coloured, stronger states
+        BopSide => vec![dir("gfx/interface/bop", true).not_has(&["_improved", "rubble"]).not_end(&["_max"])],
         Medal => vec![dir("gfx/interface/medals", true)],
         AgencyUpgrade => vec![dir("gfx/interface/operatives/icons", true)],
         AgencyLogo => vec![dir("gfx/interface/operatives/agencies", true)],
@@ -948,6 +949,10 @@ spriteTypes = {
         assert!(!accepts(Family::OperationIcon, None, "infiltrate_naval_forces"), "the 85x85 operation icons are another form");
         assert!(!accepts(Family::OperationPicture, None, "phase_bruneval_attack_small"));
         assert!(accepts(Family::OperationPicture, None, "phase_bruneval_attack"));
+        assert!(accepts(Family::BopSide, None, "bop_fin_mannerheim_good_side"));
+        for stem in ["bop_fin_mannerheim_good_improved_side", "prc_bop_left_side_max", "bop_fin_bad_rubble_side"] {
+            assert!(!accepts(Family::BopSide, None, stem), "{stem}: a coloured state variant");
+        }
         assert_eq!(reference_sizes(Family::Building), Some(&[[128, 64]][..]), "the painted 64x64 landmarks, not the orange 32x32 ones");
         // a GUI texture without a kind has no automatic reference; each kind has its own folders and names
         assert!(texture_dirs(Family::GuiTexture, None).is_empty());
