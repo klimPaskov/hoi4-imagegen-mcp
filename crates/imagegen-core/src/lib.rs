@@ -44,5 +44,5 @@ pub mod tga;
 pub mod validate;
 
 pub use error::{Error, Result, RetryClass};
-pub use family::{Automation, Family, Group};
+pub use family::{Automation, Family, Group, GuiTextureKind};
 pub use pixels::Rgba;
