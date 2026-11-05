@@ -19,6 +19,7 @@ use serde_json::Value;
 
 pub mod audit;
 pub mod autostyle;
+pub mod diversity;
 pub mod finish;
 pub mod generate;
 pub mod install;
@@ -328,6 +329,8 @@ pub struct Artifact {
     pub provider: String,
     /// The record of a processed artifact (its recipe and companions).
     pub record: Option<ProcessedRecord>,
+    /// The sub-family the root candidate was planned in, when it had one.
+    pub subfamily: Option<String>,
 }
 
 impl Artifact {
@@ -383,6 +386,7 @@ impl Engine {
                 root_id,
                 provider: root.provider,
                 record: Some(p),
+                subfamily: root.subfamily,
             });
         }
         if let Some(c) = find_candidate(id) {
@@ -407,6 +411,7 @@ impl Engine {
                 root_id: id.to_string(),
                 provider: c.provider,
                 record: None,
+                subfamily: c.subfamily,
             });
         }
         Err(EngineError::new("not_found", format!("no candidate or processed artifact '{id}' in the ledger"), RetryClass::Terminal))

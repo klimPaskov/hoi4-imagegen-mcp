@@ -159,7 +159,7 @@ impl Engine {
         // the vanilla side-by-side sheet and the measured check, for artifacts (their family is known)
         let (vanilla_sheet, vanilla_png, vanilla_check) = match &artifact {
             Some(a) => {
-                let check = self.vanilla_check(a.family, &img);
+                let check = self.vanilla_check(a.family, a.subfamily.as_deref(), &img);
                 match self.vanilla_side_by_side(a.family, &img, &stem) {
                     Ok((report, png)) => (report, Some(png), check),
                     Err(reason) => (json!({"unavailable": reason}), None, check),

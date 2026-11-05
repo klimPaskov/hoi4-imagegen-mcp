@@ -6,7 +6,7 @@ use imagegen_core::family::{Family, Group};
 use imagegen_core::naming::{self, asset_id};
 use imagegen_core::plan::{
     aspect_of, build_prompt_with_form, plan_path, FormPrecedence, GenerationPlan, Plan, PlanEstimate, PlanPaths, PlanRequest, StyleContribution,
-    StyleSelection,
+    StyleMode, StyleSelection,
 };
 use imagegen_core::records::{kind, RefSummary};
 use imagegen_core::refs::{self, LoadedRef, RefRole, ReferenceInput};
@@ -104,7 +104,20 @@ impl Engine {
         let game = self.game_dir();
         let applied = self.applied_style_for(req.family, style_profile.as_ref());
         let pinned = applied.as_ref().map(|(s, _)| s.clone());
-        let mut sources = self.resolve_style(&profile, pinned.as_ref(), stylesrc::DEFAULT_SEND, false, req.texture_kind);
+        // the sub-family: named in the request, else inferred from the brief's words
+        let (subfamily, sub_how): (Option<&str>, &str) = match req.subfamily.as_deref() {
+            Some(id) => {
+                let fam = imagegen_core::subfamily::for_family(req.family)
+                    .ok_or_else(|| EngineError::invalid(format!("{} has no sub-families; leave subfamily out", req.family)))?;
+                let known = fam
+                    .get(id)
+                    .ok_or_else(|| EngineError::invalid(format!("{} has no sub-family '{id}'; it has {}", req.family, fam.ids().join(", "))))?;
+                (Some(known.id.as_str()), "named")
+            }
+            None => (imagegen_core::subfamily::infer(req.family, &brief, &req.asset), "inferred"),
+        };
+        let request = stylesrc::RequestKey { asset: &req.asset, brief: &brief, subfamily };
+        let mut sources = self.resolve_style(&profile, pinned.as_ref(), stylesrc::DEFAULT_SEND, false, req.texture_kind, Some(request));
         let explicit_model = req.model.clone().or_else(|| style_profile.as_ref().and_then(|s| s.model.clone()));
         let explicit_refs = req.references.len();
         let wants_refs = explicit_refs > 0 || !sources.send_paths().is_empty();
@@ -114,9 +127,22 @@ impl Engine {
         sources.limit_send(cap, &format!("{provider_id} {model_id} takes at most {} reference images", model_refs(&model_id)));
         // the caller's own style anchors show the form to match, and vanilla art beside them pulls the image back to
         // the vanilla form
+        // with style_mode replace (the default) only the caller's references are sent: every automatic tier is left out,
+        // and a pinned style too unless the request named it. Vanilla or shelf art beside the anchors pulls the image
+        // back to that art's frame.
         let caller_style = req.references.iter().any(|r| r.role == RefRole::StyleAnchor);
-        if caller_style {
-            sources.drop_tier(4, "the request sends its own style anchors");
+        let style_mode = req.style_mode.unwrap_or_default();
+        if caller_style && style_mode == StyleMode::Replace {
+            let why = "the request sends its own style anchors (style_mode replace)";
+            for tier in 2..=4 {
+                sources.drop_tier(tier, why);
+            }
+            if req.style.is_none() {
+                sources.drop_tier(1, &format!("{why} and names no style"));
+            }
+            for t in sources.report.tiers.iter_mut().filter(|t| t.scanned && (t.tier > 1 || req.style.is_none())) {
+                t.note = format!("{}; nothing sent: {why}", t.note);
+            }
         }
         if explicit_model.is_none() && explicit_refs == 0 && sources.send_paths().is_empty() {
             model_id = provider.default_model(false);
@@ -185,16 +211,49 @@ impl Engine {
             FormPrecedence::VanillaRule
         };
         // the measured paragraph describes the tier's images, which are not sent beside the caller's anchors when vanilla
-        let measured =
-            if caller_style && sources.report.chosen.iter().all(|c| !c.sent_to_provider) { None } else { sources.report.style_paragraph.as_deref() };
+        let measured = if sources.report.chosen.iter().any(|c| c.sent_to_provider) { sources.report.style_paragraph.as_deref() } else { None };
         // a GUI texture's kind adds the kind's vanilla form to the prompt (the profile itself, and its hash, stay as
         // they are)
         let mut prompt_profile = profile.clone();
         if let Some(kind) = req.texture_kind {
             prompt_profile.imagegen.prompt.rules.insert(1, kind.form_rule().to_string());
         }
-        let prompt = build_prompt_with_form(&prompt_profile, ask, &brief, prompt_style, &loaded, transparent, measured, form);
-        let style_selection = describe_selection(applied.as_ref(), &sources.report, form, req.family);
+        // the sub-family's measured form note follows the family's form sentence, except beside the caller's anchors
+        let sub_note = subfamily
+            .and_then(|id| imagegen_core::subfamily::for_family(req.family)?.get(id)?.form_note.clone())
+            .filter(|_| form != FormPrecedence::CallerReferences);
+        if let Some(note) = &sub_note {
+            let at = prompt_profile.imagegen.prompt.rules.len().min(1 + usize::from(req.texture_kind.is_some()));
+            prompt_profile.imagegen.prompt.rules.insert(at, note.clone());
+        }
+        let subfamily_choice = subfamily.map(|id| {
+            let used = sources.report.subfamily.as_ref().is_some_and(|u| u.used) && sources.report.chosen.iter().any(|c| c.sent_to_provider);
+            let note = match (sub_how, sources.report.subfamily.as_ref()) {
+                (_, Some(u)) => {
+                    format!("{} sub-family {id}: {}", if sub_how == "named" { "the request names the" } else { "the brief points to the" }, u.note)
+                }
+                _ => format!("the sub-family {id} applies to the form note only: no automatic reference tier was used"),
+            };
+            imagegen_core::plan::SubfamilyChoice {
+                id: id.to_string(),
+                how: sub_how.to_string(),
+                references_from_subfamily: used,
+                form_note: sub_note.clone(),
+                note,
+            }
+        });
+        let sub_warning = (req.subfamily.is_none() && subfamily.is_none() && imagegen_core::subfamily::for_family(req.family).is_some()).then(|| {
+            format!(
+                "the brief points to no sub-family of {}, so references come from the whole family (name one with subfamily: {})",
+                req.family,
+                imagegen_core::subfamily::for_family(req.family).map(|f| f.ids().join(", ")).unwrap_or_default()
+            )
+        });
+        // references the tool chose itself (tiers 2 to 4) show the style only; the caller's own anchors are matched
+        let automatic_refs = !caller_style && sources.report.chosen.iter().any(|c| c.sent_to_provider && c.tier >= 2);
+        let prompt = build_prompt_with_form(&prompt_profile, ask, &brief, prompt_style, &loaded, transparent, measured, form, automatic_refs);
+        let mut style_selection = describe_selection(applied.as_ref(), &sources.report, form, req.family);
+        style_selection.style_mode = caller_style.then_some(style_mode);
 
         let probe = ImageRequest {
             model: model_id.clone(),
@@ -230,7 +289,7 @@ impl Engine {
         }
 
         // notes the caller should read
-        let mut warnings: Vec<String> = Vec::new();
+        let mut warnings: Vec<String> = sub_warning.into_iter().collect();
         let mut approvals: Vec<String> = Vec::new();
         if let Some(model) = provider.descriptor().model(&model_id) {
             if let ModelStatus::Deprecated { shutdown } = &model.status {
@@ -347,6 +406,7 @@ impl Engine {
             style: req.style.clone(),
             style_sources: Some(sources.report.clone()),
             style_selection: Some(style_selection),
+            subfamily: subfamily_choice,
             style_sha256: match &req.style {
                 Some(n) => Some(imagegen_core::hashing::sha256_hex(&self.fs.read(&style::style_path(n)?, 256 * 1024)?)),
                 None => None,
@@ -483,12 +543,12 @@ fn describe_selection(
                 .to_string()
         }
         FormPrecedence::CallerReferences => {
-            "the request sends its own style anchors: the prompt says their form and framing win over the vanilla form rule, and no vanilla reference is sent beside them"
+            "the request sends its own style anchors: the prompt takes the form and framing from them in place of the family's form sentence, and with style_mode replace (the default) no automatic reference is sent beside them"
                 .to_string()
         }
         FormPrecedence::VanillaRule => "no mod reference (tier 2 or 3) is sent, so the family's vanilla form rule stands alone".to_string(),
     };
-    StyleSelection { applied: name, why: why.as_str().to_string(), detail, contributions, form_precedence: form, form_note }
+    StyleSelection { applied: name, why: why.as_str().to_string(), detail, contributions, form_precedence: form, form_note, style_mode: None }
 }
 
 /// Convenience for tests and the CLI: a family by id string.

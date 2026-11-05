@@ -184,6 +184,9 @@ impl Engine {
         let opts = Options { canvas: (profile.free_canvas() && artifact.canvas != profile.canvas).then_some(artifact.canvas) };
         let quick = validate_image(&main, &profile, &profile.imagegen.checks, &opts);
         let problems = chain::audit(&record, &profile);
+        let subject =
+            super::diversity::Subject { family: artifact.family, asset_id: &artifact.asset_id, processed: true, root_id: &artifact.root_id };
+        let near = self.near_duplicate_findings(&subject, &main, self.style_model(&profile).and_then(|m| m.near_duplicate_bits));
         Ok(json!({
             "artifact_id": id,
             "path": written_rel,
@@ -197,6 +200,7 @@ impl Engine {
             "counter_symbol": symbol,
             "notes": plan.notes,
             "chain": {"complete": problems.is_empty(), "problems": problems},
+            "near_duplicates": near,
             "quick_check": {
                 "status": quick.status,
                 "errors": quick.errors(),
@@ -324,6 +328,7 @@ impl Engine {
             provider_request_id: None,
             usage: None,
             note: Some(note),
+            subfamily: None,
         };
         self.ledger.append(kind::IMPORTED, Some(&aid), Some(&rec.candidate_id), &rec)?;
         self.artifact(&rec.candidate_id)

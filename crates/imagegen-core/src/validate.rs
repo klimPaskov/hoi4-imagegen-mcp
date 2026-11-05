@@ -654,6 +654,8 @@ pub struct StyleModel {
     pub tier_name: String,
     /// What the distribution describes, for the message.
     pub subject: String,
+    /// The family's near-duplicate threshold in dHash bits, measured on the same set ([`crate::diversity`]).
+    pub near_duplicate_bits: Option<u32>,
 }
 
 /// The `style` check: a candidate far from the family's style distribution gets `GFX-STYLE-DRIFT` at warning level

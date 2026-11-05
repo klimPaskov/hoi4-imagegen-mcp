@@ -54,7 +54,9 @@ impl Engine {
     }
 
     /// The measured vanilla-match check of an image: `status` is `pass`, `fail` or `unavailable` (with `reason`).
-    pub(crate) fn vanilla_check(&self, family: Family, img: &Rgba) -> Value {
+    /// With a sub-family that has at least `subfamily::MIN_CHECK_FILES` measured vanilla files, the ranges come from
+    /// those files alone; otherwise from the whole family. `compared_with` records which.
+    pub(crate) fn vanilla_check(&self, family: Family, subfamily: Option<&str>, img: &Rgba) -> Value {
         let set = match self.vanilla_set(family) {
             Ok(s) => s,
             Err(reason) => return json!({"status": "unavailable", "version": vanillamatch::VERSION, "family": family, "reason": reason}),
@@ -71,13 +73,29 @@ impl Engine {
                 "outside": [],
             });
         };
-        let res = set.calibration.check(&features);
-        let ranges: Vec<&vanillamatch::FeatureRange> = set.calibration.ranges.iter().filter(|r| r.checked).collect();
+        let (scope, compared_with) = imagegen_core::subfamily::check_scope(family, subfamily, &set.images);
+        let own;
+        let calibration = if scope.len() == set.images.len() {
+            &set.calibration
+        } else {
+            let rows: Vec<vanillamatch::Features> = scope.iter().map(|&i| set.images[i].features).collect();
+            match vanillamatch::calibrate(family, &rows) {
+                Some(c) => {
+                    own = c;
+                    &own
+                }
+                None => &set.calibration,
+            }
+        };
+        let res = calibration.check(&features);
+        let ranges: Vec<&vanillamatch::FeatureRange> = calibration.ranges.iter().filter(|r| r.checked).collect();
         json!({
             "status": if res.pass { "pass" } else { "fail" },
             "version": vanillamatch::VERSION,
             "family": family,
-            "vanilla_images": set.images.len(),
+            "subfamily": subfamily,
+            "compared_with": compared_with,
+            "vanilla_images": scope.len(),
             "game_version": game_version,
             "outside": res.outside,
             "features": res.features,
