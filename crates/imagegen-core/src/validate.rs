@@ -337,9 +337,16 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
             if let Some(b) = s.visible_bounds {
                 let span = (f64::from(b[2] - b[0]) / f64::from(f.width)).max(f64::from(b[3] - b[1]) / f64::from(f.height));
                 // a selected-strip emblem sits as far inside frame 1 as vanilla's (about 76 percent of an agency
-                // frame), so the floor follows that fit, less a little for the subject's own shape
-                let fit = f64::from(crate::recipes::frames::selected_fit_margin(profile.family));
-                let fitted = (1.0 - 2.0 * fit / f64::from(f.width)).max(1.0 - 2.0 * fit / f64::from(f.height));
+                // frame), so the floor follows that fit, less a little for the subject's own shape. A family fitted
+                // with a wide vanilla margin (an MIO trait sits 8 px inside its 48 px canvas) follows its margin too
+                let fit = f64::from(crate::recipes::frames::selected_fit_margin(profile.family).max(profile.margin));
+                let mut fitted = (1.0 - 2.0 * fit / f64::from(f.width)).max(1.0 - 2.0 * fit / f64::from(f.height));
+                // a special project drawing fills vanilla's box (86 by 74 percent of the canvas), so a tall subject
+                // spans 74 percent of the height, as vanilla's do
+                if profile.family == crate::family::Family::SpecialProjectIcon {
+                    let b = crate::recipes::line_art::STYLE.fit_box;
+                    fitted = b[0].min(b[1]);
+                }
                 if span < 0.80_f64.min(fitted - 0.05) {
                     findings.push(Finding::new(
                         "GFX-UNDERSIZED-SUBJECT",

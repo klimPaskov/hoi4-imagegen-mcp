@@ -156,6 +156,7 @@ fn every_family_runs_its_own_finishing_without_being_asked() {
     type Row<'a> = (&'a str, &'a str, &'a [u8], Value, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, [u32; 2]);
     let rows: Vec<Row> = vec![
         ("focus", "wall", &subject, json!({}), vec!["trim_to_subject", "fit_subject"], vec![], vec![], [100, 88]),
+        ("special_project_icon", "rocket", &subject, json!({}), vec!["line_art", "grayscale"], vec![], vec![], [161, 98]),
         ("news_event", "gazette", &photo, json!({}), vec!["flatten_on", "cover_resize", "grayscale"], vec![], vec![], [397, 153]),
         ("report_event", "briefing", &photo, json!({}), vec!["flatten_on", "report_card"], vec![], vec![], [210, 176]),
         (

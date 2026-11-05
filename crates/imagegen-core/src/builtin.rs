@@ -67,27 +67,41 @@ const ICON_RULES: &[&str] = &[
 // form so the model draws it, and those families drop "a frame or border" from the negative list.
 const FOCUS_RULES: &[&str] = &[
     "The Hearts of Iron IV national focus emblem form: the subject sits inside a round or shield-shaped metal plaque or medallion, often with a laurel wreath, ribbons or flags around it.",
+    "The subject is large: it fills most of the plaque's face and may overlap its rim, never a small figure inside a wide empty plaque.",
     "A strong central symbol that supports the focus's story, aged painterly metal and enamel, readable contrast at {w}x{h} pixels.",
     "Real transparent background outside the plaque: no backdrop behind it.",
     "Leave a small empty margin around the plaque.",
 ];
 const CONCERN_RULES: &[&str] = &[
     "The Hearts of Iron IV industrial concern form: a company badge or logo emblem, such as a shield, roundel or winged badge with the company's symbol.",
+    "The symbol is large: it fills most of the badge's face, never a small mark inside a wide empty badge.",
     "Clean painted enamel and metal, readable at {w}x{h} pixels.",
     "Real transparent background outside the badge.",
     "Leave a small empty margin around the badge.",
 ];
 const CATEGORY_ICON_RULES: &[&str] = &[
     "The Hearts of Iron IV decision category icon form: one symbol on a small dark round disc with a metal rim.",
+    "The symbol is large: it fills most of the disc and may overlap the rim, never a small mark inside a wide empty disc.",
     "Painted, slightly aged, readable at {w}x{h} pixels.",
     "Real transparent background outside the disc.",
     "Leave a small empty margin around the disc.",
 ];
 const BLUEPRINT_RULES: &[&str] = &[
-    "The Hearts of Iron IV special project icon form: a pale white or light grey line-art technical drawing, like a blueprint sketch, with thin outlines and no shading or painted fill.",
-    "A side or plan view of the project's subject, readable at {w}x{h} pixels.",
-    "Real transparent background: only the lines are visible.",
+    "The Hearts of Iron IV special project icon form: a clean technical line drawing of the project's subject, a side or plan view with clear outlines and a few inner detail lines, or one plain flat silhouette.",
+    "No shading, no painted texture, no scene and nothing around the subject: the tool redraws it as vanilla's thin pale lines, so only the outline and the main inner lines matter. Readable at {w}x{h} pixels.",
+    "Real transparent background, or one plain flat colour behind the subject.",
     "Leave a small empty margin around the drawing.",
+];
+/// Special project negatives: what keeps the redrawn lines clean.
+const BLUEPRINT_NEGATIVE: &[&str] = &[
+    "text",
+    "letters or numbers",
+    "watermark or signature",
+    "a drawn checkerboard pattern",
+    "a frame or border",
+    "shading, gradients or painted texture",
+    "a scene, ground, sky or launch site around the subject",
+    "a paper sheet or a grid",
 ];
 const RAID_RULES: &[&str] = &[
     "The Hearts of Iron IV raid icon form: a flat single-colour gold pictogram with a thin dark outline, no shading, no gradient, no scene.",
@@ -96,13 +110,27 @@ const RAID_RULES: &[&str] = &[
     "Leave a small empty margin around the pictogram.",
 ];
 const MIO_DEPARTMENT_RULES: &[&str] = &[
-    "The Hearts of Iron IV military industrial organisation department icon form: a flat, saturated equipment icon (a plane, tank, ship or gun in one bold colour) with a small accent symbol such as a star, arrows or a cycle mark.",
-    "Simple flat shading only, readable at {w}x{h} pixels.",
-    "Real transparent background.",
-    "Leave a small empty margin around the icon.",
+    "The Hearts of Iron IV military industrial organisation department icon form: ONE piece of equipment (an aircraft, a tracked or wheeled vehicle, a ship or a piece of field equipment) painted in one bold, saturated colour such as red, blue, olive green or steel grey, seen from the side or three quarters.",
+    "Depict the equipment itself, never plans, blueprints, drawings or models of it, even when the brief names a design bureau, a design team or a department.",
+    "At most one small accent symbol beside it, such as a star, circular arrows, an up arrow or a gem. Simple flat shading only, readable at {w}x{h} pixels.",
+    "The equipment fills nearly the whole canvas. Real transparent background: no scene, no paper, no panel and no plate behind it.",
+];
+/// MIO department negatives: the scene and paper the department's name invites.
+const MIO_DEPARTMENT_NEGATIVE: &[&str] = &[
+    "text",
+    "letters or numbers",
+    "watermark or signature",
+    "a drawn checkerboard pattern",
+    "a frame or border",
+    "a scene, landscape or background",
+    "a blueprint, plan, technical drawing or paper sheet",
+    "panels, dividers or tiles",
+    "drafting tools such as a compass or a ruler",
+    "a second main object",
 ];
 const MIO_TRAIT_RULES: &[&str] = &[
     "The Hearts of Iron IV military industrial organisation trait icon form: a small round coloured badge with one flat glyph on it.",
+    "The glyph is large: it fills most of the badge and may overlap its edge.",
     "Simple flat shading, readable at {w}x{h} pixels.",
     "Real transparent background outside the badge.",
     "Leave a small empty margin around the badge.",
@@ -191,7 +219,7 @@ const COUNTER_NEGATIVE: &[&str] = &[
     "watermark or signature",
 ];
 const EMBLEM_RULES: &[&str] = &[
-    "One simple emblem (an animal head, a weapon, a heraldic or military sign) as ONE bold, solid black silhouette, centred, compact, readable at {w}x{h} pixels and at 30x12 pixels.",
+    "One simple emblem (an animal head, a tool or piece of equipment, a heraldic sign or a unit insignia) as ONE bold, solid black silhouette, centred, compact, readable at {w}x{h} pixels and at 30x12 pixels.",
     "Plain flat white background, or a real transparent one. No badge, no shield plate, no ring or frame around it unless the ring is the emblem.",
     "Show inner detail only as a few thin white gaps cut into the black shape (an eye, a line between parts). No grey shading, no colour, no texture.",
     "The tool adds vanilla's green material, the lighting and the outline itself.",
@@ -308,10 +336,10 @@ fn rows() -> Vec<Row> {
             ..base(IdeaSpirit, [60, 68], &[[60, 68], [62, 70]], "gfx/interface/ideas/{feature_slug}", "idea_", "interface/{feature_slug}_ideas.gfx")
         },
         Row {
-            margin: 1,
+            margin: 3,
             rules: CONCERN_RULES,
             negative: FORM_NEGATIVE,
-            note: "Industrial concerns and manufacturers are 64x64 (about 80 percent of their ideas); the dominant size of the shared idea folder is the spirit size, which is why this row is a documented exception in the drift test.",
+            note: "Industrial concerns and manufacturers are 64x64 (about 80 percent of their ideas); the dominant size of the shared idea folder is the spirit size, which is why this row is a documented exception in the drift test. The badge spans 58 of 64 px in the median of 505 vanilla files, so the fit margin is 3 px.",
             ..base(IdeaConcern, [64, 64], &[[64, 64]], "gfx/interface/ideas/{feature_slug}/concerns", "idea_", "interface/{feature_slug}_ideas.gfx")
         },
         Row {
@@ -326,10 +354,10 @@ fn rows() -> Vec<Row> {
             ..base(Decision, [33, 32], &[[33, 32], [38, 35], [38, 37], [38, 38], [33, 31]], "gfx/interface/decisions/{feature_slug}", "decision_", "interface/{feature_slug}_decisions.gfx")
         },
         Row {
-            margin: 3,
+            margin: 1,
             rules: CATEGORY_ICON_RULES,
             negative: FORM_NEGATIVE,
-            note: "Two vanilla category icons are 21-frame animations and are not generated here.",
+            note: "Two vanilla category icons are 21-frame animations and are not generated here. The disc is 38 px tall on the 40 px canvas in vanilla (95 percent of the height in 91 files), so the fit margin is 1 px.",
             ..base(DecisionCategoryIcon, [52, 40], &[[52, 40]], "gfx/interface/decisions/{feature_slug}/category_icons", "decision_category_", "interface/{feature_slug}_decisions.gfx")
         },
         Row {
@@ -341,23 +369,28 @@ fn rows() -> Vec<Row> {
             margin: 3,
             grayscale: true,
             rules: BLUEPRINT_RULES,
-            note: "Special project icons are pale line-art drawings on transparent, kept grayscale.",
+            negative: BLUEPRINT_NEGATIVE,
+            note: "Special project icons are pale line-art drawings on transparent: thin pure-white lines whose alpha makes them pale (median 90), about 4 percent of the canvas inked, in a box of 86 by 74 percent of the canvas. The line_art recipe redraws any generated image that way, so the model only has to give a clean shape.",
             ..base(SpecialProjectIcon, [161, 98], &[[161, 98]], "gfx/interface/special_project/project_icons/{feature_slug}", "sp_", "interface/special_projects/{feature_slug}_projects.gfx")
         },
         Row {
+            margin: 4,
             rules: RAID_RULES,
-            note: "Only the 32x32 raid icons are generated; the wide banner strips in the same folder are interface pieces. The 32x32 icon is the raid's map icon, which the game looks up as GFX_raid_type_icon_<raid type> (24 of the 25 vanilla ones are 32x32), so the asset name is the raid type key, or the raid sets custom_map_icon to the sprite.",
+            note: "Only the 32x32 raid icons are generated; the wide banner strips in the same folder are interface pieces. The 32x32 icon is the raid's map icon, which the game looks up as GFX_raid_type_icon_<raid type> (24 of the 25 vanilla ones are 32x32), so the asset name is the raid type key, or the raid sets custom_map_icon to the sprite. The pictogram spans 23 of 32 px in the median of 30 vanilla files, so the fit margin is 4 px.",
             ..base(Raid, [32, 32], &[[32, 32]], "gfx/interface/military_raids/{feature_slug}", "raid_type_icon_", "interface/{feature_slug}_raids.gfx")
         },
         Row {
+            margin: 1,
             rules: MIO_DEPARTMENT_RULES,
-            note: "Vanilla sprite names are free-form (GFX_military_industrial_organization_*, GFX_mio_*); this tool names them GFX_mio_department_<asset>.",
+            negative: MIO_DEPARTMENT_NEGATIVE,
+            note: "Vanilla sprite names are free-form (GFX_military_industrial_organization_*, GFX_mio_*); this tool names them GFX_mio_department_<asset>. Vanilla department icons fill the canvas (98 percent in the median of 337 files, most touch an edge), so the fit margin is 1 px.",
             ..base(MioDepartment, [48, 48], &[[48, 48]], "gfx/interface/military_industrial_organization/department_icons/{feature_slug}", "mio_department_", "interface/military_industrial_organization/{feature_slug}_mio.gfx")
         },
         Row {
+            margin: 8,
             rules: MIO_TRAIT_RULES,
             negative: FORM_NEGATIVE,
-            note: "Trait icons are 48x48. The trait and policy folders are measured together; policies are the 60x60 files.",
+            note: "Trait icons are 48x48. The trait and policy folders are measured together; policies are the 60x60 files. All 44 vanilla trait icons keep 8 px clear on their tightest side (the badge spans 32 of 48 px), where the in-game frame likely overlaps, so the fit margin is 8 px.",
             ..base(MioTrait, [48, 48], &[[48, 48]], "gfx/interface/military_industrial_organization/trait_icons/{feature_slug}", "mio_trait_", "interface/military_industrial_organization/{feature_slug}_mio.gfx")
         },
         Row {
@@ -374,16 +407,18 @@ fn rows() -> Vec<Row> {
             ..base(Medal, [56, 84], &[[56, 84]], "gfx/interface/medals/{feature_slug}", "medal_icon_", "interface/{feature_slug}_medals.gfx")
         },
         Row {
+            margin: 8,
             rules: AGENCY_UPGRADE_RULES,
             negative: FORM_NEGATIVE,
-            note: "Vanilla names these GFX_agency_*.",
+            note: "Vanilla names these GFX_agency_*. All 15 vanilla upgrades keep exactly 8 px clear (the medallion spans 52 of 68 px), where the in-game frame likely overlaps, so the fit margin is 8 px.",
             ..base(AgencyUpgrade, [68, 68], &[[68, 68]], "gfx/interface/operatives/icons/{feature_slug}", "agency_", "interface/{feature_slug}_agency_upgrades.gfx")
         },
         Row {
             sprite: Some(("interface/{feature_slug}_operations.gfx", "GFX_phase_{asset}_small", &[])),
+            margin: 6,
             rules: OPERATION_ICON_RULES,
             negative: FORM_NEGATIVE,
-            note: "The 59x58 operation phase icon: an operation phase's icon names it in full, and all 73 vanilla ones are GFX_phase_<x>_small at 59x58, beside the phase's 210x176 picture GFX_phase_<x> (operation_picture). The folder also holds 48x48 and 85x85 operation icons.",
+            note: "The 59x58 operation phase icon: an operation phase's icon names it in full, and all 73 vanilla ones are GFX_phase_<x>_small at 59x58, beside the phase's 210x176 picture GFX_phase_<x> (operation_picture). The folder also holds 48x48 and 85x85 operation icons. All 71 vanilla phase icons keep exactly 6 px clear (the vignette spans 46 of 58 px), where the in-game frame likely overlaps, so the fit margin is 6 px.",
             ..base(OperationIcon, [59, 58], &[[59, 58], [48, 48], [85, 85]], "gfx/interface/operations/{feature_slug}/icons", "phase_", "interface/{feature_slug}_operations.gfx")
         },
         Row {
@@ -987,5 +1022,122 @@ mod tests {
                 panic!("{f} and {other} share the path pattern {key}");
             }
         }
+    }
+
+    /// Words that can trip a provider's violence moderation stay out of the built-in rules: the forms name equipment,
+    /// vehicles and insignia in neutral words. The MIO department rule keeps the model off paper and scenes.
+    #[test]
+    fn rules_use_neutral_words_and_the_mio_department_asks_for_the_equipment_itself() {
+        let charged = ["gun", "guns", "weapon", "weapons", "kill", "blood", "attack", "bomb", "bombs", "explosion", "combat", "war"];
+        for (f, p) in by_family() {
+            let text = p.imagegen.prompt.rules.join(" ").to_ascii_lowercase();
+            let hit: Vec<&str> = text.split(|c: char| !c.is_ascii_alphanumeric()).filter(|w| charged.contains(w)).collect();
+            assert!(hit.is_empty(), "{f}: the rules use {hit:?}: {text}");
+        }
+        let mio = &by_family()[&Family::MioDepartment];
+        let rules = mio.imagegen.prompt.rules.join(" ");
+        assert!(rules.contains("Depict the equipment itself") && rules.contains("design bureau"), "{rules}");
+        let negative = mio.imagegen.prompt.negative.join("; ");
+        for n in ["a scene", "blueprint", "panels, dividers", "a second main object"] {
+            assert!(negative.contains(n), "{n}: {negative}");
+        }
+        let sp = &by_family()[&Family::SpecialProjectIcon];
+        assert!(sp.imagegen.prompt.rules.join(" ").contains("line drawing"));
+        assert!(sp.imagegen.prompt.negative.iter().any(|n| n.contains("shading")));
+    }
+
+    // ------------------------------------------------------------ emblem scale against the installed game
+
+    fn vanilla_files(folder: &str, prefix: &str, size: [u32; 2]) -> Vec<crate::pixels::Rgba> {
+        let g = std::env::var("HOI4_GAME_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| "C:/Program Files (x86)/Steam/steamapps/common/Hearts of Iron IV".into());
+        let mut stack = vec![g.join(folder)];
+        let mut paths = Vec::new();
+        while let Some(d) = stack.pop() {
+            for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else if p.extension().is_some_and(|x| x == "dds") && p.file_name().unwrap().to_string_lossy().starts_with(prefix) {
+                    paths.push(p);
+                }
+            }
+        }
+        paths.sort();
+        paths.iter().filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok()).filter(|img| [img.width, img.height] == size).collect()
+    }
+
+    /// The emblem of the plaque, disc, badge and pictogram families is fitted at vanilla's size: for each vanilla file
+    /// a solid subject of the same aspect goes through the family's own finishing, and the median span (the larger of
+    /// the width and height shares of the visible box) is compared with vanilla's median. The first five are never
+    /// smaller than vanilla's by more than one pixel; the last five, fitted to vanilla's margins, are within one pixel
+    /// either way. Measured on HOI4 1.19.4.1: focus 0.966, decision category icon 0.950, MIO department 0.979,
+    /// doctrine 0.953, commander trait 0.909, MIO trait 0.667, agency upgrade 0.765, operation icon 0.793, raid
+    /// 0.719, idea concern 0.906.
+    #[test]
+    fn plaque_and_disc_emblems_are_fitted_at_vanillas_size() {
+        // (family, folder, file prefix, also not larger than vanilla)
+        let cases: [(Family, &str, &str, bool); 10] = [
+            (Family::Focus, "gfx/interface/goals", "goal", false),
+            (Family::DecisionCategoryIcon, "gfx/interface/decisions", "decision_category", false),
+            (Family::MioDepartment, "gfx/interface/military_industrial_organization/department_icons", "", false),
+            (Family::Doctrine, "gfx/interface/doctrines", "", false),
+            (Family::CommanderTrait, "gfx/interface/traits", "trait_", false),
+            (Family::MioTrait, "gfx/interface/military_industrial_organization/trait_icons", "", true),
+            (Family::AgencyUpgrade, "gfx/interface/operatives/icons", "", true),
+            (Family::OperationIcon, "gfx/interface/operations", "", true),
+            (Family::Raid, "gfx/interface/military_raids", "", true),
+            (Family::IdeaConcern, "gfx/interface/ideas", "idea_", true),
+        ];
+        let span = |img: &crate::pixels::Rgba| {
+            let b = img.alpha_bbox(16).unwrap();
+            (f64::from(b[2] - b[0]) / f64::from(img.width)).max(f64::from(b[3] - b[1]) / f64::from(img.height))
+        };
+        let median = |mut v: Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            v[v.len() / 2]
+        };
+        let set = by_family();
+        let mut report = String::new();
+        for (family, folder, prefix, both_ways) in cases {
+            let p = &set[&family];
+            let mut files = vanilla_files(folder, prefix, p.canvas);
+            if family == Family::Focus {
+                files.extend(vanilla_files(folder, "focus", p.canvas));
+            }
+            if files.len() < 10 {
+                eprintln!("SKIPPED emblem scale vs vanilla ({family}): Hearts of Iron IV not found (set HOI4_GAME_DIR)");
+                continue;
+            }
+            let mut van = Vec::new();
+            let mut ours = Vec::new();
+            // vanilla's span over every file; ours over an even sample of at most 40 shapes, which keeps the test
+            // quick in debug builds
+            let step = files.len().div_ceil(40);
+            van.extend(files.iter().filter(|f| f.alpha_bbox(16).is_some()).map(span));
+            for f in files.iter().step_by(step).filter(|f| f.alpha_bbox(16).is_some()) {
+                let b = f.alpha_bbox(16).unwrap();
+                // the same shape, eight times larger, as a generated cut-out
+                let (w, h) = ((b[2] - b[0]) * 8, (b[3] - b[1]) * 8);
+                let mut src = crate::pixels::Rgba::new(w + 40, h + 40);
+                for y in 20..20 + h {
+                    for x in 20..20 + w {
+                        src.set_px(x, y, [120, 100, 80, 255]);
+                    }
+                }
+                let plan = crate::chain::plan_finishing(p, p.canvas, &src, false, false, "").unwrap();
+                let (out, _) = crate::process::run_chain(&src, &plan.ops).unwrap();
+                ours.push(span(&out));
+            }
+            let (v, o) = (median(van), median(ours));
+            let px = 1.0 / f64::from(p.canvas[0].min(p.canvas[1]));
+            report.push_str(&format!("{family}: vanilla {v:.3}, ours {o:.3} ({} files)\n", files.len()));
+            assert!(o >= v - px - 1e-9, "{family}: our emblem spans {o:.3} of the canvas, vanilla's {v:.3}\n{report}");
+            if both_ways {
+                assert!(o <= v + px + 1e-9, "{family}: our emblem spans {o:.3} of the canvas, larger than vanilla's {v:.3}\n{report}");
+            }
+        }
+        eprintln!("emblem span vs vanilla (median)\n{report}");
     }
 }

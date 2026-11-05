@@ -211,10 +211,11 @@ impl Engine {
             if let ModelStatus::Deprecated { shutdown } = &model.status {
                 warnings.push(format!("model {model_id} is deprecated and shuts down on {shutdown}"));
             }
-            // the unit art recipes read a silhouette from a flat background themselves, so no alpha is needed there
+            // the unit art and line art recipes read the subject from a flat background themselves, so no alpha is
+            // needed there
             let keys_itself = matches!(
                 imagegen_core::chain::recipe_of(&profile),
-                imagegen_core::chain::Recipe::UnitCounter | imagegen_core::chain::Recipe::DivisionSymbol
+                imagegen_core::chain::Recipe::UnitCounter | imagegen_core::chain::Recipe::DivisionSymbol | imagegen_core::chain::Recipe::LineArt
             );
             if transparent && model.alpha == AlphaSupport::None && !keys_itself {
                 warnings.push(format!(

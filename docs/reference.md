@@ -55,6 +55,8 @@ There are 44 families in seven groups. The group names the tool that plans them.
 
 The built-in canvas, frames, accepted sizes and pixel class of every family come from the installed game, version 1.19.4.1. The data is in `crates/imagegen-core/data/vanilla-measurement.json`, made by `scripts/measure_families.py`. A unit test fails when a family stops matching it. Examples: focus 100x88, idea_spirit 60x68, advisor_card 65x67, decision 33x32, report_event 210x176, news_event 397x153, flags 82x52, 41x26 and 10x7.
 
+The emblem inside an icon is fitted at vanilla's size too, measured as the median over the family's vanilla files. mio_trait and agency_upgrade keep an 8 px margin and operation_icon 6 px, the clear margin every vanilla file of those families has. raid keeps 4 px and idea_concern 3 px, the margins closest to the vanilla median. A test (it needs the game) checks these and focus, decision_category_icon, mio_department, doctrine and commander_trait against the vanilla median, within 1 px.
+
 A mod can override the canvas and naming in its own `.tools/gfx/profiles.json` (the kit's file) or in `.hoi4-imagegen/config.toml`. Without an override the vanilla size is used. `hoi4.image_families` shows the override next to the vanilla value, and `hoi4-imagegen calibrate` shows where a built-in value is not the dominant vanilla size. `gui_texture` and `super_event` have no vanilla texture to measure, so the mod defines their canvas.
 
 ### Animated sprites
@@ -197,15 +199,15 @@ Details, the sign-in steps and the recorded evidence are in [docs/chatgpt-login.
 
 ## Install
 
-The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/releases>. Version 0.3.1 has one archive per platform:
+The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/releases>. Version 0.3.2 has one archive per platform:
 
 | Platform | Archive |
 |---|---|
-| Windows x64 | `hoi4-imagegen-v0.3.1-x86_64-pc-windows-msvc.zip` |
-| macOS arm64 | `hoi4-imagegen-v0.3.1-aarch64-apple-darwin.tar.gz` |
-| macOS x64 | `hoi4-imagegen-v0.3.1-x86_64-apple-darwin.tar.gz` |
-| Linux x64 | `hoi4-imagegen-v0.3.1-x86_64-unknown-linux-gnu.tar.gz` |
-| Linux arm64 | `hoi4-imagegen-v0.3.1-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows x64 | `hoi4-imagegen-v0.3.2-x86_64-pc-windows-msvc.zip` |
+| macOS arm64 | `hoi4-imagegen-v0.3.2-aarch64-apple-darwin.tar.gz` |
+| macOS x64 | `hoi4-imagegen-v0.3.2-x86_64-apple-darwin.tar.gz` |
+| Linux x64 | `hoi4-imagegen-v0.3.2-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux arm64 | `hoi4-imagegen-v0.3.2-aarch64-unknown-linux-gnu.tar.gz` |
 
 Each archive holds both programs, `LICENSE`, `NOTICE`, `README.md` and `UPSTREAM.md`. The release also has a `SHA256SUMS` file. The binaries are **unsigned**, so Windows SmartScreen and macOS Gatekeeper may warn. The archives and `SHA256SUMS` carry GitHub build attestations. To check a download:
 
