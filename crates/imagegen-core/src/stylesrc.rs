@@ -176,6 +176,14 @@ impl Resolved {
         self.report.chosen.iter().filter(|c| c.sent_to_provider).map(|c| c.path.clone()).collect()
     }
 
+    /// Mark every sent reference of `tier` as not sent.
+    pub fn drop_tier(&mut self, tier: u8, why: &str) {
+        for c in self.report.chosen.iter_mut().filter(|c| c.sent_to_provider && c.tier == tier) {
+            c.sent_to_provider = false;
+            c.reason = format!("{} (not sent: {why})", c.reason);
+        }
+    }
+
     /// Mark all but the first `cap` sent references as not sent.
     pub fn limit_send(&mut self, cap: usize, why: &str) {
         let mut sent = 0usize;

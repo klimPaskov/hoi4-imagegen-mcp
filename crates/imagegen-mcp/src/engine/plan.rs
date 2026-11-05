@@ -107,6 +107,12 @@ impl Engine {
         let model_refs = |m: &str| provider.descriptor().model(m).map(|x| if x.supports_edit { usize::from(x.max_refs) } else { 0 }).unwrap_or(0);
         let cap = model_refs(&model_id).saturating_sub(explicit_refs).min(stylesrc::DEFAULT_SEND);
         sources.limit_send(cap, &format!("{provider_id} {model_id} takes at most {} reference images", model_refs(&model_id)));
+        // the caller's own style anchors show the form to match, and vanilla art beside them pulls the image back to
+        // the vanilla form
+        let caller_style = req.references.iter().any(|r| r.role == RefRole::StyleAnchor);
+        if caller_style {
+            sources.drop_tier(4, "the request sends its own style anchors");
+        }
         if explicit_model.is_none() && explicit_refs == 0 && sources.send_paths().is_empty() {
             model_id = provider.default_model(false);
         }
@@ -166,9 +172,17 @@ impl Engine {
         let prompt_style = style_profile.as_ref().or(pinned.as_ref());
         // the mod's own references (tier 2 or 3) show the mod's form: it wins over the vanilla form the rules state
         let mod_form_refs = sources.report.chosen.iter().any(|c| c.sent_to_provider && (c.tier == 2 || c.tier == 3));
-        let form = if mod_form_refs { FormPrecedence::ModReferences } else { FormPrecedence::VanillaRule };
-        let prompt =
-            build_prompt_with_form(&profile, ask, &brief, prompt_style, &loaded, transparent, sources.report.style_paragraph.as_deref(), form);
+        let form = if caller_style {
+            FormPrecedence::CallerReferences
+        } else if mod_form_refs {
+            FormPrecedence::ModReferences
+        } else {
+            FormPrecedence::VanillaRule
+        };
+        // the measured paragraph describes the tier's images, which are not sent beside the caller's anchors when vanilla
+        let measured =
+            if caller_style && sources.report.chosen.iter().all(|c| !c.sent_to_provider) { None } else { sources.report.style_paragraph.as_deref() };
+        let prompt = build_prompt_with_form(&profile, ask, &brief, prompt_style, &loaded, transparent, measured, form);
         let style_selection = describe_selection(applied.as_ref(), &sources.report, form, req.family);
 
         let probe = ImageRequest {
@@ -455,6 +469,10 @@ fn describe_selection(
     let form_note = match form {
         FormPrecedence::ModReferences => {
             "the style references come from the mod itself (tier 2 or 3): the prompt says their form and framing win over the vanilla form rule"
+                .to_string()
+        }
+        FormPrecedence::CallerReferences => {
+            "the request sends its own style anchors: the prompt says their form and framing win over the vanilla form rule, and no vanilla reference is sent beside them"
                 .to_string()
         }
         FormPrecedence::VanillaRule => "no mod reference (tier 2 or 3) is sent, so the family's vanilla form rule stands alone".to_string(),

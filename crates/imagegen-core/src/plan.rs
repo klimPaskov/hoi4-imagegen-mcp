@@ -188,6 +188,9 @@ pub struct StyleContribution {
 pub enum FormPrecedence {
     /// The references come from the mod itself (tier 2 or 3): their form wins over the vanilla form rule.
     ModReferences,
+    /// The request sends its own style anchors: their form wins over the vanilla form rule, and no vanilla reference
+    /// is sent beside them.
+    CallerReferences,
     /// No mod reference is sent: the family's vanilla form rule stands alone.
     VanillaRule,
 }
@@ -198,6 +201,9 @@ impl FormPrecedence {
         match self {
             FormPrecedence::ModReferences => Some(
                 "The reference images come from this mod. Match the form and framing of the mod's reference images; the vanilla form described under Requirements applies only where they do not show one.",
+            ),
+            FormPrecedence::CallerReferences => Some(
+                "The style anchor images were chosen for this image. Match their form, framing, materials and palette; the vanilla form described under Requirements applies only where they do not show one.",
             ),
             FormPrecedence::VanillaRule => None,
         }

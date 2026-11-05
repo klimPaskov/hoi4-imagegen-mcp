@@ -725,6 +725,37 @@ fn mod_references_win_over_the_vanilla_form_rule_and_the_plan_says_so() {
 }
 
 #[test]
+fn caller_style_anchors_win_over_the_vanilla_form_and_no_vanilla_reference_goes_with_them() {
+    let game = fake_game(8);
+    let h = harness_with_game(game.path());
+    for i in 0..4 {
+        write_png(h.root(), &format!("references/tno/medal_{i}.png"), &spirit_icon([150, 150, 160], true, i));
+    }
+    let refs: Vec<Value> = (0..4).map(|i| json!({"path": format!("references/tno/medal_{i}.png"), "role": "style_anchor"})).collect();
+    let plan = h
+        .engine
+        .plan(
+            serde_json::from_value(json!({
+                "family": "idea_spirit", "feature_slug": "f", "asset": "iron_will", "brief": "an iron will", "provider": "openai",
+                "quality": "low", "references": refs
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    assert!(plan.prompt.text.contains("Match their form, framing, materials and palette"), "{}", plan.prompt.text);
+    assert!(!plan.prompt.text.contains(MOD_FORM_LINE));
+    let s = selection(&plan);
+    assert_eq!(s["form_precedence"], "caller_references");
+    // the vanilla tier was chosen but none of it is sent beside the caller's anchors
+    let src = sources(&plan);
+    assert_eq!(src["chosen_tier"], 4);
+    let chosen = src["chosen"].as_array().unwrap();
+    assert!(!chosen.is_empty());
+    assert!(chosen.iter().all(|c| c["sent_to_provider"] == false), "{chosen:?}");
+    assert!(s["contributions"].as_array().unwrap().is_empty());
+}
+
+#[test]
 fn a_shelf_copy_is_the_mods_form_too() {
     let game = fake_game(8);
     let h = harness_with_game(game.path());

@@ -145,7 +145,7 @@ A plan picks style references for the family on its own. The mod comes first and
 
 A pinned style profile is tier 1 only when it applies to the family. A plan's `style: <name>` always applies it. Otherwise a profile applies by itself only when its `families` list names the family, or when it has `default: true` (then it covers the families it lists, or every family when it lists none). A profile with an empty `families` list and no `default` is available by name to any family but never applied by itself. `default: false` turns automatic use off. A profile that names the family ranks above a `default: true` profile for all families. The plan says which profile it applied and why.
 
-When the mod's own references (tier 2 or 3) show a form, such as a frame or a background, that form wins over the vanilla form the family rules describe.
+When the mod's own references (tier 2 or 3) show a form, such as a frame or a background, that form wins over the vanilla form the family rules describe. References the request sends itself with the role `style_anchor` win the same way. Then no vanilla reference and no vanilla style paragraph go with them, because vanilla art beside them pulls the image back to the vanilla form.
 
 The first tier with at least 3 usable images is used. A pinned style is always sent, even with fewer images, but then gives no statistics. The plan reports every reference with its tier, reason, SHA-256 and whether it goes to the provider (`style_sources` in the plan, also in `hoi4.image_families`).
 
