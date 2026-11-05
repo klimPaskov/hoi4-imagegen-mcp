@@ -37,9 +37,70 @@ THEMES = {  # a theme word in the brief also matches these file-name words
 # names that point at one country or region even inside generic files (befriend_usa, attack_yugoslavia, italy_propaganda)
 PLACE = re.compile(r"_(befriend|attack|claim|annex|invade|demand|integrate|approach)_|_(usa|germany|italy|britain|england|france|japan|china|soviet|"
                    r"russia|turkey|sweden|bohemia|slovakia|yugoslavia|poland|asia|europe|africa|african|balkan|balkans|nordic|islamic|guyanas|"
-                   r"waziristan|philippines|latin|american|arab|ottoman|baltic|scandinavian|georgia|albania|tuva|saudi|benelux|liechtenstein|iberia|iberian|vatican|scandinavia|scandinavism|coa)(_|$)")
+                   r"waziristan|philippines|latin|american|arab|ottoman|baltic|scandinavian|georgia|albania|tuva|saudi|benelux|liechtenstein|iberia|iberian|vatican|scandinavia|scandinavism|coa|london|japanese|spanish|chinese|manchu|siamese)(_|$)")
+# sub-families inside a family (maintainer, 2026-11-05: "the family has its own smaller family as well"): a vanilla
+# file belongs to the sub-family whose words its name shares most, and a brief draws its anchors only from its own
+SUBFAMILIES = {
+    "war": {"army", "military", "infantry", "artillery", "tank", "armor", "armour", "attack", "war", "warfare", "defence", "defense",
+            "fortification", "fort", "doctrine", "soldier", "weapon", "rifle", "conscription", "mobilization", "mobilisation", "battle",
+            "bunker", "trench", "guerilla", "guerrilla", "officer", "general", "division", "offensive", "border"},
+    "naval": {"naval", "navy", "fleet", "ship", "battleship", "submarine", "destroyer", "carrier", "convoy", "port", "marine", "harbour",
+              "harbor", "shipyard", "dockyard", "torpedo", "anchor", "cruiser"},
+    "air": {"air", "aviation", "plane", "aircraft", "bomber", "fighter", "airforce", "airfield", "pilot", "bombing", "parachute", "paratrooper"},
+    "economy": {"industry", "industrial", "factory", "economy", "economic", "trade", "resource", "production", "steel", "oil", "fuel", "mining",
+                "mine", "agriculture", "farm", "farming", "railway", "railroad", "construction", "investment", "money", "gold", "export",
+                "import", "infrastructure", "rubber", "coal", "electricity", "energy", "concern", "manufacturing", "works", "plant",
+                "foundry", "assembly", "currency", "bank", "market", "harvest", "grain", "wheat", "ration", "supply"},
+    "politics": {"political", "politic", "government", "election", "democratic", "democracy", "fascist", "fascism", "communist",
+                 "communism", "propaganda", "party", "revolution", "ideology", "monarchy", "monarchist", "king", "crown", "parliament",
+                 "ballot", "vote", "rally", "dictator", "regime", "leader", "council", "reform", "national", "nationalism", "unity"},
+    "society": {"society", "social", "people", "education", "school", "health", "hospital", "religion", "religious", "church", "faith",
+                "culture", "worker", "labour", "labor", "population", "women", "youth", "refugee", "family", "volunteer", "union",
+                "spirit", "morale", "civil", "citizen", "welfare", "veteran", "festival"},
+    "diplomacy": {"diplomacy", "diplomatic", "treaty", "alliance", "ally", "foreign", "embassy", "relation", "influence", "pact", "envoy",
+                  "handshake", "peace", "neutrality", "guarantee", "league"},
+    "research": {"research", "science", "scientific", "technology", "laboratory", "scientist", "nuclear", "rocket", "radar", "atomic",
+                 "engineering", "university", "experiment", "jet", "computer"},
+    "intelligence": {"spy", "intelligence", "agent", "cipher", "code", "secret", "police", "security", "espionage", "sabotage", "informant",
+                     "surveillance", "codebreaking", "operative", "covert"},
+}
 _INDEX = {}
 USED = {}  # family -> {"files": {path: count}, "sets": set of tuples}
+
+
+_TAGS = None
+
+
+def country_tags():
+    """Every country tag the game has a flag for (GER, SPR, HOL ...), to spot lowercase tags such as focus_hol_ or _spr_."""
+    global _TAGS
+    if _TAGS is None:
+        p = os.path.join(GAME, "common", "country_tags", "00_countries.txt")
+        text = open(p, encoding="utf-8", errors="replace").read() if os.path.exists(p) else ""
+        _TAGS = {t.lower() for t in re.findall(r"^\s*([A-Z][A-Z0-9]{2})\s*=", text, re.M)} - {"man", "can"}  # also English words
+    return _TAGS
+
+
+def nation_file(name, named):
+    """True when the file belongs to one country or region; allowed only when the brief names that country."""
+    tokens = name.lower().split("_")
+    tagged = {t for t in tokens if t in country_tags()} | {t.lower() for t in TAG.findall(name)}
+    placed = bool(PLACE.search(name.lower()))
+    if not tagged and not placed:
+        return False
+    wanted = {t.lower() for t in named} | {adj for adj, t in NATIONS.items() if t in named}
+    return not (wanted and (tagged & wanted or any(w in name.lower() for w in wanted)))
+
+
+def subfamily(word_set):
+    best = max(SUBFAMILIES, key=lambda s: len(word_set & SUBFAMILIES[s]))
+    return best if word_set & SUBFAMILIES[best] else "other"
+
+
+def name_words(rel):
+    name = os.path.splitext(os.path.basename(rel))[0]
+    raw = set(re.findall(r"[a-z]+", name.lower()))
+    return words(name.replace("_", " ")) | {w for w in raw if len(w) == 3}  # keep short theme words such as war and air
 
 
 def words(text):
@@ -98,11 +159,9 @@ def pick(family, info, asset, brief, mod, work):
     scored, theme = [], {}
     for i, rel in enumerate(files):
         name = os.path.splitext(os.path.basename(rel))[0]
-        if PLACE.search(name) and not named:
+        if nation_file(name, named):
             continue
         tags = set(TAG.findall(name))
-        if tags and not tags & named:
-            continue
         nw = words(name.replace("_", " "))
         score = 2.0 * len(bw & nw) + (0.5 if "generic" in name else 0) + (1.0 if tags & named else 0)
         score -= 0.6 * used["files"].get(rel, 0)
@@ -112,17 +171,38 @@ def pick(family, info, asset, brief, mod, work):
     # each successive brief of the family draws from the next style group, so the examples span vanilla's range of
     # frames and palettes; within the group the theme-matched files come first
     allowed = {r for _, _, r in scored}
-    groups = [[f for f in grp if f in allowed] for grp in style_groups(family, sorted(allowed), work)] if len(allowed) >= 4 * PER_BRIEF else []
+    # the brief's sub-family: anchors come only from the vanilla files of the same sub-family when it has enough
+    subs = {r: subfamily(name_words(r)) for r in allowed}
+    write_subfamilies(family, subs, work)
+    # the asset name says the theme even when the brief does not (ration_coupon_booklet is economy)
+    brief_words = bw | words(asset.replace("_", " ")) | {w for w in re.findall(r"[a-z]+", (brief + " " + asset.replace("_", " ")).lower()) if len(w) == 3}
+    sub = subfamily(brief_words)
+    members = {r for r in allowed if subs[r] == sub}
+    if sub != "other" and len(members) >= PER_BRIEF + 1:
+        allowed = members
+        scored = [s for s in scored if s[2] in members]
+        key = f"{family}.{sub}"
+    else:
+        sub, key = "all", family
+    groups = [[f for f in grp if f in allowed] for grp in style_groups(key, sorted(allowed), work)] if len(allowed) >= 4 * PER_BRIEF else []
     groups = [grp for grp in groups if len(grp) >= PER_BRIEF]
     if groups:
         # the least-used group that holds at least one file on the brief's theme (any group if nothing matches)
-        gused = used.setdefault("groups", [0] * len(groups))
+        gused = used.setdefault("groups:" + key, [0] * len(groups))
         fits = [j for j, grp in enumerate(groups) if any(theme.get(f) for f in grp)] or list(range(len(groups)))
         j = min(fits, key=lambda j: (gused[j], j))
         gused[j] += 1
         grp = set(groups[j])
         scored = [s for s in scored if s[2] in grp]
-    pool = [r for _, _, r in scored[:24]]
+    # numbered variants of one icon (guerilla_base_0, _1, _2) count once
+    pool, bases = [], set()
+    for _, _, r in scored:
+        base = re.sub(r"_?\d+$", "", os.path.splitext(os.path.basename(r))[0])
+        if base not in bases:
+            bases.add(base)
+            pool.append(r)
+        if len(pool) == 24:
+            break
     chosen = None
     for start in range(0, max(1, len(pool) - PER_BRIEF + 1)):
         cand = tuple(sorted(pool[start:start + PER_BRIEF]))
@@ -140,8 +220,19 @@ def pick(family, info, asset, brief, mod, work):
         if not os.path.exists(dst):
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             Image.open(os.path.join(GAME, rel)).convert("RGBA").save(dst)
-        refs.append({"path": dst_rel, "role": "style_anchor", "vanilla_source": rel})
+        refs.append({"path": dst_rel, "role": "style_anchor", "vanilla_source": rel, "subfamily": sub})
     return refs
+
+
+def write_subfamilies(family, subs, work):
+    """The sub-family groups of a family's vanilla files, once, for the gallery page: .work/anchor-index/<family>-subfamilies.json."""
+    cache = os.path.join(work, "anchor-index", family + "-subfamilies.json")
+    if os.path.exists(cache):
+        return
+    out = {}
+    for rel, s in sorted(subs.items()):
+        out.setdefault(s, []).append(rel)
+    json.dump(out, open(cache, "w", encoding="utf-8"), indent=0)
 
 
 STYLE_GROUPS = 8
