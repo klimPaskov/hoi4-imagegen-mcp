@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn the_threshold_is_a_low_percentile_of_the_set() {
         assert_eq!(threshold_from(&[0, 1]), None);
-        let set: Vec<u128> = (0..40u32).map(|i| (1u128 << (i % 128)) * 0xFFFF_FFFF | u128::from(i)).collect();
+        let set: Vec<u128> = (0..40u32).map(|i| ((1u128 << (i % 128)) * 0xFFFF_FFFF) | u128::from(i)).collect();
         let (t, pairs) = threshold_from(&set).unwrap();
         assert_eq!(pairs, 40 * 39 / 2);
         assert!(t >= MIN_THRESHOLD);
