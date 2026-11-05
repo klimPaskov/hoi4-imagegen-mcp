@@ -69,7 +69,7 @@
     #root .sw { position: absolute; left: 0; top: -20px; width: 160px; height: 200px; background: linear-gradient(90deg, rgba(232,181,79,0), rgba(232,181,79,.22), rgba(232,181,79,0)); }
     #root .ph { position: absolute; inset: 0; }
   </style>
-  <div id="root" data-composition-id="portraits" data-width="1920" data-height="1080"><div class="grv" id="portraits-grv" data-layout-allow-overflow style="position:absolute;inset:0">
+  <div id="root" data-composition-id="portraits" data-width="1920" data-height="1080">
     <div class="steel"></div>
     <svg class="grain" width="1920" height="1080"><filter id="portraits-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#portraits-n)"/></svg>
     <div class="ph" id="po-a">
@@ -90,8 +90,7 @@
     </div>
     <div class="card" id="po-card" data-layout-allow-overflow><div class="bar"></div>
       <div><div class="lb">For the best portraits</div><div class="tt">Use the ComfyUI HOI4 portrait workflow</div><div class="sb">github.com/klimPaskov/comfyui-hoi4-portraits</div></div><div class="sw" id="po-sw"></div></div>
-    </div>
-    <div id="portraits-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="portraits-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    <div class="dip" id="portraits-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -106,9 +105,9 @@ tl.set({}, {}, Math.max(0, DUR - 1 / 30));
 function exitWipe(sel) {
   tl.fromTo(sel, { xPercent: -120 }, { xPercent: 120, duration: b(0.5), ease: "power3.in" }, DUR - b(0.5));
 }
-// Land a block of words one by one on beats, blur to sharp, then hold still.
+// Words rise into place one by one on beats, blur to sharp, then hold still.
 function wordsIn(sel, at, gap) {
-  tl.fromTo(sel, { opacity: 0, filter: "blur(10px)", scale: 1.08 }, { opacity: 1, filter: "blur(0px)", scale: 1, duration: 0.16, ease: "power4.out", stagger: gap }, at);
+  tl.fromTo(sel, { opacity: 0, y: 34, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: b(1), ease: "expo.out", stagger: gap }, at);
 }
 
     // bar 1: the photos land, then hoi4-imagegen's portraits beside them
@@ -130,12 +129,7 @@ function wordsIn(sel, at, gap) {
     tl.fromTo("#po-sw", { x: -260, skewX: -18 }, { x: 1300, skewX: -18, duration: b(2), ease: "power2.inOut" }, b(9.5));
     tl.fromTo("#portraits-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#portraits-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
-    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
-      const down = i % 4 === 0;
-      tl.fromTo("#portraits-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
-
-      if (down) tl.fromTo("#portraits-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
-    }
+    for (let i = 2; i < Math.round(DUR / BEAT) - 1; i++) tl.fromTo(".grid", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
     window.__timelines["portraits"] = tl;
   </script>
 </template>

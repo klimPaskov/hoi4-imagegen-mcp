@@ -179,19 +179,28 @@ S.forEach((s) => {
   </div>
   <script>
     {{LIB}}
-    // beat 0: title; beat 0.5: the visual; beat 2: the line; then everything holds still
+    // beat 0: the title rises in word by word; from beat 0.5 the visual's parts follow one after another on sixteenth
+    // notes, each easing smoothly into place; beat 2: the line. Then everything holds still.
     tl.fromTo("#${s.id}-wash", { opacity: 0 }, { opacity: 1, duration: b(1), ease: "sine.out" }, 0);
-    tl.fromTo(".${s.id}-w", { opacity: 0, filter: "blur(12px)" }, { opacity: 1, filter: "blur(0px)", duration: b(0.5), ease: "power3.out", stagger: b(0.5) }, 0);
-    tl.fromTo("#${s.id}-vis", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: b(1), ease: "power3.out" }, b(0.5));
-    // groove: once the visual has landed it kicks on every beat, a little more on downbeats, until the camera moves on
+    tl.fromTo(".${s.id}-w", { opacity: 0, y: 34, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: b(1), ease: "expo.out", stagger: b(0.5) }, 0);
+${entrance(s)}    // once the visual has landed it kicks on every beat, a little more on downbeats, until the camera moves on
     for (let i = 4; i < Math.round(DUR / BEAT) - 2; i++) tl.fromTo("#${s.id}-vis", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
-${s.line ? `    tl.fromTo("#${s.id}-line", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: b(0.75), ease: "power3.out" }, b(2));\n` : ""}${extra(s.id)}
+${s.line ? `    tl.fromTo("#${s.id}-line", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: b(1), ease: "expo.out" }, b(2));\n` : ""}${extra(s.id)}
     window.__timelines["${s.id}"] = tl;
   </script>
 </template>
 `;
   writeFileSync(join(here, "scenes", `${s.id}.html`), html);
 });
+
+// the parts of each station's visual that enter one after another, like dominoes (the rest enter as one block)
+function entrance(s) {
+  const items = { measured: ".row3 .m", generate: ".row3 .m", style: ".refs > *", validate: ".sheet", review: ".rev > .portrait", install: ".inst > .tank, .inst > .arrow", audit: ".nums > div", clients: ".cl .c1:not(.any)" }[s.id];
+  if (!items) return `    tl.fromTo("#${s.id}-vis", { opacity: 0, y: 50, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: b(1.25), ease: "expo.out" }, b(0.5));\n`;
+  const sel = items.split(",").map((x) => `#${s.id}-vis ${x.trim()}`).join(", ");
+  return `    tl.fromTo("#${s.id}-vis", { opacity: 0 }, { opacity: 1, duration: b(0.25) }, b(0.5));
+    tl.fromTo("${sel}", { opacity: 0, y: 60, scale: 0.92, rotation: -2 }, { opacity: 1, y: 0, scale: 1, rotation: 0, duration: b(1.25), ease: "expo.out", stagger: b(0.25) }, b(0.5));\n`;
+}
 
 // one accent per station, on a beat
 function extra(id) {
@@ -206,7 +215,7 @@ function extra(id) {
     tl.fromTo("#clients-vis .any", { opacity: 0, y: 40, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: b(1), ease: "power3.out" }, b(4.5));`;
     case "process":
       // one kind of art lands on every sixteenth note, then the whole set holds through the second bar
-      return `    tl.fromTo("#process-vis .bt", { opacity: 0, y: 30, scale: 0.6 }, { opacity: 1, y: 0, scale: 1, duration: b(0.75), ease: "back.out(2)", stagger: b(0.25) }, b(0.5));`;
+      return `    tl.fromTo("#process-vis .bt", { opacity: 0, y: 50, scale: 0.85, rotation: -3 }, { opacity: 1, y: 0, scale: 1, rotation: 0, duration: b(1.25), ease: "expo.out", stagger: b(0.25) }, b(0.5));`;
     case "validate":
     case "review":
       return `    tl.fromTo("#${id}-vis .stamp", { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: b(0.5), ease: "back.out(1.8)" }, b(2));`;

@@ -56,10 +56,10 @@
     #root .miss div s { text-decoration-color: #c0392b; text-decoration-thickness: 7px; }
     #root .stage { position: absolute; inset: 0; }
   </style>
-  <div id="root" data-composition-id="oldway" data-width="1920" data-height="1080"><div class="grv" id="oldway-grv" data-layout-allow-overflow style="position:absolute;inset:0">
+  <div id="root" data-composition-id="oldway" data-width="1920" data-height="1080">
     <div class="table"></div>
     <svg class="grain" width="1920" height="1080"><filter id="oldway-n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .9 0"/></filter><rect width="100%" height="100%" filter="url(#oldway-n)"/></svg>
-    <div class="stage" id="ow-stage">
+    <div class="stage" id="ow-stage" data-layout-allow-overflow>
     <div class="rawlab" id="ow-rawlab">RAW MODEL OUTPUT · 2062 × 763</div>
     <div class="raw" id="ow-raw"><img src="assets/gallery/source_png/heavy_tank-v1.png" alt="" /></div>
     <div class="slot" id="ow-slot"></div><div class="slotlab" id="ow-slotlab">← the game's slot<br />146 × 54</div>
@@ -70,8 +70,7 @@
       <div class="ow-m"><s>Sprite name</s></div>
     </div>
     </div>
-    </div>
-    <div id="oldway-bl" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 45%, rgba(255,214,140,.22), transparent 70%);mix-blend-mode:screen;opacity:0;z-index:40"></div><div class="dip" id="oldway-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
+    <div class="dip" id="oldway-dip" style="position:absolute;inset:0;background:#0b1014;pointer-events:none;z-index:50"></div>
     <div class="vig"></div>
   </div>
   <script>
@@ -86,9 +85,9 @@ tl.set({}, {}, Math.max(0, DUR - 1 / 30));
 function exitWipe(sel) {
   tl.fromTo(sel, { xPercent: -120 }, { xPercent: 120, duration: b(0.5), ease: "power3.in" }, DUR - b(0.5));
 }
-// Land a block of words one by one on beats, blur to sharp, then hold still.
+// Words rise into place one by one on beats, blur to sharp, then hold still.
 function wordsIn(sel, at, gap) {
-  tl.fromTo(sel, { opacity: 0, filter: "blur(10px)", scale: 1.08 }, { opacity: 1, filter: "blur(0px)", scale: 1, duration: 0.16, ease: "power4.out", stagger: gap }, at);
+  tl.fromTo(sel, { opacity: 0, y: 34, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: b(1), ease: "expo.out", stagger: gap }, at);
 }
 
     tl.fromTo("#ow-raw", { y: -1200, rotation: -6 }, { y: 0, rotation: 2, duration: b(1), ease: "back.out(1.2)" }, 0);
@@ -100,12 +99,7 @@ function wordsIn(sel, at, gap) {
     tl.fromTo("#ow-stage", { scale: 1 }, { scale: 1.04, duration: DUR - b(2), ease: "sine.inOut" }, b(2));
     tl.fromTo("#oldway-dip", { opacity: 1 }, { opacity: 0, duration: b(0.5), ease: "power2.out" }, 0);
     tl.fromTo("#oldway-dip", { opacity: 0 }, { opacity: 0.85, duration: b(0.5), ease: "power2.in", immediateRender: false }, DUR - b(0.5));
-    for (let i = 1; i < Math.round(DUR / BEAT); i++) {
-      const down = i % 4 === 0;
-      tl.fromTo("#oldway-grv", { scale: down ? 1.012 : 1.005 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
-
-      if (down) tl.fromTo("#oldway-bl", { opacity: 0.5 }, { opacity: 0, duration: b(1), ease: "power2.out", immediateRender: false }, b(i));
-    }
+    for (let i = 2; i < Math.round(DUR / BEAT) - 1; i++) tl.fromTo("#ow-raw", { scale: i % 4 === 0 ? 1.02 : 1.007 }, { scale: 1, duration: b(0.6), ease: "power2.out", immediateRender: false }, b(i));
     window.__timelines["oldway"] = tl;
   </script>
 </template>
