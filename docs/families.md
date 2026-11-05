@@ -8,7 +8,7 @@ Every family below was made by the tool itself, on the [ChatGPT login](chatgpt-l
 
 * **Canvas and frames** are measured from the installed game, HOI4 1.19.4.1.
 * **Names the game looks up** follow the vanilla evidence in `crates/imagegen-core/src/lookup.rs`, as fixed in v0.2.2. Where a script names the sprite in full the name is free. Where the game builds the name, the tool builds the same one and the install result's `script` field says what to write.
-* **Processing** is the family's fixed chain. The tool appends it and you cannot skip it. The steps listed are the ones that ran on the example.
+* **Processing** is the family's fixed chain. The tool appends it and you cannot skip it. The steps listed are the ones that ran on the example. The examples were made with version 0.2.0. Since 0.3.2 more families have their own chain: raid icons get vanilla's gold gradient, doctrine icons black units with a pale outline and glow, special project icons are redrawn as line art, counters and division emblems always end in the unit recipe, and a landmark's small strip is a flat orange pictogram. The [reference](reference.md#processing-chains) lists every chain.
 * **Checks** are the deterministic set that `hoi4.image_validate` always runs for the family. Composition and readability at game size go to the visual review.
 * **Example call** is the one-call form (`approve: true` plans and generates together) as it was run for the image. `hoi4-imagegen call <tool> '<json>'` runs the same operation on the command line. The rest of the loop (process, validate, preview, review, install) is in the [how-to](how-to.md).
 * The example mod's feature slug is `gallery`. Replace it and the asset name with your own.

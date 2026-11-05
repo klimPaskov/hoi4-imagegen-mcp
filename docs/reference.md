@@ -87,16 +87,21 @@ A chain is the caller's optional pre-steps followed by the family's mandatory fi
 
 | Recipe | Families | Finishing (always runs) | Writes |
 |---|---|---|---|
-| `icon` | transparent icons, technology, modifier_stat_icon, gui_texture | trim, fit to the canvas with the profile margin, grayscale where the family needs it. A focus icon also gets its `_shine` sprite entry at install | one DDS |
-| `picture` | decision and operation pictures, news, super_event | flatten on black, cover-resize, grayscale for news | one DDS |
+| `icon` | transparent icons, technology, modifier_stat_icon, gui_texture | trim, fit to the canvas with the profile margin, grayscale where the family needs it. A focus icon also gets its `_shine` sprite entry at install. A technology picture gets its tier numeral when `overlay` asks for one (see below) | one DDS |
+| `raid` | `raid` | trim, fit, then `gold_gradient`: the subject recoloured on vanilla's gold ramp, pale gold at the top to brown at the bottom, with the black outline on its edge | one DDS |
+| `doctrine` | `doctrine` | trim, fit 2 px further in, then `doctrine_look`: the units filled black with vanilla's pale outline and glow, warm orange and yellow accents kept with a dark shadow | one DDS |
+| `line_art` | `special_project_icon` | `line_art`: any image redrawn as vanilla's thin, pale white lines with nothing filled, then grayscale | one DDS |
+| `picture` | decision pictures, news, super_event | flatten on black, cover-resize, grayscale for news | one DDS |
 | `report_card` v2 | `report_event` | flatten, then the report card: sepia, grain, tilt and a soft shadow fitted to vanilla, 210x176 with transparent corners | one DDS |
+| `phase_card` | `operation_picture` | flatten, then the report card on vanilla's phase picture mask: tilted clockwise and 4 px lower | one DDS |
 | `achievement` | `achievement` | fit the subject, then the grey state and the not-eligible state on the mod's template backgrounds | three DDS: `<key>`, `<key>_grey`, `<key>_not_eligible` |
 | `advisor_card` | `advisor_card` | flatten, then the portrait is composited into the mod's advisor template, with an alpha-coverage audit that fails closed | one 65x67 DDS |
 | `portrait` | the four portraits | flatten, then a head-and-shoulders crop to 156x210 found with YuNet face detection (pure-Rust `tract-onnx`, model from the mod's skill copy). `portrait_crop` sets the crop by hand | one opaque DDS |
 | `flag` | `flag` | flatten, then the 82x52, 41x26 and 10x7 ladder | three TGA, bottom-left origin |
 | `selected_strip` | `faction_logo`, `agency_logo` | fit with a margin, then frame 2 as the selected state. A faction logo also gets its 32x32 `_miniature` | one two-frame DDS, plus the miniature for a faction logo |
-| `landmark_strip` | `building` | fit, then frame 2 as the ruined landmark, made from a second candidate of the same asset (`hoi4.image_edit` on the first, passed as `second_frame_candidate`). A 64x64 landmark also gets the 32x32 `_small` strip | one or two two-frame DDS |
-| `imported_art` | `counter_large`, `counter_small`, `division_emblem` | import only: the exact strip, or one file per frame in `import.frames`. The on-map counter also gets its text icon, the division emblem its 30x12 small symbol | one DDS, or two |
+| `landmark_strip` | `building` | fit, then frame 2 as the ruined landmark, made from a second candidate of the same asset (`hoi4.image_edit` on the first, passed as `second_frame_candidate`). A 64x64 landmark also gets the 32x32 `_small` strip, a flat orange pictogram like vanilla's small landmarks | one or two two-frame DDS |
+| `unit_counter` | `counter_large`, `counter_small` | `unit_glyph`: the silhouette in vanilla's green (or the on-map grey) material, then `nato_frame`: the NATO box as frame 2. The on-map counter also gets its text icon | one DDS, or two |
+| `division_symbol` | `division_emblem` | `unit_glyph` in vanilla's green material, and the 30x12 small symbol | two DDS |
 
 A medal is made as one 56x84 frame, registered as `GFX_medal_icon_<asset>_large`, and its 28x42 `GFX_medal_icon_<asset>` is derived from it.
 
@@ -122,7 +127,17 @@ Every sprite name follows Hearts of Iron IV 1.19.4.1, and `crates/imagegen-core/
 
 A division emblem's number `<n>` is one past the highest of vanilla's numbers (0 to 43 and 65 to 121) and every number the mod's `interface/*.gfx` files or an earlier install already use. Install records it in the asset record. Achievements and flags have no sprite: the game loads them by file name.
 
-Art that already has its final accepted size is taken as it is when imported, which the chain records as `conform`. Counters and division emblems are not generated, because their second frame is different art. Every other family is generated end to end.
+Art that already has its final accepted size is taken as it is when imported, which the chain records as `conform`. Counters and division emblems are stricter: imported art of the final size is kept only when it already is vanilla's material (its frame 1 green or grey as vanilla's, its frame 2 the NATO box). Any other import, at any size, is drawn again from its frame 1 by the unit recipe, and the process result says so in `notes`. The `unit_material` check refuses such art if it reaches validation another way, so every counter and division emblem ends in the unit recipe.
+
+On an opaque source, the unit recipe reads light coloured marks inside a dark shape as holes, the same as on real alpha. A gold bolt on a blue shield therefore stays a bolt cut into the shield. Black, grey and white drawings are not affected.
+
+A technology picture can carry vanilla's tier numeral. Vanilla bakes the numeral into the texture: no `.gui` layer or sprite draws it (the tech tree item in `interface/countrytechtreeview.gui` shows one `GFX_technology_medium` icon). Pass `overlay` to `hoi4.image_process`, for example `{"tier": 2}`, or `{"tier": 3, "gem": true}` for the blue gem that battleship, cruiser and carrier pictures have before the numeral. The tool stamps vanilla's serif numeral in its gold and shadow, in vanilla's place at the top right (`position` moves it). The stamp is a recorded `tech_overlay` step.
+
+Some checks guard a family's look:
+
+* `line_art` (special_project_icon) refuses a filled area larger than 250 px, `GFX-FILLED-INTERIOR`. Vanilla's largest is 171 px and its median 4.
+* `unit_material` (counters and division emblem) refuses finished art that is not vanilla's material, `GFX-UNIT-MATERIAL`.
+* `side_view` (technology) warns when the subject is narrower than vanilla's side views, `GFX-TECH-VIEW`. Nine in ten vanilla pictures are at least 2.3 times as wide as tall at 146x54. A three-quarter view is narrower, so the review should look at it.
 
 The advisor card, achievement and portrait chains need files from the mod's own copy of the asset skill, found inside the project:
 
