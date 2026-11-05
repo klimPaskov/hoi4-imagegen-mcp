@@ -12,7 +12,7 @@ status -> families -> icon | picture | portrait | flag | unit | interface   (fre
 * Every asset has a **family**. The family alone selects the canvas, frames, naming, references, processing and checks. An asset keeps its family from the plan to the install record.
 * The canvas sizes are measured from the installed game (HOI4 1.19.4.1), not guessed.
 * Processing cannot be skipped. Each family has a fixed chain that the tool appends itself.
-* Install is gated: validation passed, a review approved this exact file, and nothing changed since.
+* Install is gated: validation passed, a review approved this exact file, and nothing changed since. An approval needs the file to measure like its family's vanilla art.
 * Nothing leaves the mod project and nothing is overwritten.
 
 ## Tools
@@ -27,8 +27,8 @@ status -> families -> icon | picture | portrait | flag | unit | interface   (fre
 | `hoi4.image_edit` | Refines a candidate with an instruction, an optional mask and extra references. Also makes the ruined second frame of a building and the further key frames of an `anim_blend_keyframes` strip |
 | `hoi4.image_process` | Runs the family's processing chain. Also imports art made elsewhere. `frame_candidates` names the edits that become frames 2 onward of a key-frame strip |
 | `hoi4.image_validate` | The family's full check set, with stable finding codes |
-| `hoi4.image_preview` | A contact sheet: native size and enlarged, on dark, light and checker backgrounds, beside the references. An animated strip also gets a frame sheet and a looping GIF |
-| `hoi4.image_review` | The visual review against the family's rubric. An approval returns the `approval_id` that install needs |
+| `hoi4.image_preview` | A contact sheet: native size and enlarged, on dark, light and checker backgrounds, beside the references. For an artifact also the vanilla side-by-side sheet and the measured vanilla-match result. An animated strip also gets a frame sheet and a looping GIF |
+| `hoi4.image_review` | The visual review against the family's rubric, asked against the vanilla references. The review runs the measured vanilla-match check itself. An approval returns the `approval_id` that install needs |
 | `hoi4.image_install` | Writes the DDS or TGA files and the sprite. Refuses unless the gate is open |
 | `hoi4.image_ledger` | Which references, settings and outputs belong together, lineage, and the chain check |
 | `hoi4.image_cancel` | Cancels a running job, reconciles one that a crashed run left behind, or retires an uncertain idempotency key (`abandon: true`) |
@@ -153,7 +153,7 @@ Selection is deterministic. Each candidate is measured (colour, saturation, edge
 
 `style` is part of every family's check set. It warns with `GFX-STYLE-DRIFT` when a candidate is far from the family's style distribution. It is a warning, never an error, and never blocks an install.
 
-Vanilla references may always be sent to a provider (a maintainer decision of 2026-11-01), and the tool never copies a vanilla file into a mod. Vanilla art is also left out of the contact sheet.
+Vanilla references may always be sent to a provider (a maintainer decision of 2026-11-01), and the tool never copies a vanilla file into a mod. Vanilla art is left out of the contact sheet that is written into the mod. The vanilla side-by-side sheet (see the review below) goes to the user's cache folder instead.
 
 ## Validation and install
 
@@ -161,13 +161,38 @@ Install is the last step and the strictest.
 
 1. `hoi4.image_validate` runs the family's full check set, never fewer, with stable finding codes (size, alpha, margins, fill, ghosting, chroma fringe, fake checkerboard, frames, DDS or TGA layout, style). The record carries a hash of the check set.
 2. The gate compares that hash and audits the processing chain against the family's recipe. A record with a missing step is refused.
-3. `hoi4.image_preview` makes the contact sheet. `hoi4.image_review` answers the family's rubric. Agents may approve. The reviewer's name is recorded with the review.
+3. `hoi4.image_preview` makes the contact sheet and the vanilla side-by-side sheet. `hoi4.image_review` answers the family's rubric and runs the vanilla-match check (next section). Agents may approve. The reviewer's name is recorded with the review.
 4. `hoi4.image_install` needs the `approval_id` of an approval of this exact file, and refuses if any hash changed since.
 5. The write is atomic: every file of an asset (companions, `.gfx` text or the handoff note) is written together and all are undone if one fails.
 
 `mode: handoff` (default) writes the sprite snippet into `docs/assets/<feature>/gfx_handoff.md` for the main agent to wire. `mode: register` inserts the entries into the suggested `.gfx` file as text, keeping comments and layout. Families without a sprite (achievements and flags) are loaded by the game from the file name, so both modes install the files alone. A final file is replaced only if this tool installed it and it is unchanged (`on_exists: replace`).
 
 Deterministic checks are not a style verdict. Composition and readability at game size go to the review. In-game appearance can only be checked by running the game, which this tool never does. It says "installed", not "verified in game".
+
+## Review and the vanilla-match check
+
+Until 0.3.1 an approval needed only every rubric answer `true`, so a caller that sent blanket `true` answers approved anything. The maintainer's look at the gallery on 2026-11-05 found that the approved images were the bad ones. Since 0.3.2 the answers alone never approve.
+
+An approval needs all of these, in this order:
+
+1. a validation of this exact file that ran the family's full check set and passed (`review_needs_validation`),
+2. a preview of this exact file (`review_needs_preview`) that put it beside the family's vanilla references (`review_needs_vanilla_preview`),
+3. a passing vanilla-match check, which the review runs itself (`review_vanilla_mismatch` when it fails, `review_needs_vanilla_check` when it cannot run, for example without the installed game),
+4. every rubric answer `true` (`review_incomplete`).
+
+**The vanilla side-by-side sheet.** For an artifact, `hoi4.image_preview` also makes a second sheet: the candidate under a light bar, then the family's six most typical vanilla images, at native size on the top row and enlarged on the bottom row. It holds vanilla pixels, so it is written outside the mod, to `HOI4_IMAGEGEN_CACHE_DIR` or the platform cache folder (`%LOCALAPPDATA%/hoi4-imagegen/cache` on Windows, `$XDG_CACHE_HOME/hoi4-imagegen` or `~/.cache/hoi4-imagegen` elsewhere). The MCP reply returns it as a second image. The preview record lists every vanilla file shown by path and SHA-256.
+
+**The vanilla-match check.** The family's vanilla art is read from the installed game, through the same folders and name rules as the vanilla style tier, at the family's vanilla sizes (large medals are cut out of their strips). Each image is measured: palette (lightness, saturation, value, their spread, dark, bright and middle shares, colours, gold tones), outline share, edge density, alpha coverage, soft alpha, background fill, and form (the subject's size, position and aspect, how much of its box, convex hull and inscribed ellipse it fills, left-right symmetry, the saturation of its top band where a ribbon sits). Each family gets an accepted range per feature from its own vanilla files: the 1st to 99th percentile, widened on each side by half of that width.
+
+Thirteen features can fail a candidate: the form features and the two medium features that separate painted, line and grey art (the middle-value share and the saturation). The others are measured and reported only, because the art the maintainer accepted differs from vanilla in them as much as the rejected art does. A failure names each feature with its value, vanilla's range and vanilla's median. On HOI4 1.19.4.1 between 97.6 and 100 percent of each family's own vanilla files pass its check. The check is version `vanilla_match_v1`, recorded with every result.
+
+The check is a gate, not a verdict. Art that looks wrong in a way these features cannot see still passes it, and must then fail the rubric. For example, on the gallery the loose steel gate (focus), the war economy cluster (idea spirit) and the bread basket (industrial concern) measure inside vanilla's own spread. The v3 rubric questions are asked against the vanilla sheet for that reason.
+
+**Families without vanilla art** (`gui_texture`, `super_event` and the animation families) cannot be checked. Approve them with an override.
+
+**Override.** A deliberate mod style can be approved past a failing or unavailable check with `"override_vanilla_check": true` and an `"override_reason"` of 10 to 1000 characters. Both are recorded in the ledger and the reply (`vanilla_override`, with the status it overrode). Every review, approving or not, records the check it ran (`vanilla_check`).
+
+**Rubric v3.** Every group's questions are asked against the vanilla references in the preview: same form, same medium and palette, same framing (icons), same composition and angle (pictures), and so on. `hoi4.image_families` lists them. Reviews recorded under v1 and v2 stay readable.
 
 ## Providers
 

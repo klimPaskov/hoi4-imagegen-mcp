@@ -61,7 +61,7 @@ The example is one focus icon. An AI client calls the tools below. Each is also 
 
 5. **Validate.** `hoi4.image_validate { "targets": ["iron_pact.steel_gate-v1-p1"] }`. Fix any error and validate again. A pass means the geometry is right. It does not say the art is good.
 
-6. **Preview.** `hoi4.image_preview { "target": "iron_pact.steel_gate-v1-p1" }`. Look at the native-size panel first. Icons are judged at the size the game shows them.
+6. **Preview.** `hoi4.image_preview { "target": "iron_pact.steel_gate-v1-p1" }`. Look at the native-size panel first. Icons are judged at the size the game shows them. Then look at the second sheet, the candidate beside the family's vanilla references, and at `vanilla_check` in the reply. The review needs this preview, and the installed game for the vanilla references.
 
 7. **Review.**
 
@@ -71,13 +71,13 @@ The example is one focus icon. An AI client calls the tools below. Each is also 
      "verdict": "approved",
      "reviewer": "claude",
      "answers": {
-       "readable_at_native_size": true, "silhouette_clear": true, "style_matches_references": true,
-       "no_text_or_watermark": true, "no_unintended_elements": true, "period_and_theme_fit": true
+       "vanilla_form": true, "vanilla_medium": true, "vanilla_framing": true,
+       "readable_at_native_size": true, "no_text_or_watermark": true, "period_and_theme_fit": true
      }
    }
    ```
 
-   The icon group has the six questions above. `hoi4.image_families` lists the questions of every group. An approval needs every answer true and a preview of this exact file. An agent may approve, and its name is recorded. The reply carries an `approval_id`. If the art is not good enough, use `"verdict": "changes_requested"` with notes, then `hoi4.image_edit { "candidate_id": "iron_pact.steel_gate-v1", "instruction": "...", "idempotency_key": "..." }` and process the new candidate.
+   The icon group has the six questions above, each asked against the vanilla references beside the candidate. Answer them honestly: `true` only when the side-by-side sheet shows the same form, medium and framing. `hoi4.image_families` lists the questions of every group. An approval needs every answer true, a preview of this exact file with the vanilla sheet, and the measured vanilla-match check to pass. The review runs that check itself. When it fails, the reply (`review_vanilla_mismatch`) names each measured feature outside vanilla's range, for example `subject_span 0.95 (vanilla 0.32..0.92, median 0.62)`. Fix the art or ask for another round. A mod with a deliberate style of its own may approve with `"override_vanilla_check": true` and an `"override_reason"`, and both are recorded. An agent may approve, and its name is recorded. The reply carries an `approval_id`. If the art is not good enough, use `"verdict": "changes_requested"` with notes, then `hoi4.image_edit { "candidate_id": "iron_pact.steel_gate-v1", "instruction": "...", "idempotency_key": "..." }` and process the new candidate.
 
 8. **Install.** `hoi4.image_install { "target": "iron_pact.steel_gate-v1-p1", "approval_id": "apr-..." }`. This writes `gfx/interface/goals/iron_pact/focus_steel_gate.dds` and puts the sprite and its `_shine` entry into `docs/assets/iron_pact/gfx_handoff.md`. Add `"mode": "register"` to insert them into the mod's `.gfx` file instead.
 
@@ -113,6 +113,8 @@ Install says "installed", not "verified in game". Start the game yourself to che
 | `chain_steps_empty` or `chain_step_not_allowed` | Only four pre-steps are accepted, and an empty list is refused. Leave `pre_steps` out for none |
 | `GFX-STYLE-DRIFT` | A warning only. The art is far from the family's style. Look at the preview next to the references |
 | Install refuses | The gate names the reason: validation missing or stale, no approving review of this exact file, or a hash that changed. Validate and review again |
+| `review_vanilla_mismatch` | The file does not measure like the family's vanilla art. The message lists each feature outside vanilla's range. Compare it with the vanilla side-by-side sheet and fix the art or its processing. Override only for a deliberate mod style |
+| `review_needs_vanilla_preview` or `review_needs_vanilla_check` | The preview did not show the vanilla references, or the check cannot run. Usually the installed game was not found: set `HOI4_GAME_DIR`, preview again and review. Families without vanilla art (`gui_texture`, `super_event`, the animations) need an override |
 | A building has one frame | Frame 2 is the ruined state. Make it with `hoi4.image_edit` on the first candidate and pass it as `second_frame_candidate` to `hoi4.image_process` |
 
 ### Windows and keychain
