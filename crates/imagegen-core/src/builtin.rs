@@ -68,6 +68,21 @@ const ICON_RULES: &[&str] = &[
     "Real transparent background: no backdrop, no frame, no border, no plate behind the subject.",
     "Leave a small empty margin around the subject.",
 ];
+/// An icon family whose canvas has a side of this many pixels or fewer gets [`SMALL_CANVAS_RULE`], its negatives and
+/// the `small_detail` check: decision, decision category icon, state modifier, raid and the two trait families.
+pub const SMALL_CANVAS_MAX: u32 = 40;
+
+/// Readability on a small canvas. On the 0.3.2 gallery three raid icons did not read at 32x32: a dinghy with figures,
+/// a broken arch bridge and twisted rails, all thin lines and small parts.
+const SMALL_CANVAS_RULE: &str = "Small canvas: at {w}x{h} pixels only one bold object reads. Draw it with a few large, solid shapes and thick parts, nothing smaller than a tenth of the canvas: no thin parallel lines (rails, wires, ropes, cables, railings), no lattices or open frameworks, no groups of small figures, no scene, ground or water line.";
+const SMALL_CANVAS_NEGATIVE: &[&str] = &["thin parallel lines, wires or lattices", "several small objects or figures"];
+
+/// True when a family gets the small-canvas rule and check: an icon whose smaller side is at most
+/// [`SMALL_CANVAS_MAX`].
+pub fn is_small_icon(family: Family, canvas: [u32; 2]) -> bool {
+    family.group() == Group::Icon && canvas[0].min(canvas[1]) > 0 && canvas[0].min(canvas[1]) <= SMALL_CANVAS_MAX
+}
+
 // Per-family form and medium. The general icon rules ask for a loose subject with no frame, which is wrong for the
 // families below: their vanilla art (the kit's 1.19.4.1 reference shelf) has a fixed form. Each rule states that
 // form so the model draws it, and those families drop "a frame or border" from the negative list.
@@ -146,13 +161,21 @@ const MIO_DEPARTMENT_NEGATIVE: &[&str] = &[
     "drafting tools such as a compass or a ruler",
     "a second main object",
 ];
+/// MIO traits. Measured on the 44 vanilla trait icons (HOI4 1.19.4.1), inside the glyph (alpha 224 and up): mean value
+/// 0.50 in the median file (10th percentile 0.39), dark pixels (value under 0.2) 6 percent and light ones (over 0.75)
+/// 15 percent, 14 colour buckets for 90 percent of the pixels. Around it, a soft black shadow takes 48 percent of the
+/// visible pixels. The 0.3.2 gallery's traits had about the same number of colours (7 to 16) but were dark and
+/// murky inside (mean value 0.24 to 0.44, 5 to 43 percent dark pixels, almost no light ones): shaded painted objects,
+/// not light, flat glyphs.
 const MIO_TRAIT_RULES: &[&str] = &[
-    "The Hearts of Iron IV military industrial organisation trait icon form: one small, simple glyph of one object or symbol (a shield, a star, a wrench, binoculars, a shell, an aircraft, a turret, an anvil, rising bars), often with one small accent sign beside it, such as a green plus, a green arrow or a red target ring.",
-    "A compact interface glyph with light shading: metal, brass, steel or enamel, mostly muted greys and browns with one or two saturated accents (green, red, gold or orange). A thin dark outline and a soft dark shadow follow the whole shape. Seen from the front or three quarters, readable at {w}x{h} pixels.",
+    "The Hearts of Iron IV military industrial organisation trait icon form: one small, simple glyph of one object or symbol, drawn flat like an interface pictogram (a shield, a star, a wrench, binoculars, a shell, an aircraft, a turret, an anvil, rising bars), often with one small accent sign beside it, such as a green plus, a green arrow or a red target ring.",
+    "Flat and low in detail: a few large areas of clean colour with light shading, one highlight and one shade per area. Light tones overall (light steel, pale brass, white or light grey) with one or two saturated accents (green, red, gold or orange), and little dark area inside the shape. No texture, grime, rivets, bolts, cables or small parts, and no realistic lighting or reflections.",
+    "A thin dark outline follows the whole shape, with a soft dark shadow around it. Seen from the front or the side with little depth, bold enough to read at {w}x{h} pixels.",
     "Real transparent background: no badge, disc, plate or square behind the glyph.",
     "Leave a small empty margin around it.",
 ];
-/// MIO trait negatives: the badge the old rule asked for, and the painted scene a brief invites.
+/// MIO trait negatives: the badge the old rule asked for, the painted scene a brief invites, and the dark, detailed
+/// object the 0.3.2 rule still produced.
 const MIO_TRAIT_NEGATIVE: &[&str] = &[
     "text",
     "letters or numbers",
@@ -160,16 +183,26 @@ const MIO_TRAIT_NEGATIVE: &[&str] = &[
     "a drawn checkerboard pattern",
     "a round badge, disc or plate behind the object",
     "a detailed, realistically lit object",
+    "dark, murky or heavily shaded painting",
+    "fine mechanical detail, texture or grime",
+    "a three-quarter view from above with visible depth",
     "a scene, landscape or background",
-    "flat clip art without shading",
 ];
+/// Agency upgrades. Measured on the 15 vanilla upgrades (HOI4 1.19.4.1): mean saturation 0.249 and mean value 0.423
+/// in the median file, gold and bronze tones on 11 percent of the disc. The 0.3.2 gallery's upgrades were darker
+/// (mean value 0.26 to 0.47), more saturated (0.28 to 0.49) and warmer (gold and bronze tones on 8 to 36 percent),
+/// busy rooms full of small objects. The vignette recipe brings any subject into vanilla's palette and edge, and the
+/// rules ask for the light, simple close-up it cannot make.
 const AGENCY_UPGRADE_RULES: &[&str] = &[
-    "The Hearts of Iron IV intelligence agency upgrade form: a round painted vignette, a disc whose whole face is one small scene or close-up (a person at work, hands, a device, documents or equipment), seen at eye level or slightly from above.",
-    "A painted, semi-realistic 1930s or 1940s illustration in muted colours (olive, grey, brown, dusty pink, ochre) with a few warm accents. The scene runs to the edge of the disc, which is softly darkened. There is no ring, rim, frame or border around the disc. Readable at {w}x{h} pixels.",
+    "The Hearts of Iron IV intelligence agency upgrade form: a round painted vignette, a disc whose whole face is one simple close-up (one person at work, hands, one device, documents or one piece of equipment), seen at eye level or slightly from above.",
+    "Pale and muted: a light, desaturated 1930s or 1940s illustration in soft greys, grey-greens, dusty pinks and pale ochre, evenly lit with light mid-tones. Never dark, never saturated, and no warm brown, orange or sepia cast. At most one small accent is stronger.",
+    "One subject large in the disc on a plain, softly painted background: a few large shapes, no crowded room, no shelves or desks full of objects and no fine detail that disappears at {w}x{h} pixels.",
+    "The scene runs to the edge of the disc, which is softly darkened. There is no ring, rim, frame or border around the disc.",
     "Real transparent background outside the disc.",
     "Leave a small empty margin around the disc.",
 ];
-/// Agency upgrade negatives: the loose object and the ring the old rules produced.
+/// Agency upgrade negatives: the loose object and the ring the old rules produced, and the dark, warm, busy painting
+/// of 0.3.2.
 const AGENCY_UPGRADE_NEGATIVE: &[&str] = &[
     "text",
     "letters or numbers",
@@ -179,6 +212,8 @@ const AGENCY_UPGRADE_NEGATIVE: &[&str] = &[
     "a square or rectangular picture",
     "a loose object on a transparent background without the round scene",
     "a black and white or sepia photograph",
+    "dark, saturated or warm brown and orange colours",
+    "a busy scene with many small objects",
 ];
 const OPERATION_ICON_RULES: &[&str] = &[
     "The Hearts of Iron IV operation phase icon form: a round period photograph, a disc whose whole face is one documentary scene of the phase (people, vehicles, a place or an object), in monochrome sepia: warm brown-grey tones only, no other colour.",
@@ -334,8 +369,15 @@ const FRAME_STRIP_RULES: &[&str] = &[
     "One centred emblem with a strong silhouette that reads at {w}x{h} pixels, drawn in the style of Hearts of Iron IV faction and interface art.",
     "Real transparent background: no backdrop, no frame, no plate. Leave clear space around the emblem: the tool adds the second frame (its highlight or its disabled look) itself.",
 ];
+/// The widest a landmark may be, width over height of one frame's subject. Vanilla's 52 landmark strips (HOI4
+/// 1.19.4.1, frame 1 at 128x64 and 64x32) run from 0.34 (Big Ben) to 4.00 (the small Cataract dam), median 1.41, 95th
+/// percentile 3.77, and every frame's box is centred within 0.47 to 0.55 of the frame. On 0.3.3, 6 of 12 generated
+/// landmarks (dams, a grain elevator, a palace) were refused by the vanilla-match check as wider than vanilla.
+pub const BUILDING_MAX_ASPECT: f64 = 4.0;
+
 const BUILDING_RULES: &[&str] = &[
     "The Hearts of Iron IV landmark building form: one real-world landmark (a monument, a government building, a tower, a statue, a dam or an industrial site) as a small, detailed painted miniature, seen from the front at a slightly raised angle. It stands on nothing: the base of the building is the bottom of the drawing, with no ground, rock or hill under it (a dam or a canal keeps only its water).",
+    "Compact and centred: the building is at most about four times as wide as it is tall, with its mass in the middle of the drawing. Show a long subject such as a dam, a wall, a grain elevator or a palace foreshortened, from an angle, or as its central part, never as a long thin strip.",
     "Muted stone greys, browns and weathered copper green, crisp painted detail and a thin dark outline around the whole silhouette, readable at {w}x{h} pixels.",
     "Real transparent background: no sky, no landscape, no hill and no backdrop. Leave a small empty margin around the building.",
     "Frame 1 is the intact building. Frame 2, a second candidate of the same asset, shows the same building at the same scale and position as ruins (broken walls and rubble, lower than the intact building) with one small stylised orange flame above it.",
@@ -351,6 +393,7 @@ const BUILDING_NEGATIVE: &[&str] = &[
     "ground, rocks or a diorama base under the building",
     "a fantasy castle",
     "a large smoke cloud",
+    "a long, thin panorama much wider than it is tall",
 ];
 const FLAG_RULES: &[&str] = &[
     "A flat national flag design with simple shapes that stay readable at 82x52 pixels and at 10x7 pixels.",
@@ -886,6 +929,15 @@ pub fn profiles() -> Vec<Profile> {
         .map(|r| {
             let canvas = r.canvas;
             let source = source_of(&r);
+            let small = is_small_icon(r.family, canvas);
+            let mut checks: Vec<String> = r.checks.iter().map(|s| s.to_string()).collect();
+            let mut rules: Vec<String> = r.rules.iter().map(|s| s.to_string()).collect();
+            let mut negative: Vec<String> = r.negative.iter().map(|s| s.to_string()).collect();
+            if small {
+                checks.insert(checks.len().saturating_sub(2), "small_detail".to_string());
+                rules.insert(rules.len().saturating_sub(1), SMALL_CANVAS_RULE.to_string());
+                negative.extend(SMALL_CANVAS_NEGATIVE.iter().map(|s| s.to_string()));
+            }
             Profile {
                 id: r.family.as_str().to_string(),
                 family: r.family,
@@ -911,13 +963,10 @@ pub fn profiles() -> Vec<Profile> {
                     }),
                     companion_files: r.companion_files.iter().map(|s| s.to_string()).collect(),
                     variants: if r.family == Family::Flag { flag_variants() } else { Vec::new() },
-                    checks: r.checks.iter().map(|s| s.to_string()).collect(),
+                    checks,
                     reference_dirs: vec![format!("references/{}", r.family.as_str())],
                     rubric: rubric_of(r.family),
-                    prompt: PromptSpec {
-                        rules: r.rules.iter().map(|s| s.to_string()).collect(),
-                        negative: r.negative.iter().map(|s| s.to_string()).collect(),
-                    },
+                    prompt: PromptSpec { rules, negative },
                     grayscale: r.grayscale,
                     source_canvas: r.source_canvas,
                     animation: animation_of(r.family),
@@ -1258,11 +1307,23 @@ mod tests {
     fn reviewed_families_state_their_vanilla_form() {
         let set = by_family();
         let cases: [(Family, &str, &[&str]); 12] = [
-            (Family::AgencyUpgrade, "intelligence agency upgrade form: a round painted vignette", &["no ring, rim, frame or border around the disc"]),
-            (Family::Building, "landmark building form: one real-world landmark", &["no ground, rock or hill", "Frame 2", "ruins", "orange flame"]),
+            (
+                Family::AgencyUpgrade,
+                "intelligence agency upgrade form: a round painted vignette",
+                &["no ring, rim, frame or border around the disc", "Pale and muted", "no warm brown, orange or sepia cast", "no crowded room"],
+            ),
+            (
+                Family::Building,
+                "landmark building form: one real-world landmark",
+                &["no ground, rock or hill", "Frame 2", "ruins", "orange flame", "at most about four times as wide as it is tall", "foreshortened"],
+            ),
             (Family::CommanderTrait, "unit leader trait form: a small military medal", &["ribbon", "monochrome metal"]),
             (Family::DivisionEmblem, "division template symbol form", &["solid black silhouette"]),
-            (Family::MioTrait, "trait icon form: one small, simple glyph", &["light shading", "no badge, disc, plate"]),
+            (
+                Family::MioTrait,
+                "trait icon form: one small, simple glyph",
+                &["drawn flat", "light shading", "Light tones overall", "little dark area", "no badge, disc, plate"],
+            ),
             (
                 Family::OperationIcon,
                 "operation phase icon form: a round period photograph",
@@ -1299,6 +1360,37 @@ mod tests {
         // the form rule of each GUI texture kind
         for k in crate::family::GuiTextureKind::ALL {
             assert!(k.form_rule().contains(&format!("{} form", k.as_str().replace("background", "window background"))), "{k}");
+        }
+    }
+
+    /// The 0.3.2 gallery's agency upgrades were dark, warm and busy, its MIO traits dark painted objects, and three
+    /// raid icons did not read at 32x32. The negatives name those, and every icon family with a side of 40 px or less
+    /// gets the small-canvas rule, its negatives and the `small_detail` check, and no other family does.
+    #[test]
+    fn small_icons_get_the_readability_rule_and_the_0_3_2_drift_is_named() {
+        let set = by_family();
+        let neg = |f: Family| set[&f].imagegen.prompt.negative.join("; ");
+        assert!(neg(Family::AgencyUpgrade).contains("warm brown and orange") && neg(Family::AgencyUpgrade).contains("many small objects"));
+        assert!(neg(Family::MioTrait).contains("dark, murky") && neg(Family::MioTrait).contains("fine mechanical detail"));
+        assert!(!neg(Family::MioTrait).contains("without shading"), "vanilla's glyphs are flat with light shading");
+        assert!(neg(Family::Building).contains("long, thin panorama"));
+        let small: Vec<Family> = set.values().filter(|p| super::is_small_icon(p.family, p.canvas)).map(|p| p.family).collect();
+        assert_eq!(
+            small,
+            vec![Family::Decision, Family::DecisionCategoryIcon, Family::StateModifier, Family::Raid, Family::CommanderTrait, Family::PersonalTrait]
+        );
+        for (f, p) in &set {
+            let rules = p.imagegen.prompt.rules.join(" ");
+            let is_small = small.contains(f);
+            assert_eq!(rules.contains("Small canvas: at"), is_small, "{f}");
+            assert_eq!(p.imagegen.checks.iter().any(|c| c == "small_detail"), is_small, "{f}");
+            assert_eq!(p.imagegen.prompt.negative.iter().any(|n| n.contains("thin parallel lines")), is_small, "{f}");
+            if is_small {
+                assert!(rules.contains("no thin parallel lines") && rules.contains("one bold object"), "{f}");
+                assert!(crate::validate::small_detail_limit(*f).is_some(), "{f} has a measured limit");
+                // the margin rule stays last
+                assert!(p.imagegen.prompt.rules.last().unwrap().contains("margin"), "{f}");
+            }
         }
     }
 

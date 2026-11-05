@@ -140,6 +140,7 @@ pub const ALL_CHECKS: &[&str] = &[
     "line_art",
     "unit_material",
     "side_view",
+    "small_detail",
     "style",
     "dds",
     "tga",
@@ -147,7 +148,7 @@ pub const ALL_CHECKS: &[&str] = &[
 
 /// Checks that judge the main image only: a companion (a tinted text icon, a smaller strip) is not the family's
 /// finished art and skips them.
-pub const MAIN_IMAGE_ONLY_CHECKS: &[&str] = &["unit_material", "side_view", "line_art"];
+pub const MAIN_IMAGE_ONLY_CHECKS: &[&str] = &["unit_material", "side_view", "line_art", "small_detail"];
 
 /// Code of a special project drawing with a filled area (`line_art` check).
 pub const FILLED_CODE: &str = "GFX-FILLED-INTERIOR";
@@ -155,6 +156,54 @@ pub const FILLED_CODE: &str = "GFX-FILLED-INTERIOR";
 pub const UNIT_MATERIAL_CODE: &str = "GFX-UNIT-MATERIAL";
 /// Code of a technology picture that may not be vanilla's side view (`side_view` check).
 pub const SIDE_VIEW_CODE: &str = "GFX-TECH-VIEW";
+/// Code of a small icon made of thin lines and small parts (`small_detail` check).
+pub const SMALL_DETAIL_CODE: &str = "GFX-SMALL-DETAIL";
+
+/// Share of a subject's opaque pixels (alpha 128 and up) that lie on its edge, next to a pixel that is not opaque
+/// (4-neighbours; outside the canvas counts as clear). A shape of thick, solid parts has a low share; thin lines, wires,
+/// lattices and scattered small parts have a high one. At a small native size it separates what reads from what
+/// does not better than edge density, which is high for every small icon (vanilla raid icons 0.61 to 1.00, median
+/// 0.89, the 0.3.2 gallery's raid icons 0.72 to 0.92, the unreadable ones among them). `None` with fewer than 8
+/// opaque pixels.
+pub fn edge_share(img: &Rgba) -> Option<f64> {
+    let (w, h) = (i64::from(img.width), i64::from(img.height));
+    let solid = |x: i64, y: i64| x >= 0 && y >= 0 && x < w && y < h && img.alpha(x as u32, y as u32) >= 128;
+    let (mut n, mut edge) = (0u64, 0u64);
+    for y in 0..h {
+        for x in 0..w {
+            if !solid(x, y) {
+                continue;
+            }
+            n += 1;
+            if !(solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1)) {
+                edge += 1;
+            }
+        }
+    }
+    (n >= 8).then(|| edge as f64 / n as f64)
+}
+
+/// The highest [`edge_share`] of a small icon family before `GFX-SMALL-DETAIL` warns: the 95th percentile of the
+/// family's vanilla files at its canvas (HOI4 1.19.4.1, measured by `tests/vanilla_forms.rs`), so about one vanilla
+/// file in twenty would get the warning too. `None` for a family without a limit.
+pub fn small_detail_limit(family: crate::family::Family) -> Option<f64> {
+    use crate::family::Family::*;
+    match family {
+        Raid => Some(RAID_LIMIT),
+        StateModifier => Some(STATE_MODIFIER_LIMIT),
+        Decision => Some(DECISION_LIMIT),
+        CommanderTrait => Some(COMMANDER_TRAIT_LIMIT),
+        PersonalTrait => Some(PERSONAL_TRAIT_LIMIT),
+        DecisionCategoryIcon => Some(DECISION_CATEGORY_ICON_LIMIT),
+        _ => None,
+    }
+}
+const RAID_LIMIT: f64 = 0.468;
+const STATE_MODIFIER_LIMIT: f64 = 0.364;
+const DECISION_LIMIT: f64 = 0.342;
+const COMMANDER_TRAIT_LIMIT: f64 = 0.347;
+const PERSONAL_TRAIT_LIMIT: f64 = 0.448;
+const DECISION_CATEGORY_ICON_LIMIT: f64 = 0.112;
 
 /// The narrowest a technology picture's subject may be, width over height of its visible box, before the side view
 /// is doubted: vanilla's 10th percentile (HOI4 1.19.4.1: 2.30 over 269 pictures at 146x54, 1.81 over 55 at 131x52;
@@ -504,6 +553,24 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
                     ),
                     None,
                     json!({"aspect": aspect, "vanilla_p10": min}),
+                ));
+            }
+        }
+    }
+
+    if wants("small_detail") {
+        run.push("small_detail".into());
+        if let (Some(limit), Some(share)) = (small_detail_limit(profile.family), edge_share(img)) {
+            if share > limit {
+                findings.push(Finding::new(
+                    SMALL_DETAIL_CODE,
+                    Level::Warning,
+                    format!(
+                        "{share:.2} of the subject's pixels lie on its edge, more than the {limit:.2} of all but one in twenty of vanilla's {} icons: it is made of thin lines or small parts that may not read at {}x{}. Check in the review that one bold object reads at native size",
+                        profile.family, img.width, img.height
+                    ),
+                    None,
+                    json!({"edge_share": share, "vanilla_p95": limit}),
                 ));
             }
         }

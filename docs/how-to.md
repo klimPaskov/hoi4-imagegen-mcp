@@ -84,6 +84,15 @@ The example is one focus icon. An AI client calls the tools below. Each is also 
 
 Install says "installed", not "verified in game". Start the game yourself to check how the icon looks.
 
+### Writing the brief
+
+The family's rules already describe vanilla's form, so the brief only names the subject. A few families need the subject chosen with their form in mind:
+
+* **Landmark buildings** (`building`). Keep the building compact and centred, at most about four times as wide as it is tall. Vanilla's widest landmark frame is 4.0 to 1, and the vanilla-match review refuses a wider strip. For a long subject such as a dam, a wall, a grain elevator or a palace, ask for it foreshortened, seen from an angle, or as its central part, for example "the central spillway section of the dam, seen at an angle". The tool already centres the building's box in the frame, but it cannot make a wide subject narrower without cutting its walls off, so the brief has to.
+* **Small icons** (a side of 40 px or less: decision, decision category icon, state modifier, raid, commander and personal traits). Name one bold object, not a scene: "a stick of dynamite", not "commandos in a dinghy". Avoid subjects that are thin lines (rails, wires, a bridge's arches) or groups of small figures. `GFX-SMALL-DETAIL` warns when the result is mostly thin lines.
+* **Agency upgrades** (`agency_upgrade`). Name one close-up, such as hands at a cipher machine, not a room full of objects. The tool cuts the round vignette and mutes the colours itself.
+* **MIO traits** (`mio_trait`). Name one plain object or symbol, such as a wrench or a shield. A detailed machine comes out as a dark painting, not vanilla's light, flat glyph.
+
 ## 4. Fix problems
 
 ### Sign-in and provider
@@ -120,6 +129,8 @@ Install says "installed", not "verified in game". Start the game yourself to che
 | `review_vanilla_mismatch` | The file does not measure like the family's vanilla art. The message lists each feature outside vanilla's range. Compare it with the vanilla side-by-side sheet and fix the art or its processing. Override only for a deliberate mod style |
 | `review_needs_vanilla_preview` or `review_needs_vanilla_check` | The preview did not show the vanilla references, or the check cannot run. Usually the installed game was not found: set `HOI4_GAME_DIR`, preview again and review. Families without vanilla art (`gui_texture`, `super_event`, the animations) need an override |
 | A building has one frame | Frame 2 is the ruined state. Make it with `hoi4.image_edit` on the first candidate and pass it as `second_frame_candidate` to `hoi4.image_process` |
+| `review_vanilla_mismatch` on a building with `subject_aspect` above vanilla's range | The landmark is wider than any vanilla one. Plan again with a brief that shows it foreshortened, from an angle or as its central part (see [Writing the brief](#writing-the-brief)) |
+| `GFX-SMALL-DETAIL` | A warning only. The small icon is mostly thin lines or small parts and may not read at native size. Look at the native-size preview, and if it does not read, plan again with one bold object |
 
 ### Windows and keychain
 
