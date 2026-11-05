@@ -92,6 +92,7 @@ The family's rules already describe vanilla's form, so the brief only names the 
 * **Small icons** (a side of 40 px or less: decision, decision category icon, state modifier, raid, commander and personal traits). Name one bold object, not a scene: "a stick of dynamite", not "commandos in a dinghy". Avoid subjects that are thin lines (rails, wires, a bridge's arches) or groups of small figures. `GFX-SMALL-DETAIL` warns when the result is mostly thin lines.
 * **Agency upgrades** (`agency_upgrade`). Name one close-up, such as hands at a cipher machine, not a room full of objects. The tool cuts the round vignette and mutes the colours itself.
 * **MIO traits** (`mio_trait`). Name one plain object or symbol, such as a wrench or a shield. A detailed machine comes out as a dark painting, not vanilla's light, flat glyph.
+* **Portraits.** Leave the background out of the brief: each portrait family's rule already names its own vanilla backdrop, pale cream-grey for leaders and commanders, pale blue-grey for scientists and dark charcoal for operatives. Describe a background only for a council or otherwise unusual portrait. `GFX-PORTRAIT-BACKDROP` warns when the backdrop is another family's.
 
 ## 4. Fix problems
 
@@ -131,6 +132,7 @@ The family's rules already describe vanilla's form, so the brief only names the 
 | A building has one frame | Frame 2 is the ruined state. Make it with `hoi4.image_edit` on the first candidate and pass it as `second_frame_candidate` to `hoi4.image_process` |
 | `review_vanilla_mismatch` on a building with `subject_aspect` above vanilla's range | The landmark is wider than any vanilla one. Plan again with a brief that shows it foreshortened, from an angle or as its central part (see [Writing the brief](#writing-the-brief)) |
 | `GFX-SMALL-DETAIL` | A warning only. The small icon is mostly thin lines or small parts and may not read at native size. Look at the native-size preview, and if it does not read, plan again with one bold object |
+| `GFX-PORTRAIT-BACKDROP` | A warning only. The portrait's backdrop is far from its family's vanilla backdrop, often another portrait family's. Unless the portrait is meant to be unusual, plan again without a background in the brief |
 
 ### Windows and keychain
 

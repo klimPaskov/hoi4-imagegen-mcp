@@ -742,6 +742,8 @@ common/characters/*.txt: all 2,887 small values are full GFX_ names (interface/i
 
 <img src="gallery/commander_portrait.webp" alt="Example commander_portrait asset made by hoi4-imagegen" width="312">
 
+**Vanilla backdrop (since 0.3.4).** Leaders and commanders share one vanilla backdrop: a plain pale cream-grey studio background (about RGB 229, 226, 209 at the top, L*a*b* 89.8, -1.9, 8.5 in the top corners), darker toward the bottom (about 190, 186, 170 at the sides by the shoulders). 424 of the 447 decodable portraits outside the scientists folder use it. The rest are special portraits. The rule asks for this backdrop, and the `backdrop` check warns (`GFX-PORTRAIT-BACKDROP`) when the top corners are more than 15 away from it. The vanilla-match check compares the corners' lightness and yellow-blue tone with this family's own files.
+
 | | |
 |---|---|
 | Group and tool | portrait, `hoi4.image_portrait` |
@@ -767,6 +769,8 @@ common/characters/*.txt: 2,045 of 2,047 large values are full GFX_ names (interf
 ### leader_portrait
 
 <img src="gallery/leader_portrait.webp" alt="Example leader_portrait asset made by hoi4-imagegen" width="312">
+
+**Vanilla backdrop (since 0.3.4).** Leaders and commanders share one vanilla backdrop: a plain pale cream-grey studio background (about RGB 229, 226, 209 at the top, L*a*b* 89.8, -1.9, 8.5 in the top corners), darker toward the bottom (about 190, 186, 170 at the sides by the shoulders). 424 of the 447 decodable portraits outside the scientists folder use it. The rest are special portraits. The rule asks for this backdrop, and the `backdrop` check warns (`GFX-PORTRAIT-BACKDROP`) when the top corners are more than 15 away from it. The vanilla-match check compares the corners' lightness and yellow-blue tone with this family's own files.
 
 | | |
 |---|---|
@@ -794,6 +798,8 @@ common/characters/*.txt: 2,045 of 2,047 large values are full GFX_ names (interf
 
 <img src="gallery/operative_portrait.webp" alt="Example operative_portrait asset made by hoi4-imagegen" width="312">
 
+**Vanilla backdrop (since 0.3.4).** Vanilla has few operative portraits of its own: the game's operative scripts name Patrick Fermor and the two German agents in `gfx/leaders`, and the unknown operative is a grey silhouette. The three portraits sit on a plain dark charcoal-brown background (about RGB 36, 33, 26 at the top, L*a*b* 12.3, -0.2, 5.2 in the top corners), a little lighter toward the bottom, with low-key light on the face. The family's vanilla references and its vanilla-match check now use these four files and a mod's own operatives folder, the rule asks for the dark backdrop, and the `backdrop` check warns when the top corners are more than 15 away from it. With four vanilla files the check's ranges are narrow, so an override may be needed for a deliberately different operative style.
+
 | | |
 |---|---|
 | Group and tool | portrait, `hoi4.image_portrait` |
@@ -819,6 +825,8 @@ common/characters/*.txt: 2,045 of 2,047 large values are full GFX_ names (interf
 ### scientist_portrait
 
 <img src="gallery/scientist_portrait.webp" alt="Example scientist_portrait asset made by hoi4-imagegen" width="312">
+
+**Vanilla backdrop (since 0.3.4).** All 217 vanilla scientist portraits (`gfx/leaders/scientists`) share one backdrop: a plain pale blue-grey studio background lit from the upper left (about RGB 135, 171, 193 at the top left, L*a*b* 66.0, -7.2, -14.4 in the top corners) and darker toward the lower right (about 93, 129, 151). It is not the leaders' cream. The family's vanilla references and its vanilla-match check now use only this folder, the rule names the backdrop, and the `backdrop` check warns when the top corners are more than 15 away from it.
 
 | | |
 |---|---|

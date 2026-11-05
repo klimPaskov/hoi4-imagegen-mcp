@@ -207,3 +207,89 @@ fn landmark_aspect_and_centre_are_vanillas() {
     );
     assert!((max - imagegen_core::builtin::BUILDING_MAX_ASPECT).abs() <= 0.05, "vanilla's widest landmark is {max}");
 }
+
+/// Each portrait family's backdrop constant is the median of its own vanilla files' top corners, and the files are
+/// separate: leaders and commanders share the pale cream-grey template (L*a*b* 89.8, -1.9, 8.5), scientists have the
+/// pale blue-grey one (66.0, -7.2, -14.4), and vanilla's operative portraits are dark charcoal (12.3, -0.2, 5.2).
+/// At least 85 percent of each family's own files sit within the warning limit (the rest are special portraits with
+/// dark or patterned backdrops, or a hat or hair in a corner), and the other families' backdrops do not.
+#[test]
+fn portrait_backdrops_are_each_familys_own() {
+    use imagegen_core::validate::portrait_backdrop;
+    let Some(game) = find_game() else {
+        eprintln!("SKIPPED portrait backdrops: the game is not installed (set HOI4_GAME_DIR); UNAVAILABLE in this run");
+        return;
+    };
+    let families = [Family::LeaderPortrait, Family::CommanderPortrait, Family::ScientistPortrait, Family::OperativePortrait];
+    let mut report = String::new();
+    for f in families {
+        let labs: Vec<[f64; 3]> = vanilla(&game, f).iter().filter_map(vanillamatch::backdrop_lab).collect();
+        let (want, limit) = portrait_backdrop(f).unwrap();
+        let med: Vec<f64> = (0..3).map(|c| quantile(labs.iter().map(|l| l[c]).collect(), 0.5)).collect();
+        let dist = |a: &[f64], b: &[f64; 3]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt();
+        let within = labs.iter().filter(|l| dist(&l[..], &want) <= limit).count();
+        report.push_str(&format!("{f}: {} files, median ({:.1}, {:.1}, {:.1}), {within} within {limit}\n", labs.len(), med[0], med[1], med[2]));
+        for c in 0..3 {
+            assert!((med[c] - want[c]).abs() <= 0.3, "{f} channel {c}: {} vs {}\n{report}", med[c], want[c]);
+        }
+        let share = within as f64 / labs.len() as f64;
+        if f == Family::OperativePortrait {
+            // three dark portraits and the grey silhouette of the unknown operative
+            assert!(labs.len() >= 3 && within >= 3, "{report}");
+        } else {
+            assert!(share >= 0.85, "{f}: only {share:.3} of vanilla within the limit\n{report}");
+        }
+        for g in families {
+            let (other, _) = portrait_backdrop(g).unwrap();
+            if other != want {
+                assert!(dist(&other[..], &want) > limit, "{f} and {g} backdrops are not told apart");
+            }
+        }
+    }
+    eprintln!("portrait backdrops\n{report}");
+}
+
+/// A scientist portrait on the leaders' cream backdrop gets the backdrop warning, one on its own blue-grey backdrop does
+/// not, and a leader portrait on the cream does not. The warning never fails validation.
+#[test]
+fn a_portrait_on_another_familys_backdrop_gets_the_warning() {
+    use imagegen_core::validate::BACKDROP_CODE;
+    let set = ProfileSet::builtin();
+    let cream = Rgba::filled(156, 210, [229, 226, 209, 255]);
+    let blue = Rgba::filled(156, 210, [135, 171, 193, 255]);
+    let warns = |f: Family, img: &Rgba| {
+        let p = set.for_family(f).unwrap();
+        let r = validate_image(img, p, &p.imagegen.checks, &Default::default());
+        assert!(r.findings.iter().all(|x| x.level != imagegen_core::validate::Level::Error || x.code != BACKDROP_CODE));
+        r.findings.iter().any(|x| x.code == BACKDROP_CODE)
+    };
+    assert!(warns(Family::ScientistPortrait, &cream));
+    assert!(!warns(Family::ScientistPortrait, &blue));
+    assert!(!warns(Family::LeaderPortrait, &cream) && !warns(Family::CommanderPortrait, &cream));
+    assert!(warns(Family::LeaderPortrait, &blue) && warns(Family::OperativePortrait, &cream));
+}
+
+/// Vanilla's doctrine icons run their glow close to the canvas edge: 55 of 105 touch it and 73 keep at most 1 px clear
+/// (alpha 16 and up), so the doctrine row checks a 1 px margin, and the fit leaves room for the glow on top of it.
+#[test]
+fn doctrine_margin_is_within_vanillas() {
+    let set = ProfileSet::builtin();
+    let p = set.for_family(Family::Doctrine).unwrap();
+    assert_eq!(p.margin, 1);
+    let Some(game) = find_game() else {
+        eprintln!("SKIPPED doctrine margins: the game is not installed (set HOI4_GAME_DIR); UNAVAILABLE in this run");
+        return;
+    };
+    let mins: Vec<u32> = vanilla(&game, Family::Doctrine)
+        .iter()
+        .filter(|i| [i.width, i.height] == p.canvas)
+        .filter_map(|i| i.alpha_bbox(16).map(|b| b[0].min(b[1]).min(i.width - b[2]).min(i.height - b[3])))
+        .collect();
+    let at_most_one = mins.iter().filter(|m| **m <= 1).count();
+    eprintln!(
+        "doctrine vanilla margins: {} files, {} touch the edge, {at_most_one} at most 1 px",
+        mins.len(),
+        mins.iter().filter(|m| **m == 0).count()
+    );
+    assert!(at_most_one * 2 > mins.len(), "most vanilla doctrine icons keep 1 px or less");
+}

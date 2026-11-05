@@ -223,3 +223,49 @@ fn a_saturated_warm_agency_medallion_is_refused_until_processed() {
     );
     assert!(res.pass, "{}", vanillamatch::describe(&res.outside));
 }
+
+/// Each portrait family is checked against its own vanilla files, with the backdrop in the top corners: every vanilla
+/// file of a family passes its own check (HOI4 1.19.4.1: leaders and commanders 201 of 201 measurable files, scientists
+/// 217 of 217, operatives 4 of 4; with 0.3.3's one shared set of every gfx/leaders file it was 231 of 232 for each),
+/// and the typical file of another family's backdrop is refused on the backdrop, except that the leader and commander
+/// check passes the operatives' dark backdrop: vanilla leaders include special dark backdrops.
+#[test]
+fn portrait_families_keep_their_own_backdrop() {
+    let Some(game) = find_game() else {
+        eprintln!("SKIPPED portrait backdrops vs vanilla: the game is not installed (set HOI4_GAME_DIR); UNAVAILABLE in this run");
+        return;
+    };
+    let fams = [Family::LeaderPortrait, Family::CommanderPortrait, Family::ScientistPortrait, Family::OperativePortrait];
+    let sets: BTreeMap<Family, VanillaSet> = fams.iter().map(|f| (*f, vanilla(&game, *f).expect("vanilla portraits"))).collect();
+    let mut report = String::new();
+    for (f, set) in &sets {
+        let passed = set.images.iter().filter(|i| set.calibration.check(&i.features).pass).count();
+        report.push_str(&format!("{f}: vanilla pass {passed} of {}\n", set.images.len()));
+        assert_eq!(passed, set.images.len(), "{f}\n{report}");
+        for r in set.calibration.ranges.iter().filter(|r| r.feature.starts_with("backdrop_")) {
+            assert!(r.checked, "{f}: {} is checked", r.feature);
+        }
+    }
+    let typical = |f: Family| sets[&f].typical(1)[0].features;
+    for (f, set) in &sets {
+        for g in fams {
+            let same =
+                matches!((f, g), (Family::LeaderPortrait | Family::CommanderPortrait, Family::LeaderPortrait | Family::CommanderPortrait)) || *f == g;
+            let res = set.calibration.check(&typical(g));
+            report.push_str(&format!(
+                "{f} check on {g}'s typical file: {}\n",
+                if res.pass { "pass".into() } else { vanillamatch::describe(&res.outside) }
+            ));
+            if same {
+                assert!(res.pass, "{f} on {g}\n{report}");
+            } else if g == Family::OperativePortrait && *f != Family::ScientistPortrait {
+                // vanilla leaders include special dark backdrops (about one in twenty), so their check cannot refuse a dark
+                // backdrop. The GFX-PORTRAIT-BACKDROP warning does (see tests/vanilla_forms.rs).
+                continue;
+            } else {
+                assert!(res.outside.iter().any(|o| o.feature.starts_with("backdrop_")), "{f} on {g}\n{report}");
+            }
+        }
+    }
+    eprintln!("portrait backdrops\n{report}");
+}

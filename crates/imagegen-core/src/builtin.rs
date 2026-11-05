@@ -48,7 +48,8 @@ const PICTURE_CHECKS: &[&str] = &["size", "checker", "opaque", "style", "dds"];
 const CARD_CHECKS: &[&str] = &["size", "checker", "card_corners", "style", "dds"];
 const ACHIEVEMENT_CHECKS: &[&str] = &["size", "checker", "near_opaque", "style", "dds"];
 const ADVISOR_CHECKS: &[&str] = &["size", "alpha", "checker", "card_corners", "style", "dds"];
-const PORTRAIT_CHECKS: &[&str] = &["size", "checker", "opaque", "style", "dds"];
+/// Portraits: a warning when the backdrop is far from the family's vanilla backdrop (`GFX-PORTRAIT-BACKDROP`).
+const PORTRAIT_CHECKS: &[&str] = &["size", "checker", "opaque", "backdrop", "style", "dds"];
 const FLAG_CHECKS: &[&str] = &["size", "opaque", "style", "tga"];
 const UNIT_CHECKS: &[&str] = &["size", "alpha", "frames", "style", "dds"];
 /// Counters and the division emblem: finished art must be vanilla's material (`GFX-UNIT-MATERIAL`).
@@ -359,11 +360,34 @@ const PICTURE_NEGATIVE: &[&str] = &["text, captions or headlines", "watermark or
 /// Vanilla leader portraits (gfx/leaders, 1.19.4.1): a close head-and-shoulders crop (the face is about half the
 /// height) on a plain pale backdrop. Generated portraits use that crop and backdrop. A custom backdrop is only for
 /// council or otherwise unusual portraits.
-const PORTRAIT_RULES: &[&str] = &[
-    "A close head-and-shoulders portrait in the painterly style of Hearts of Iron IV portraits, composed for a tall {w}x{h} crop: the head fills the upper half of the frame, the face about half the height, and the shoulders run off the bottom and the sides.",
-    "Vanilla's portrait backdrop: a plain, smooth studio background, pale cream to light grey (a scientist's is pale blue-grey), a little lighter behind the head, with no objects, room, landscape, flag or pattern. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
-    "Period-appropriate clothing.",
-    "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure.",
+/// Portrait framing, shared by the four portrait families.
+const PORTRAIT_FRAMING: &str = "A close head-and-shoulders portrait in the painterly style of Hearts of Iron IV portraits, composed for a tall {w}x{h} crop: the head fills the upper half of the frame, the face about half the height, and the shoulders run off the bottom and the sides.";
+const PORTRAIT_PERIOD: &str = "Period-appropriate clothing.";
+const PORTRAIT_INVENTED: &str =
+    "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure.";
+// Each portrait family's own vanilla backdrop, measured on HOI4 1.19.4.1 in the two top corners and the side strips
+// (see validate::portrait_backdrop): leaders and commanders share one pale cream-grey template, scientists have a
+// pale blue-grey one lit from the upper left, and vanilla's operative portraits are dark charcoal.
+/// Leader and commander portraits: 424 of 447 decodable files outside the scientists folder.
+const LEADER_PORTRAIT_RULES: &[&str] = &[
+    PORTRAIT_FRAMING,
+    "Vanilla's leader portrait backdrop: one plain, smooth studio background in pale cream-grey (about RGB 229, 226, 209 at the top), evenly lit and darker toward the bottom (about 190, 186, 170 at the sides by the shoulders), with no objects, room, landscape, flag or pattern. Not the blue-grey of scientist portraits and not a dark background. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
+    PORTRAIT_PERIOD,
+    PORTRAIT_INVENTED,
+];
+/// Scientist portraits: the 217 files of the scientists folder, one template.
+const SCIENTIST_PORTRAIT_RULES: &[&str] = &[
+    PORTRAIT_FRAMING,
+    "Vanilla's scientist portrait backdrop: one plain, smooth studio background in pale blue-grey (about RGB 135, 171, 193 at the top left), lit from the upper left and darker toward the lower right (about 93, 129, 151 at the right by the shoulders), with no objects, laboratory, blackboard, room or pattern. Not the pale cream of leader portraits. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
+    PORTRAIT_PERIOD,
+    PORTRAIT_INVENTED,
+];
+/// Operative portraits: the portraits the game's operative scripts name (three files), dark charcoal.
+const OPERATIVE_PORTRAIT_RULES: &[&str] = &[
+    PORTRAIT_FRAMING,
+    "Vanilla's operative portrait backdrop: one plain, dark charcoal-brown background (about RGB 36, 33, 26 at the top), a little lighter toward the bottom, with low-key light on the face that leaves the clothes and the edges in shadow, like a night photograph, and no objects, room, street or pattern. Not the pale cream of leader portraits and not the blue-grey of scientists. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
+    PORTRAIT_PERIOD,
+    PORTRAIT_INVENTED,
 ];
 const FRAME_STRIP_RULES: &[&str] = &[
     "One centred emblem with a strong silhouette that reads at {w}x{h} pixels, drawn in the style of Hearts of Iron IV faction and interface art.",
@@ -498,7 +522,11 @@ fn base(family: Family, canvas: [u32; 2], accepted: &'static [[u32; 2]], folder:
             row.background = Background::Opaque;
             row.margin = 0;
             row.checks = PORTRAIT_CHECKS;
-            row.rules = PORTRAIT_RULES;
+            row.rules = match family {
+                Family::ScientistPortrait => SCIENTIST_PORTRAIT_RULES,
+                Family::OperativePortrait => OPERATIVE_PORTRAIT_RULES,
+                _ => LEADER_PORTRAIT_RULES,
+            };
             row.negative = PICTURE_NEGATIVE;
         }
         Group::Flag => {
@@ -650,8 +678,9 @@ fn rows() -> Vec<Row> {
             ..base(PersonalTrait, [23, 33], &[[23, 33]], "gfx/interface/traits/{feature_slug}/personal", "trait_", "interface/{feature_slug}_traits.gfx")
         },
         Row {
+            margin: 1,
             rules: DOCTRINE_RULES,
-            note: "Only the 64x64 doctrine icons are generated; the wide 212x83 and banner art in the folder are interface pieces. Vanilla draws the units as black silhouettes with a pale outline and glow (luminance 180 at alpha 136 one pixel out, alpha 37 two pixels out) and the warm accents with a dark shadow; the doctrine recipe's doctrine_look step turns any subject into that.",
+            note: "Only the 64x64 doctrine icons are generated; the wide 212x83 and banner art in the folder are interface pieces. Vanilla draws the units as black silhouettes with a pale outline and glow (luminance 180 at alpha 136 one pixel out, alpha 37 two pixels out) and the warm accents with a dark shadow; the doctrine recipe's doctrine_look step turns any subject into that. Vanilla's glow runs close to the canvas edge: 55 of the 105 icons touch it and 73 keep at most 1 px clear, so the checked margin is 1 px, and the subject is fitted 3 px further in, the reach of the shadow around an accent, so the glow keeps it.",
             ..base(Doctrine, [64, 64], &[[64, 64]], "gfx/interface/doctrines/{feature_slug}", "doctrine_", "interface/{feature_slug}_doctrines.gfx")
         },
         // ---- picture group
@@ -984,8 +1013,16 @@ mod tests {
         for f in [Family::LeaderPortrait, Family::CommanderPortrait, Family::OperativePortrait, Family::ScientistPortrait] {
             let r = set[&f].imagegen.prompt.rules.join(" ");
             assert!(r.contains("close head-and-shoulders") && r.contains("face about half the height"), "{f}");
-            assert!(r.contains("Vanilla's portrait backdrop") && r.contains("council or otherwise unusual"), "{f}");
+            assert!(r.contains("portrait backdrop: one plain") && r.contains("council or otherwise unusual"), "{f}");
             assert!(!r.contains("slightly textured backdrop"), "{f}");
+            // each family names its own vanilla backdrop
+            let own = match f {
+                Family::ScientistPortrait => "pale blue-grey (about RGB 135, 171, 193",
+                Family::OperativePortrait => "dark charcoal-brown background (about RGB 36, 33, 26",
+                _ => "pale cream-grey (about RGB 229, 226, 209",
+            };
+            assert!(r.contains(own), "{f}: {r}");
+            assert!(set[&f].imagegen.checks.iter().any(|c| c == "backdrop"), "{f}");
         }
         // idea spirits may be scenes or emblems: the rule allows both and asks only for readability
         let r = set[&Family::IdeaSpirit].imagegen.prompt.rules.join(" ");
@@ -998,7 +1035,7 @@ mod tests {
     #[test]
     fn portraits_ask_for_an_invented_person() {
         // the backend refused fictional leaders described by nation and office as likenesses of real people
-        for rules in [super::PORTRAIT_RULES, super::ADVISOR_RULES] {
+        for rules in [super::LEADER_PORTRAIT_RULES, super::SCIENTIST_PORTRAIT_RULES, super::OPERATIVE_PORTRAIT_RULES, super::ADVISOR_RULES] {
             assert!(rules.iter().any(|r| r.contains("must not resemble any real historical figure")));
         }
     }

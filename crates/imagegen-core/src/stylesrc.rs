@@ -233,12 +233,28 @@ struct Dir {
     not_suffix: &'static [&'static str],
     contains: &'static [&'static str],
     suffixes: &'static [&'static str],
+    /// Folders below `path` a file must lie under (any one of them, compared case-blind), empty for any.
+    under: &'static [&'static str],
+    /// Folders below `path` whose files are left out.
+    skip: &'static [&'static str],
     /// Smallest width and height a file must have (0: any). Read from the header.
     min_side: u32,
 }
 
 fn dir(path: &'static str, recursive: bool) -> Dir {
-    Dir { path, recursive, prefixes: &[], not_prefix: &[], not_contains: &[], not_suffix: &[], contains: &[], suffixes: &[], min_side: 0 }
+    Dir {
+        path,
+        recursive,
+        prefixes: &[],
+        not_prefix: &[],
+        not_contains: &[],
+        not_suffix: &[],
+        contains: &[],
+        suffixes: &[],
+        under: &[],
+        skip: &[],
+        min_side: 0,
+    }
 }
 
 impl Dir {
@@ -257,6 +273,19 @@ impl Dir {
     fn not_end(mut self, p: &'static [&'static str]) -> Dir {
         self.not_suffix = p;
         self
+    }
+    fn under(mut self, p: &'static [&'static str]) -> Dir {
+        self.under = p;
+        self
+    }
+    fn skip(mut self, p: &'static [&'static str]) -> Dir {
+        self.skip = p;
+        self
+    }
+    /// True when the folders between `path` and the file (`folders`, lower case) meet `under` and `skip`.
+    fn folders_ok(&self, folders: &[String]) -> bool {
+        (self.under.is_empty() || folders.iter().any(|f| self.under.contains(&f.as_str())))
+            && !folders.iter().any(|f| self.skip.contains(&f.as_str()))
     }
     fn has(mut self, p: &'static [&'static str]) -> Dir {
         self.contains = p;
@@ -375,7 +404,17 @@ fn texture_dirs(f: Family, gui_kind: Option<GuiTextureKind>) -> Vec<Dir> {
         OperationPicture => vec![dir("gfx/interface/operations", true).pre(&["phase_"]).not_has(&["_small"])],
         Technology => vec![dir("gfx/interface/technologies", true)],
         Achievement => vec![dir("gfx/achievements", false).not_has(&["_grey", "_not_eligible"])],
-        LeaderPortrait | CommanderPortrait | OperativePortrait | ScientistPortrait => vec![dir("gfx/leaders", true)],
+        // Each portrait family keeps to the files with its own backdrop (measured on 1.19.4.1, see
+        // recipes::portrait_backdrop): scientists are the gfx/leaders/scientists folder (pale blue-grey), leaders and
+        // commanders the rest of gfx/leaders (one pale cream-grey template on 424 of 447 decodable files), and
+        // operatives the portraits the game's create_operative_leader calls name in gfx/leaders (Patrick Fermor and
+        // the two German agents, dark charcoal) with the unknown operative, plus a mod's own operatives folder.
+        LeaderPortrait | CommanderPortrait => vec![dir("gfx/leaders", true).skip(&["scientists", "operatives", "placeholder"])],
+        OperativePortrait => vec![
+            dir("gfx/leaders", true).pre(&["operative_", "portrait_eng_patrick_fermor", "portrait_germany_hilter_"]).skip(&["scientists"]),
+            dir("gfx/leaders", true).under(&["operatives"]),
+        ],
+        ScientistPortrait => vec![dir("gfx/leaders", true).under(&["scientists"])],
         AdvisorCard => vec![dir("gfx/interface/ideas", true)],
         Flag => vec![dir("gfx/flags", false)],
         CounterLarge => vec![dir("gfx/interface/counters/divisions_large", true)],
@@ -475,7 +514,19 @@ fn scan_dirs(base: &Path, dirs: &[Dir], sizes: &[[u32; 2]], exts: &[&str]) -> Ve
         walk(&base.join(d.path), d.recursive, 0, &mut budget, &mut found);
         for p in found {
             let big_enough = d.min_side == 0 || header_size(&p).is_some_and(|s| s[0] >= d.min_side && s[1] >= d.min_side);
-            if exts.contains(&ext_of(&p).as_str()) && d.accepts(&stem_of(&p)) && big_enough && size_ok(&p, sizes) && !files.contains(&p) {
+            let folders: Vec<String> = p
+                .strip_prefix(base.join(d.path))
+                .ok()
+                .and_then(|r| r.parent())
+                .map(|r| r.components().map(|c| c.as_os_str().to_string_lossy().to_ascii_lowercase()).collect())
+                .unwrap_or_default();
+            if exts.contains(&ext_of(&p).as_str())
+                && d.accepts(&stem_of(&p))
+                && d.folders_ok(&folders)
+                && big_enough
+                && size_ok(&p, sizes)
+                && !files.contains(&p)
+            {
                 files.push(p);
             }
         }

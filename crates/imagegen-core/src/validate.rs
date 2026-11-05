@@ -141,6 +141,7 @@ pub const ALL_CHECKS: &[&str] = &[
     "unit_material",
     "side_view",
     "small_detail",
+    "backdrop",
     "style",
     "dds",
     "tga",
@@ -148,7 +149,7 @@ pub const ALL_CHECKS: &[&str] = &[
 
 /// Checks that judge the main image only: a companion (a tinted text icon, a smaller strip) is not the family's
 /// finished art and skips them.
-pub const MAIN_IMAGE_ONLY_CHECKS: &[&str] = &["unit_material", "side_view", "line_art", "small_detail"];
+pub const MAIN_IMAGE_ONLY_CHECKS: &[&str] = &["unit_material", "side_view", "line_art", "small_detail", "backdrop"];
 
 /// Code of a special project drawing with a filled area (`line_art` check).
 pub const FILLED_CODE: &str = "GFX-FILLED-INTERIOR";
@@ -158,6 +159,28 @@ pub const UNIT_MATERIAL_CODE: &str = "GFX-UNIT-MATERIAL";
 pub const SIDE_VIEW_CODE: &str = "GFX-TECH-VIEW";
 /// Code of a small icon made of thin lines and small parts (`small_detail` check).
 pub const SMALL_DETAIL_CODE: &str = "GFX-SMALL-DETAIL";
+/// Code of a portrait whose backdrop is far from its family's vanilla backdrop (`backdrop` check).
+pub const BACKDROP_CODE: &str = "GFX-PORTRAIT-BACKDROP";
+
+/// A portrait family's vanilla backdrop: the median CIE L*a*b* of the two top corners ([`crate::vanillamatch::backdrop_lab`]
+/// at 156x210) over the family's vanilla files (HOI4 1.19.4.1, measured by `tests/vanilla_forms.rs`), and the largest
+/// colour distance (CIE76) before `GFX-PORTRAIT-BACKDROP` warns. Leaders and commanders share one pale cream-grey
+/// template, scientists have a pale blue-grey one, and vanilla's operative portraits are dark charcoal. The distance
+/// between the leader and scientist backdrops is about 33 and between the leader and operative ones about 77, so a
+/// limit of 15 tells them apart. `None` for a family that is not a portrait.
+pub fn portrait_backdrop(family: crate::family::Family) -> Option<([f64; 3], f64)> {
+    use crate::family::Family::*;
+    match family {
+        LeaderPortrait | CommanderPortrait => Some((LEADER_BACKDROP, BACKDROP_LIMIT)),
+        ScientistPortrait => Some((SCIENTIST_BACKDROP, BACKDROP_LIMIT)),
+        OperativePortrait => Some((OPERATIVE_BACKDROP, BACKDROP_LIMIT)),
+        _ => None,
+    }
+}
+const LEADER_BACKDROP: [f64; 3] = [89.8, -1.9, 8.5];
+const SCIENTIST_BACKDROP: [f64; 3] = [66.0, -7.2, -14.4];
+const OPERATIVE_BACKDROP: [f64; 3] = [12.3, -0.2, 5.2];
+const BACKDROP_LIMIT: f64 = 15.0;
 
 /// Share of a subject's opaque pixels (alpha 128 and up) that lie on its edge, next to a pixel that is not opaque
 /// (4-neighbours; outside the canvas counts as clear). A shape of thick, solid parts has a low share; thin lines, wires,
@@ -553,6 +576,25 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
                     ),
                     None,
                     json!({"aspect": aspect, "vanilla_p10": min}),
+                ));
+            }
+        }
+    }
+
+    if wants("backdrop") {
+        run.push("backdrop".into());
+        if let (Some((want, limit)), Some(got)) = (portrait_backdrop(profile.family), crate::vanillamatch::backdrop_lab(img)) {
+            let d = ((got[0] - want[0]).powi(2) + (got[1] - want[1]).powi(2) + (got[2] - want[2]).powi(2)).sqrt();
+            if d > limit {
+                findings.push(Finding::new(
+                    BACKDROP_CODE,
+                    Level::Warning,
+                    format!(
+                        "the backdrop at the top corners is L*a*b* ({:.0}, {:.0}, {:.0}), {d:.0} from vanilla's {} backdrop ({:.0}, {:.0}, {:.0}). Unless the brief asks for a council or otherwise unusual portrait, plan again with the family's own backdrop",
+                        got[0], got[1], got[2], profile.family, want[0], want[1], want[2]
+                    ),
+                    None,
+                    json!({"backdrop_lab": got, "vanilla_lab": want, "distance": d, "limit": limit}),
                 ));
             }
         }
