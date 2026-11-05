@@ -368,7 +368,8 @@ pub struct PreviewParams {
 pub struct ReviewParams {
     /// Artifact reviewed.
     pub target: String,
-    /// Verdict. An approval needs a passing validation, a preview of this exact file and every rubric answer true.
+    /// Verdict. An approval needs a passing validation, a preview of this exact file with the vanilla side-by-side
+    /// sheet, a passing measured vanilla-match check (or a recorded override) and every rubric answer true.
     pub verdict: Verdict,
     /// Who reviewed: a person's name or an agent's name.
     pub reviewer: String,
@@ -378,6 +379,13 @@ pub struct ReviewParams {
     /// Notes for the next round.
     #[serde(default)]
     pub notes: Option<String>,
+    /// Approve although the measured vanilla-match check fails or cannot run (a deliberate mod style, or no
+    /// installed game). Needs `override_reason`. The override and its reason are recorded in the ledger and the review.
+    #[serde(default)]
+    pub override_vanilla_check: Option<bool>,
+    /// Why the art may differ from vanilla (10 to 1000 characters). Required with `override_vanilla_check`.
+    #[serde(default)]
+    pub override_reason: Option<String>,
 }
 
 /// How an install treats the `.gfx` file.

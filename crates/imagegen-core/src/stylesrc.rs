@@ -484,6 +484,13 @@ fn scan_dirs(base: &Path, dirs: &[Dir], sizes: &[[u32; 2]], exts: &[&str]) -> Ve
     files
 }
 
+/// The family's vanilla texture files in the installed game, limited to `sizes` (empty: any size), sorted by path.
+/// The same folders and name rules as the vanilla style tier, so the review's vanilla-match check and the style
+/// sources agree on what a family's vanilla art is.
+pub fn vanilla_files(game: &Path, family: Family, sizes: &[[u32; 2]]) -> Vec<PathBuf> {
+    scan_dirs(game, &texture_dirs(family), sizes, &RASTER)
+}
+
 fn unify(p: &str) -> String {
     p.replace('\\', "/")
 }
