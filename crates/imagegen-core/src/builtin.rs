@@ -336,10 +336,10 @@ fn rows() -> Vec<Row> {
             ..base(IdeaSpirit, [60, 68], &[[60, 68], [62, 70]], "gfx/interface/ideas/{feature_slug}", "idea_", "interface/{feature_slug}_ideas.gfx")
         },
         Row {
-            margin: 1,
+            margin: 3,
             rules: CONCERN_RULES,
             negative: FORM_NEGATIVE,
-            note: "Industrial concerns and manufacturers are 64x64 (about 80 percent of their ideas); the dominant size of the shared idea folder is the spirit size, which is why this row is a documented exception in the drift test.",
+            note: "Industrial concerns and manufacturers are 64x64 (about 80 percent of their ideas); the dominant size of the shared idea folder is the spirit size, which is why this row is a documented exception in the drift test. The badge spans 58 of 64 px in the median of 505 vanilla files, so the fit margin is 3 px.",
             ..base(IdeaConcern, [64, 64], &[[64, 64]], "gfx/interface/ideas/{feature_slug}/concerns", "idea_", "interface/{feature_slug}_ideas.gfx")
         },
         Row {
@@ -374,8 +374,9 @@ fn rows() -> Vec<Row> {
             ..base(SpecialProjectIcon, [161, 98], &[[161, 98]], "gfx/interface/special_project/project_icons/{feature_slug}", "sp_", "interface/special_projects/{feature_slug}_projects.gfx")
         },
         Row {
+            margin: 4,
             rules: RAID_RULES,
-            note: "Only the 32x32 raid icons are generated; the wide banner strips in the same folder are interface pieces. The 32x32 icon is the raid's map icon, which the game looks up as GFX_raid_type_icon_<raid type> (24 of the 25 vanilla ones are 32x32), so the asset name is the raid type key, or the raid sets custom_map_icon to the sprite.",
+            note: "Only the 32x32 raid icons are generated; the wide banner strips in the same folder are interface pieces. The 32x32 icon is the raid's map icon, which the game looks up as GFX_raid_type_icon_<raid type> (24 of the 25 vanilla ones are 32x32), so the asset name is the raid type key, or the raid sets custom_map_icon to the sprite. The pictogram spans 23 of 32 px in the median of 30 vanilla files, so the fit margin is 4 px.",
             ..base(Raid, [32, 32], &[[32, 32]], "gfx/interface/military_raids/{feature_slug}", "raid_type_icon_", "interface/{feature_slug}_raids.gfx")
         },
         Row {
@@ -386,9 +387,10 @@ fn rows() -> Vec<Row> {
             ..base(MioDepartment, [48, 48], &[[48, 48]], "gfx/interface/military_industrial_organization/department_icons/{feature_slug}", "mio_department_", "interface/military_industrial_organization/{feature_slug}_mio.gfx")
         },
         Row {
+            margin: 8,
             rules: MIO_TRAIT_RULES,
             negative: FORM_NEGATIVE,
-            note: "Trait icons are 48x48. The trait and policy folders are measured together; policies are the 60x60 files.",
+            note: "Trait icons are 48x48. The trait and policy folders are measured together; policies are the 60x60 files. All 44 vanilla trait icons keep 8 px clear on their tightest side (the badge spans 32 of 48 px), where the in-game frame likely overlaps, so the fit margin is 8 px.",
             ..base(MioTrait, [48, 48], &[[48, 48]], "gfx/interface/military_industrial_organization/trait_icons/{feature_slug}", "mio_trait_", "interface/military_industrial_organization/{feature_slug}_mio.gfx")
         },
         Row {
@@ -405,16 +407,18 @@ fn rows() -> Vec<Row> {
             ..base(Medal, [56, 84], &[[56, 84]], "gfx/interface/medals/{feature_slug}", "medal_icon_", "interface/{feature_slug}_medals.gfx")
         },
         Row {
+            margin: 8,
             rules: AGENCY_UPGRADE_RULES,
             negative: FORM_NEGATIVE,
-            note: "Vanilla names these GFX_agency_*.",
+            note: "Vanilla names these GFX_agency_*. All 15 vanilla upgrades keep exactly 8 px clear (the medallion spans 52 of 68 px), where the in-game frame likely overlaps, so the fit margin is 8 px.",
             ..base(AgencyUpgrade, [68, 68], &[[68, 68]], "gfx/interface/operatives/icons/{feature_slug}", "agency_", "interface/{feature_slug}_agency_upgrades.gfx")
         },
         Row {
             sprite: Some(("interface/{feature_slug}_operations.gfx", "GFX_phase_{asset}_small", &[])),
+            margin: 6,
             rules: OPERATION_ICON_RULES,
             negative: FORM_NEGATIVE,
-            note: "The 59x58 operation phase icon: an operation phase's icon names it in full, and all 73 vanilla ones are GFX_phase_<x>_small at 59x58, beside the phase's 210x176 picture GFX_phase_<x> (operation_picture). The folder also holds 48x48 and 85x85 operation icons.",
+            note: "The 59x58 operation phase icon: an operation phase's icon names it in full, and all 73 vanilla ones are GFX_phase_<x>_small at 59x58, beside the phase's 210x176 picture GFX_phase_<x> (operation_picture). The folder also holds 48x48 and 85x85 operation icons. All 71 vanilla phase icons keep exactly 6 px clear (the vignette spans 46 of 58 px), where the in-game frame likely overlaps, so the fit margin is 6 px.",
             ..base(OperationIcon, [59, 58], &[[59, 58], [48, 48], [85, 85]], "gfx/interface/operations/{feature_slug}/icons", "phase_", "interface/{feature_slug}_operations.gfx")
         },
         Row {
@@ -1064,19 +1068,27 @@ mod tests {
         paths.iter().filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok()).filter(|img| [img.width, img.height] == size).collect()
     }
 
-    /// The emblem of the plaque, disc and full-canvas families is fitted at least as large as vanilla's: for each
-    /// vanilla file a solid subject of the same aspect goes through the family's own finishing, and the median span
-    /// (the larger of the width and height shares of the visible box) is not below vanilla's median by more than one
-    /// pixel. Measured on HOI4 1.19.4.1: focus 0.966, decision category icon 0.950, MIO department 0.979, doctrine
-    /// 0.953, commander trait 0.909.
+    /// The emblem of the plaque, disc, badge and pictogram families is fitted at vanilla's size: for each vanilla file
+    /// a solid subject of the same aspect goes through the family's own finishing, and the median span (the larger of
+    /// the width and height shares of the visible box) is compared with vanilla's median. The first five are never
+    /// smaller than vanilla's by more than one pixel; the last five, fitted to vanilla's margins, are within one pixel
+    /// either way. Measured on HOI4 1.19.4.1: focus 0.966, decision category icon 0.950, MIO department 0.979,
+    /// doctrine 0.953, commander trait 0.909, MIO trait 0.667, agency upgrade 0.765, operation icon 0.793, raid
+    /// 0.719, idea concern 0.906.
     #[test]
-    fn plaque_and_disc_emblems_are_fitted_no_smaller_than_vanillas() {
-        let cases: [(Family, &str, &str); 5] = [
-            (Family::Focus, "gfx/interface/goals", "goal"),
-            (Family::DecisionCategoryIcon, "gfx/interface/decisions", "decision_category"),
-            (Family::MioDepartment, "gfx/interface/military_industrial_organization/department_icons", ""),
-            (Family::Doctrine, "gfx/interface/doctrines", ""),
-            (Family::CommanderTrait, "gfx/interface/traits", "trait_"),
+    fn plaque_and_disc_emblems_are_fitted_at_vanillas_size() {
+        // (family, folder, file prefix, also not larger than vanilla)
+        let cases: [(Family, &str, &str, bool); 10] = [
+            (Family::Focus, "gfx/interface/goals", "goal", false),
+            (Family::DecisionCategoryIcon, "gfx/interface/decisions", "decision_category", false),
+            (Family::MioDepartment, "gfx/interface/military_industrial_organization/department_icons", "", false),
+            (Family::Doctrine, "gfx/interface/doctrines", "", false),
+            (Family::CommanderTrait, "gfx/interface/traits", "trait_", false),
+            (Family::MioTrait, "gfx/interface/military_industrial_organization/trait_icons", "", true),
+            (Family::AgencyUpgrade, "gfx/interface/operatives/icons", "", true),
+            (Family::OperationIcon, "gfx/interface/operations", "", true),
+            (Family::Raid, "gfx/interface/military_raids", "", true),
+            (Family::IdeaConcern, "gfx/interface/ideas", "idea_", true),
         ];
         let span = |img: &crate::pixels::Rgba| {
             let b = img.alpha_bbox(16).unwrap();
@@ -1088,7 +1100,7 @@ mod tests {
         };
         let set = by_family();
         let mut report = String::new();
-        for (family, folder, prefix) in cases {
+        for (family, folder, prefix, both_ways) in cases {
             let p = &set[&family];
             let mut files = vanilla_files(folder, prefix, p.canvas);
             if family == Family::Focus {
@@ -1122,6 +1134,9 @@ mod tests {
             let px = 1.0 / f64::from(p.canvas[0].min(p.canvas[1]));
             report.push_str(&format!("{family}: vanilla {v:.3}, ours {o:.3} ({} files)\n", files.len()));
             assert!(o >= v - px - 1e-9, "{family}: our emblem spans {o:.3} of the canvas, vanilla's {v:.3}\n{report}");
+            if both_ways {
+                assert!(o <= v + px + 1e-9, "{family}: our emblem spans {o:.3} of the canvas, larger than vanilla's {v:.3}\n{report}");
+            }
         }
         eprintln!("emblem span vs vanilla (median)\n{report}");
     }
