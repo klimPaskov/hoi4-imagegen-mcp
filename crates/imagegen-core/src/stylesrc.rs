@@ -863,7 +863,7 @@ pub fn resolve(ctx: &SourceCtx) -> Resolved {
         }
         let items: Vec<&Analysis> = stats_idx.iter().map(|&i| &pool[i].analysis).collect();
         let stats = styledesc::aggregate(&items);
-        paragraph = Some(styledesc::style_paragraph(&subject_phrase(tier, family, ctx.pinned), &stats));
+        paragraph = Some(styledesc::style_paragraph_for(&subject_phrase(tier, family, ctx.pinned), &stats, Some(family)));
         statistics = Some(stats);
         let model = DriftModel::fit(&points);
         drift = Some(DriftSummary {

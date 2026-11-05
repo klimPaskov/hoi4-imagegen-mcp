@@ -236,6 +236,65 @@ pub fn line_art_with(img: &Rgba, width: u32, height: u32, style: &LineStyle) -> 
     Ok(out)
 }
 
+/// The largest filled area of a vanilla special project icon, in pixels: the median and the largest over the 55
+/// vanilla files (HOI4 1.19.4.1), measured by [`largest_filled_area`].
+pub const VANILLA_FILLED_AREA: [usize; 2] = [4, 171];
+
+/// A drawing whose largest filled area is larger than this is not line art (`GFX-FILLED-INTERIOR`): half again
+/// vanilla's largest. The gallery's filled rocket (hoi4-imagegen 0.2.0) has 917.
+pub const FILLED_AREA_LIMIT: usize = 250;
+
+/// The largest filled area of a drawing: the pixels of alpha 64 and up that survive two erosions with the
+/// 4-neighbour cross (outside the canvas counts as clear), in their largest 4-connected group. A line of vanilla's
+/// width (one pixel, antialiased) never survives; a filled body does.
+pub fn largest_filled_area(img: &Rgba) -> usize {
+    let (w, h) = (img.width as usize, img.height as usize);
+    let ink: Vec<bool> = img.data.chunks_exact(4).map(|p| p[3] >= 64).collect();
+    let mut solid = ink;
+    for _ in 0..2 {
+        let prev = solid.clone();
+        for y in 0..h {
+            for x in 0..w {
+                let i = y * w + x;
+                solid[i] = prev[i] && x > 0 && x + 1 < w && y > 0 && y + 1 < h && prev[i - 1] && prev[i + 1] && prev[i - w] && prev[i + w];
+            }
+        }
+    }
+    let mut seen = vec![false; w * h];
+    let mut best = 0;
+    for start in 0..w * h {
+        if !solid[start] || seen[start] {
+            continue;
+        }
+        let (mut n, mut stack) = (0, vec![start]);
+        seen[start] = true;
+        while let Some(i) = stack.pop() {
+            n += 1;
+            let (x, y) = (i % w, i / w);
+            let mut push = |j: usize| {
+                if solid[j] && !seen[j] {
+                    seen[j] = true;
+                    stack.push(j);
+                }
+            };
+            if x > 0 {
+                push(i - 1);
+            }
+            if x + 1 < w {
+                push(i + 1);
+            }
+            if y > 0 {
+                push(i - w);
+            }
+            if y + 1 < h {
+                push(i + w);
+            }
+        }
+        best = best.max(n);
+    }
+    best
+}
+
 /// What the measurement tests compare: summed alpha share, visible share, median and 90th percentile alpha of a
 /// visible pixel, mean line width, the drawing's box as shares of the canvas, and the share of visible pixels that are
 /// not pure white.
@@ -391,6 +450,30 @@ mod tests {
         let row: Vec<u8> = (0..98).map(|y| out.alpha(80, y)).collect();
         let peaks = row.windows(3).filter(|w| w[1] >= 16 && w[1] >= w[0] && w[1] > w[2]).count();
         assert_eq!(peaks, 2, "one stroke per drawn line: {row:?}");
+    }
+
+    /// The gallery's approved special project icon (hoi4-imagegen 0.2.0, before the line art recipe) is a filled grey
+    /// rocket: validation refuses it with an error, and the recipe's drawing of it passes.
+    #[test]
+    fn a_filled_drawing_cannot_pass_validation_and_the_redrawn_one_does() {
+        let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gallery/rocket_programme-v1-p1.png");
+        let (filled, _) = crate::pixels::decode(&std::fs::read(p).unwrap(), None, Default::default()).unwrap();
+        let profile = crate::profile::ProfileSet::builtin().for_family(crate::family::Family::SpecialProjectIcon).unwrap().clone();
+        assert!(profile.imagegen.checks.iter().any(|c| c == "line_art"));
+        let area = largest_filled_area(&filled);
+        eprintln!("gallery rocket: largest filled area {area} px");
+        assert!(area > FILLED_AREA_LIMIT);
+        let report = crate::validate::validate_image(&filled, &profile, &profile.imagegen.checks, &Default::default());
+        let hit = report.findings.iter().find(|f| f.code == crate::validate::FILLED_CODE).expect("a filled-interior finding");
+        assert_eq!(hit.level, crate::validate::Level::Error);
+        assert_eq!(report.status, crate::validate::Status::Fail);
+        let drawn = line_art(&filled, 161, 98).unwrap();
+        let after = largest_filled_area(&drawn);
+        eprintln!("gallery rocket redrawn: largest filled area {after} px, {:?}", line_stats(&drawn));
+        let report = crate::validate::validate_image(&drawn, &profile, &profile.imagegen.checks, &Default::default());
+        assert!(report.findings.iter().all(|f| f.level != crate::validate::Level::Error), "{:?}", report.findings);
+        // a shaded render redrawn has no filled area either
+        assert!(largest_filled_area(&line_art(&shaded_render(600, 900), 161, 98).unwrap()) <= VANILLA_FILLED_AREA[1]);
     }
 
     #[test]
@@ -551,6 +634,12 @@ mod tests {
         }
         eprintln!("line art vs vanilla, medians over {} files\n{report}", files.len());
         assert!(off.is_empty(), "outside the tolerance: {off:?}\n{report}");
+        // no vanilla drawing has a filled area above the measured largest, and neither has ours
+        let areas: Vec<f64> = files.iter().map(|(_, f)| largest_filled_area(f) as f64).collect();
+        let largest = areas.iter().copied().fold(0.0, f64::max);
+        eprintln!("filled area: vanilla median {}, largest {largest}", median(areas.clone()));
+        assert_eq!((median(areas) as usize, largest as usize), (VANILLA_FILLED_AREA[0], VANILLA_FILLED_AREA[1]));
+        assert!(files.iter().all(|(_, f)| largest_filled_area(&line_art(&as_render(f), 161, 98).unwrap()) <= FILLED_AREA_LIMIT));
         let van_off = median(van.iter().map(|s| s.off_white).collect());
         assert!(van_off < 0.01, "vanilla's lines are white: {van_off}");
         assert!(ours.iter().chain(&back).all(|s| s.off_white == 0.0));

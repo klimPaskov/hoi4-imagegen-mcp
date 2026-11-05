@@ -329,6 +329,12 @@ pub struct ProcessParams {
     /// sub-unit key); an infantry cross when nothing matches.
     #[serde(default)]
     pub counter_symbol: Option<String>,
+    /// `technology` only: stamp a tier numeral (I to X, from `tier` 1 to 10) on the finished picture, and with `gem`
+    /// the blue gem vanilla puts before it on battleship, cruiser and carrier pictures. Vanilla bakes these marks into
+    /// the texture (no GUI layer or sprite draws them), so the overlay is part of the processed pixels: vanilla's serif
+    /// glyphs, gold and shadow, in vanilla's place (top right) unless `position` gives the badge's top-left corner.
+    #[serde(default)]
+    pub overlay: Option<imagegen_core::recipes::tech_overlay::TechOverlay>,
     /// `anim_blend_keyframes` only: the candidates of frames 2 onward, in order. Make each with `hoi4.image_edit` on the
     /// base candidate (the one being processed), so it keeps the base's framing; all frames are then fitted with one
     /// shared crop and scale.

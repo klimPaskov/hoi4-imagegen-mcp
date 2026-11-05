@@ -51,6 +51,12 @@ const ADVISOR_CHECKS: &[&str] = &["size", "alpha", "checker", "card_corners", "s
 const PORTRAIT_CHECKS: &[&str] = &["size", "checker", "opaque", "style", "dds"];
 const FLAG_CHECKS: &[&str] = &["size", "opaque", "style", "tga"];
 const UNIT_CHECKS: &[&str] = &["size", "alpha", "frames", "style", "dds"];
+/// Counters and the division emblem: finished art must be vanilla's material (`GFX-UNIT-MATERIAL`).
+const COUNTER_CHECKS: &[&str] = &["size", "alpha", "frames", "unit_material", "style", "dds"];
+/// Special project icons: nothing may be filled (`GFX-FILLED-INTERIOR`).
+const LINE_ART_CHECKS: &[&str] = &["size", "alpha", "opaque_canvas", "fringe", "margin", "fill", "line_art", "checker", "style", "dds"];
+/// Technology pictures: a hint when the subject is too narrow for vanilla's side view (`GFX-TECH-VIEW`).
+const TECH_CHECKS: &[&str] = &["size", "alpha", "opaque_canvas", "fringe", "margin", "fill", "side_view", "checker", "style", "dds"];
 const INTERFACE_CHECKS: &[&str] = &["size", "alpha", "style", "dds"];
 const SUPER_CHECKS: &[&str] = &["size", "checker", "opaque", "style", "dds"];
 const ANIM_CHECKS: &[&str] = &["size", "alpha", "opaque_canvas", "margin", "frames", "animation", "checker", "style", "dds"];
@@ -104,8 +110,9 @@ const BLUEPRINT_NEGATIVE: &[&str] = &[
     "a paper sheet or a grid",
 ];
 const RAID_RULES: &[&str] = &[
-    "The Hearts of Iron IV raid icon form: a flat single-colour gold pictogram with a thin dark outline, no shading, no gradient, no scene.",
-    "One simple symbol readable at {w}x{h} pixels.",
+    "The Hearts of Iron IV raid icon form: one simple, bold pictogram of the raid's target or means (a factory, an aircraft, a ship, a dam, a tool) as one solid shape with a few darker detail lines inside it.",
+    "Flat tones only, no painted texture and no scene: the tool recolours the shape in vanilla's gold gradient (pale gold at the top, brown at the bottom) and draws the black outline, so only the shape and its light and dark details matter.",
+    "ONE object only, large and seen from the side: no flames, smoke, ground, sky or second object around it, so the shape alone reads at {w}x{h} pixels.",
     "Real transparent background.",
     "Leave a small empty margin around the pictogram.",
 ];
@@ -262,10 +269,19 @@ const COMMANDER_TRAIT_NEGATIVE: &[&str] = &[
     "a symbol without the ribbon above it",
 ];
 const DOCTRINE_RULES: &[&str] = &[
-    "The Hearts of Iron IV doctrine icon form: a flat pictogram, a steel-blue or teal silhouette of the unit or idea with orange accents such as chevrons, arrows or bars.",
+    "The Hearts of Iron IV doctrine icon form: flat side-view silhouettes of the units (soldiers, tanks, aircraft or ships) grouped into one compact emblem, with bright orange or yellow accents such as arrows, chevrons or bars.",
+    "Draw the units as solid flat shapes in one dark or neutral colour and the accents in bright orange or yellow: the tool fills the units black and adds vanilla's pale outline and glow around them.",
     "No painted texture or scene, readable at {w}x{h} pixels.",
     "Real transparent background.",
     "Leave a small empty margin around the pictogram.",
+];
+/// Technology pictures: one fixed view, the one every inspected vanilla picture uses.
+const TECHNOLOGY_RULES: &[&str] = &[
+    "The Hearts of Iron IV technology picture form: ONE piece of equipment (a vehicle, an artillery piece, an aircraft or a ship) seen exactly from the side, a flat side profile with no three-quarter view, no front view and no perspective, facing right: its front, nose, barrel or bow points to the right edge.",
+    "The equipment is long and low and fills most of the width, readable at {w}x{h} pixels, painted in the slightly aged style of Hearts of Iron IV interface art.",
+    "Real transparent background: no backdrop, no ground, no frame, no border, no plate.",
+    "No numerals or text on the picture: the tool stamps a tier numeral itself when one is asked for.",
+    "Leave a small empty margin around the equipment.",
 ];
 /// Negatives for families whose form is a plaque, disc, badge, medallion or medal: the frame is the form.
 const FORM_NEGATIVE: &[&str] =
@@ -508,15 +524,16 @@ fn rows() -> Vec<Row> {
         Row {
             margin: 3,
             grayscale: true,
+            checks: LINE_ART_CHECKS,
             rules: BLUEPRINT_RULES,
             negative: BLUEPRINT_NEGATIVE,
-            note: "Special project icons are pale line-art drawings on transparent: thin pure-white lines whose alpha makes them pale (median 90), about 4 percent of the canvas inked, in a box of 86 by 74 percent of the canvas. The line_art recipe redraws any generated image that way, so the model only has to give a clean shape.",
+            note: "Special project icons are pale line-art drawings on transparent: thin pure-white lines whose alpha makes them pale (median 90), about 4 percent of the canvas inked, in a box of 86 by 74 percent of the canvas. The line_art recipe redraws any generated image that way, so the model only has to give a clean shape. The line_art check refuses a filled area larger than 250 px (vanilla's largest is 171, its median 4), so filled art cannot pass validation.",
             ..base(SpecialProjectIcon, [161, 98], &[[161, 98]], "gfx/interface/special_project/project_icons/{feature_slug}", "sp_", "interface/special_projects/{feature_slug}_projects.gfx")
         },
         Row {
             margin: 4,
             rules: RAID_RULES,
-            note: "Only the 32x32 raid icons are generated; the wide banner strips in the same folder are interface pieces. The 32x32 icon is the raid's map icon, which the game looks up as GFX_raid_type_icon_<raid type> (24 of the 25 vanilla ones are 32x32), so the asset name is the raid type key, or the raid sets custom_map_icon to the sprite. The pictogram spans 23 of 32 px in the median of 30 vanilla files, so the fit margin is 4 px.",
+            note: "Only the 32x32 raid icons are generated; the wide banner strips in the same folder are interface pieces. The 32x32 icon is the raid's map icon, which the game looks up as GFX_raid_type_icon_<raid type> (24 of the 25 vanilla ones are 32x32), so the asset name is the raid type key, or the raid sets custom_map_icon to the sprite. The pictogram spans 23 of 32 px in the median of 30 vanilla files, so the fit margin is 4 px. Vanilla's map icons are one gold ramp, light at the top and dark at the bottom, with a black outline on the shape's edge; the raid recipe's gold_gradient step recolours any subject that way.",
             ..base(Raid, [32, 32], &[[32, 32]], "gfx/interface/military_raids/{feature_slug}", "raid_type_icon_", "interface/{feature_slug}_raids.gfx")
         },
         Row {
@@ -547,7 +564,7 @@ fn rows() -> Vec<Row> {
         },
         Row {
             sprite: Some(("interface/{feature_slug}_medals.gfx", "GFX_medal_icon_{asset}_large", &[])),
-            note: "A unit medal: script names GFX_medal_icon_<x> with frame = N, and every vanilla GFX_medal_icon_* has a GFX_medal_icon_*_large twin at twice the size (28x42 and 56x84 frames). This tool makes one 56x84 frame registered as the _large sprite and derives the 28x42 GFX_medal_icon_<asset> from it, the way vanilla's small strips are its large ones downscaled; script uses frame = 1. The measured dominant 16x28 files are older medal sprites that no vanilla script or GUI names.",
+            note: "A unit medal: script names GFX_medal_icon_<x> with frame = N, and every vanilla GFX_medal_icon_* has a GFX_medal_icon_*_large twin at twice the size (28x42 and 56x84 frames). This tool makes one 56x84 frame registered as the _large sprite and derives the 28x42 GFX_medal_icon_<asset> from it, the way vanilla's small strips are its large ones downscaled; script uses frame = 1. The medal is fitted into vanilla's box, 33x56 in the 56x84 frame (the median of the 85 frames of vanilla's large strips), not edge to edge. The measured dominant 16x28 files are older medal sprites that no vanilla script or GUI names.",
             ..base(Medal, [56, 84], &[[56, 84]], "gfx/interface/medals/{feature_slug}", "medal_icon_", "interface/{feature_slug}_medals.gfx")
         },
         Row {
@@ -577,7 +594,7 @@ fn rows() -> Vec<Row> {
         },
         Row {
             rules: DOCTRINE_RULES,
-            note: "Only the 64x64 doctrine icons are generated; the wide 212x83 and banner art in the folder are interface pieces.",
+            note: "Only the 64x64 doctrine icons are generated; the wide 212x83 and banner art in the folder are interface pieces. Vanilla draws the units as black silhouettes with a pale outline and glow (luminance 180 at alpha 136 one pixel out, alpha 37 two pixels out) and the warm accents with a dark shadow; the doctrine recipe's doctrine_look step turns any subject into that.",
             ..base(Doctrine, [64, 64], &[[64, 64]], "gfx/interface/doctrines/{feature_slug}", "doctrine_", "interface/{feature_slug}_doctrines.gfx")
         },
         // ---- picture group
@@ -607,11 +624,11 @@ fn rows() -> Vec<Row> {
         Row {
             background: Background::Transparent,
             margin: 2,
-            checks: ICON_CHECKS,
-            rules: ICON_RULES,
+            checks: TECH_CHECKS,
+            rules: TECHNOLOGY_RULES,
             negative: ICON_NEGATIVE,
             sprite: Some(("interface/{feature_slug}_technologies.gfx", "GFX_{asset}_medium", &[])),
-            note: "The engine binds technology art by name: GFX_<technology key>_medium, so the asset name is the technology key. 131x52 (341 files) is the other common size. Measured transparent, so it follows the icon chain.",
+            note: "The engine binds technology art by name: GFX_<technology key>_medium, so the asset name is the technology key. 131x52 (341 files) is the other common size. Measured transparent, so it follows the icon chain. Every inspected vanilla picture is a flat side profile facing right, and the subject's box is long and low (width over height: median 3.09, 10th percentile 2.30 at 146x54), which the side_view check uses as a hint. Tier numerals are baked into vanilla's textures, not drawn by the GUI; the process input overlay stamps them in vanilla's glyphs and place.",
             ..base(Technology, [146, 54], &[[146, 54], [131, 52]], "gfx/interface/technologies/{feature_slug}", "", "interface/{feature_slug}_technologies.gfx")
         },
         Row {
@@ -668,21 +685,24 @@ fn rows() -> Vec<Row> {
             sprite: Some(("interface/{feature_slug}_counters.gfx", "GFX_unit_{asset}_icon_medium", &[])),
             rules: COUNTER_RULES,
             negative: COUNTER_NEGATIVE,
-            note: "The battalion icon: a strip of two 76x42 frames (152x42, noOfFrames = 2). Frame 1 is the unit's side-view silhouette in vanilla's fixed green material (red equals blue, lit from above, a soft black halo), frame 2 the NATO box (the same grey box in all 111 vanilla strips) with the sub-unit's symbol. The model draws only a black silhouette; the unit_counter recipe renders both frames, with the symbol given as counter_symbol or inferred from the asset name. Finished strips can still be imported. The game looks it up as GFX_unit_<sub-unit key>_icon_medium, so the asset name is the sub-unit key (not its sprite key).",
+            checks: COUNTER_CHECKS,
+            note: "The battalion icon: a strip of two 76x42 frames (152x42, noOfFrames = 2). Frame 1 is the unit's side-view silhouette in vanilla's fixed green material (red equals blue, lit from above, a soft black halo), frame 2 the NATO box (the same grey box in all 111 vanilla strips) with the sub-unit's symbol. The model draws only a black silhouette; the unit_counter recipe renders both frames, with the symbol given as counter_symbol or inferred from the asset name. An imported finished strip is kept only when it already is vanilla's material (the unit_material check); any other is drawn again from its frame 1. The game looks it up as GFX_unit_<sub-unit key>_icon_medium, so the asset name is the sub-unit key (not its sprite key).",
             ..base(CounterLarge, [76, 42], &[[76, 42]], "gfx/interface/counters/divisions_large/{feature_slug}", "unit_", "")
         },
         Row {
             sprite: Some(("interface/{feature_slug}_counters.gfx", "GFX_unit_{asset}_icon_medium_white", &[])),
             rules: COUNTER_RULES,
             negative: COUNTER_NEGATIVE,
-            note: "The on-map counter: a strip of two 30x12 frames (60x12, noOfFrames = 2), light grey because the game multiplies it by the country colour. Generated like the large counter: the silhouette is area-averaged down to vanilla's 9 px height and rendered grey with a tight dark halo, frame 2 is the small NATO box. The game looks it up as GFX_unit_<sub-unit key>_icon_medium_white; the tooltip text icon GFX_unit_<sub-unit key>_icon_small (60x12, 2 frames, under gfx/texticons) is derived from it: frame 1 tinted green as vanilla's are, frame 2 kept.",
+            checks: COUNTER_CHECKS,
+            note: "The on-map counter: a strip of two 30x12 frames (60x12, noOfFrames = 2), light grey because the game multiplies it by the country colour. Generated like the large counter: the silhouette is area-averaged down to vanilla's 9 px height and rendered grey with a tight dark halo, frame 2 is the small NATO box. The game looks it up as GFX_unit_<sub-unit key>_icon_medium_white; the tooltip text icon GFX_unit_<sub-unit key>_icon_small (60x12, 2 frames, under gfx/texticons) is derived from it: frame 1 tinted green as vanilla's are, frame 2 kept. An imported finished strip is kept only when it already is vanilla's grey material; any other is drawn again from its frame 1.",
             ..base(CounterSmall, [30, 12], &[[30, 12]], "gfx/interface/counters/divisions_small/{feature_slug}", "onmap_unit_", "")
         },
         Row {
             frames: 1,
             margin: 1,
             sprite: Some(("interface/{feature_slug}_counters.gfx", "GFX_div_templ_{n}_large", &[])),
-            note: "Single frame, 76x42 (the large division template symbol). The game offers the symbols as GFX_div_templ_<n>_large with GFX_div_templ_<n>_small (30x12); vanilla uses 0-43 and 65-121. Install picks n, the next number after vanilla's 121 and every number the mod or an earlier install already uses, records it, and derives the grey 30x12 small symbol. The model draws a black silhouette; the division_symbol recipe fits it at vanilla's size (median ink area, centred at 38, 21.5) and renders vanilla's green material. Finished symbols can still be imported.",
+            note: "Single frame, 76x42 (the large division template symbol). The game offers the symbols as GFX_div_templ_<n>_large with GFX_div_templ_<n>_small (30x12); vanilla uses 0-43 and 65-121. Install picks n, the next number after vanilla's 121 and every number the mod or an earlier install already uses, records it, and derives the grey 30x12 small symbol. The model draws a black silhouette; the division_symbol recipe fits it at vanilla's size (median ink area, centred at 38, 21.5) and renders vanilla's green material. An imported finished symbol is kept only when it already is vanilla's material; any other is drawn again as a silhouette.",
+            checks: COUNTER_CHECKS,
             rules: EMBLEM_RULES,
             negative: EMBLEM_NEGATIVE,
             ..base(DivisionEmblem, [76, 42], &[[76, 42]], "gfx/interface/counters/division_templates_large/{feature_slug}", "custom_", "")
@@ -1269,7 +1289,24 @@ mod tests {
             }
         }
         paths.sort();
-        paths.iter().filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok()).filter(|img| [img.width, img.height] == size).collect()
+        // size [0, 0] asks for the large medal strips: 84 px tall, a whole number of 56 px frames
+        let wanted = |img: &crate::pixels::Rgba| {
+            if size == [0, 0] {
+                img.height == 84 && img.width >= 56 && img.width.is_multiple_of(56)
+            } else {
+                [img.width, img.height] == size
+            }
+        };
+        paths.iter().filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok()).filter(|img| wanted(img)).collect()
+    }
+
+    /// The 56x84 frames of vanilla's large medal strips (every vanilla medal is a strip of such frames).
+    fn medal_frames() -> Vec<crate::pixels::Rgba> {
+        let mut out = Vec::new();
+        for strip in vanilla_files("gfx/interface/medals", "", [0, 0]) {
+            out.extend(strip.split_frames(strip.width / 56).unwrap_or_default());
+        }
+        out
     }
 
     /// The emblem of the plaque, disc, badge and pictogram families is fitted at vanilla's size: for each vanilla file
@@ -1282,7 +1319,7 @@ mod tests {
     #[test]
     fn plaque_and_disc_emblems_are_fitted_at_vanillas_size() {
         // (family, folder, file prefix, also not larger than vanilla)
-        let cases: [(Family, &str, &str, bool); 10] = [
+        let cases: [(Family, &str, &str, bool); 11] = [
             (Family::Focus, "gfx/interface/goals", "goal", false),
             (Family::DecisionCategoryIcon, "gfx/interface/decisions", "decision_category", false),
             (Family::MioDepartment, "gfx/interface/military_industrial_organization/department_icons", "", false),
@@ -1293,6 +1330,7 @@ mod tests {
             (Family::OperationIcon, "gfx/interface/operations", "", true),
             (Family::Raid, "gfx/interface/military_raids", "", true),
             (Family::IdeaConcern, "gfx/interface/ideas", "idea_", true),
+            (Family::Medal, "gfx/interface/medals", "", true),
         ];
         let span = |img: &crate::pixels::Rgba| {
             let b = img.alpha_bbox(16).unwrap();
@@ -1306,7 +1344,7 @@ mod tests {
         let mut report = String::new();
         for (family, folder, prefix, both_ways) in cases {
             let p = &set[&family];
-            let mut files = vanilla_files(folder, prefix, p.canvas);
+            let mut files = if family == Family::Medal { medal_frames() } else { vanilla_files(folder, prefix, p.canvas) };
             if family == Family::Focus {
                 files.extend(vanilla_files(folder, "focus", p.canvas));
             }

@@ -137,10 +137,35 @@ pub const ALL_CHECKS: &[&str] = &[
     "ghost",
     "frames",
     "animation",
+    "line_art",
+    "unit_material",
+    "side_view",
     "style",
     "dds",
     "tga",
 ];
+
+/// Checks that judge the main image only: a companion (a tinted text icon, a smaller strip) is not the family's
+/// finished art and skips them.
+pub const MAIN_IMAGE_ONLY_CHECKS: &[&str] = &["unit_material", "side_view", "line_art"];
+
+/// Code of a special project drawing with a filled area (`line_art` check).
+pub const FILLED_CODE: &str = "GFX-FILLED-INTERIOR";
+/// Code of finished unit art that is not in vanilla's material (`unit_material` check).
+pub const UNIT_MATERIAL_CODE: &str = "GFX-UNIT-MATERIAL";
+/// Code of a technology picture that may not be vanilla's side view (`side_view` check).
+pub const SIDE_VIEW_CODE: &str = "GFX-TECH-VIEW";
+
+/// The narrowest a technology picture's subject may be, width over height of its visible box, before the side view
+/// is doubted: vanilla's 10th percentile (HOI4 1.19.4.1: 2.30 over 269 pictures at 146x54, 1.81 over 55 at 131x52;
+/// medians 3.09 and 2.29). A side profile of a tank, gun, aircraft or ship is long and low; a three-quarter or front
+/// view is not.
+pub fn side_view_min_aspect(canvas: [u32; 2]) -> f64 {
+    match canvas {
+        [131, 52] => 1.81,
+        _ => 2.30,
+    }
+}
 
 /// Alpha every pixel of a template-backed picture (the achievement icons) must reach. Vanilla's templates sit at
 /// 254 and 255.
@@ -347,6 +372,11 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
                     let b = crate::recipes::line_art::STYLE.fit_box;
                     fitted = b[0].min(b[1]);
                 }
+                // a medal sits in vanilla's 33x56 box of its 56x84 frame, spanning two thirds of it
+                if profile.family == crate::family::Family::Medal && [f.width, f.height] == [56, 84] {
+                    let b = crate::chain::MEDAL_BOX;
+                    fitted = (f64::from(b[0]) / 56.0).max(f64::from(b[1]) / 84.0);
+                }
                 if span < 0.80_f64.min(fitted - 0.05) {
                     findings.push(Finding::new(
                         "GFX-UNDERSIZED-SUBJECT",
@@ -414,6 +444,67 @@ pub fn validate_image(img: &Rgba, profile: &Profile, checks: &[String], opts: &O
             run.push("animation".into());
             if frame_imgs.len() > 1 {
                 findings.extend(animation_findings(&frame_imgs, anim));
+            }
+        }
+    }
+
+    if wants("line_art") {
+        run.push("line_art".into());
+        let area = crate::recipes::line_art::largest_filled_area(img);
+        if area > crate::recipes::line_art::FILLED_AREA_LIMIT {
+            findings.push(Finding::new(
+                FILLED_CODE,
+                Level::Error,
+                format!(
+                    "a filled area of {area} px: a special project icon is thin pale lines with nothing filled (vanilla's largest is {} px, its median {}). Process the source again so the line_art recipe redraws it",
+                    crate::recipes::line_art::VANILLA_FILLED_AREA[1],
+                    crate::recipes::line_art::VANILLA_FILLED_AREA[0]
+                ),
+                None,
+                json!({"filled_area": area, "limit": crate::recipes::line_art::FILLED_AREA_LIMIT}),
+            ));
+        }
+    }
+
+    if wants("unit_material") {
+        if let Some(kind) = crate::chain::unit_art_kind(profile.family) {
+            run.push("unit_material".into());
+            let style = crate::recipes::unit_art::GlyphStyle::of(kind);
+            let want = [style.frame[0] * frames, style.frame[1]];
+            if [img.width, img.height] == want {
+                let problems = crate::recipes::unit_art::material_problems(img, kind);
+                if !problems.is_empty() {
+                    findings.push(Finding::new(
+                        UNIT_MATERIAL_CODE,
+                        Level::Error,
+                        format!(
+                            "this is not vanilla's {} unit art: {}. Process it again: the unit art recipe draws any silhouette in vanilla's material",
+                            profile.family,
+                            problems.join("; ")
+                        ),
+                        None,
+                        json!({"problems": problems}),
+                    ));
+                }
+            }
+        }
+    }
+
+    if wants("side_view") {
+        run.push("side_view".into());
+        if let Some(b) = img.alpha_bbox(16) {
+            let aspect = f64::from(b[2] - b[0]) / f64::from((b[3] - b[1]).max(1));
+            let min = side_view_min_aspect(canvas);
+            if aspect < min {
+                findings.push(Finding::new(
+                    SIDE_VIEW_CODE,
+                    Level::Warning,
+                    format!(
+                        "the subject is {aspect:.2} times as wide as tall; vanilla's technology pictures are side profiles facing right, at least {min:.2} times as wide as tall in 9 of 10 pictures. Check in the review that this is the side view, not a three-quarter or front view"
+                    ),
+                    None,
+                    json!({"aspect": aspect, "vanilla_p10": min}),
+                ));
             }
         }
     }
