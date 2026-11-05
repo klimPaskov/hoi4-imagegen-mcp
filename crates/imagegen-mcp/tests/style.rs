@@ -794,3 +794,38 @@ fn a_pinned_style_alone_does_not_trigger_the_mod_form_line() {
     assert_eq!(sources(&plan)["chosen_tier"], 1);
     assert!(!plan.prompt.text.contains(MOD_FORM_LINE));
 }
+
+/// A special project plan whose measured references are smooth shaded bodies (as a mod's earlier filled icons are)
+/// still describes line art in its Style section: a 0.3.1 plan asked for line art with no shading in Requirements and
+/// then for "smooth, softly shaded surfaces" in Style.
+#[test]
+fn a_special_project_plan_never_asks_for_shading_in_its_style_section() {
+    let h = openai_harness();
+    for i in 0..10u32 {
+        let mut img = Rgba::new(161, 98);
+        for y in 20..80u32 {
+            for x in 40 + i..120 {
+                let v = (200 - y) as u8;
+                img.set_px(x, y, [v, v, v, 255]);
+            }
+        }
+        write_png(h.root(), &format!("gfx/interface/special_project/project_icons/mine/sp_{i:02}.png"), &img);
+    }
+    let plan = h
+        .engine
+        .plan(
+            serde_json::from_value(json!({
+                "family": "special_project_icon", "feature_slug": "f", "asset": "rocket", "brief": "a rocket on a gantry", "provider": "openai", "quality": "low"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    let text = &plan.prompt.text;
+    let style = text.split("\nStyle:\n").nth(1).expect("a Style section").split("\n\n").next().unwrap().to_ascii_lowercase();
+    assert!(style.contains("line art") && style.contains("interior stays empty"), "{style}");
+    for w in imagegen_core::styledesc::SHADING_WORDS {
+        assert!(!style.contains(w), "'{w}' in the Style section: {style}");
+    }
+    let requirements = text.split("\nRequirements:\n").nth(1).unwrap().split("\n\n").next().unwrap();
+    assert!(requirements.contains("No shading"), "{requirements}");
+}
