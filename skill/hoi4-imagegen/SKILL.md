@@ -1,6 +1,6 @@
 ---
 name: hoi4-imagegen
-description: Make Hearts of Iron IV graphical assets (44 families: 40 still ones such as focus, ideas, decisions, technology and event pictures, flags, portraits, counters, and 4 animated sprites) with the hoi4-imagegen MCP. Use for any new or replaced mod art that is generated or processed rather than hand-drawn. Covers plan, generate, process, validate, preview, review and install.
+description: Make Hearts of Iron IV graphical assets (45 families: 41 still ones such as focus, ideas, decisions, technology and event pictures, flags, portraits, counters, and 4 animated sprites) with the hoi4-imagegen MCP. Use for any new or replaced mod art that is generated or processed rather than hand-drawn. Covers plan, generate, process, validate, preview, review and install.
 ---
 
 # hoi4-imagegen
@@ -13,20 +13,20 @@ Use the `hoi4_imagegen` MCP (tools `hoi4.image_*`). It owns canvas sizes, alpha,
 * `hoi4.image_generate`, `hoi4.image_edit`, `hoi4.image_process`, `hoi4.image_validate`, `hoi4.image_preview`, `hoi4.image_review`, `hoi4.image_install`, `hoi4.image_ledger`, `hoi4.image_cancel`.
 * `hoi4.image_audit` audits the whole mod for cross-family reuse, missing textures, missing focus shine and wrong canvases. Run it before a release or after importing art. Existing reuse is a warning; add intended aliases to `.hoi4-imagegen/audit-allowlist.json`.
 
-## The 44 families
+## The 45 families
 * Icon group (`hoi4.image_icon`): `focus`, `idea_spirit`, `idea_concern`, `officer_corps_spirit`, `decision` (also missions), `decision_category_icon`, `state_modifier` (also dynamic modifiers), `special_project_icon`, `raid`, `mio_department`, `mio_trait`, `mio_policy`, `bop_side`, `medal`, `agency_upgrade`, `operation_icon`, `commander_trait`, `personal_trait`, `doctrine`.
 * Picture group (`hoi4.image_picture`): `report_event`, `news_event`, `decision_category_picture`, `operation_picture`, `technology`, `achievement`.
 * Portrait group (`hoi4.image_portrait`): `leader_portrait`, `commander_portrait`, `operative_portrait`, `scientist_portrait`, `advisor_card`.
 * Flag (`hoi4.image_flag`): `flag`.
 * Unit group (`hoi4.image_unit`): `counter_large`, `counter_small`, `division_emblem`, `building`, `faction_logo`, `agency_logo`.
-* Interface group (`hoi4.image_interface`): `modifier_stat_icon`, `gui_texture`, `super_event`.
+* Interface group (`hoi4.image_interface`): `modifier_stat_icon`, `gui_texture`, `super_event`, and `model_reference`, which is not game art: the input picture of an image-to-3D tool such as Meshy (one whole subject on a plain light grey backdrop, your canvas, your own style anchors only). It is processed and validated, and install refuses it: use the PNG.
 * Animation group (`hoi4.image_animation`): `anim_blend_glow`, `anim_blend_keyframes`, `anim_scroll`, `anim_spin`. One base frame is generated and the other frames are derived from it.
 
 ## When not to use it
-* Animation beyond a frame strip, and 3D models, rigs and exports (the kit has `hoi4-frame-animation` and `hoi4-3d-model-pipeline` for these). Bring a finished frame strip under the ledger with `hoi4.image_process` and `import`.
-* Sourced and user-provided art of one of the 44 families is not generated, but it is imported with `hoi4.image_process` (a required `family`) so its crop, validation, review and install run under the same ledger. An image of another family's size, or the pixels of an installed asset of another family, is refused.
+* Animation beyond a frame strip, and 3D models, rigs and exports, apart from their input picture (`model_reference`) (the kit has `hoi4-frame-animation` and `hoi4-3d-model-pipeline` for these). Bring a finished frame strip under the ledger with `hoi4.image_process` and `import`.
+* Sourced and user-provided art of one of the 45 families is not generated, but it is imported with `hoi4.image_process` (a required `family`) so its crop, validation, review and install run under the same ledger. An image of another family's size, or the pixels of an installed asset of another family, is refused.
 * Real people. A real identity should use an attributed source, imported through `hoi4.image_process`, never a generated likeness (the kit's `hoi4-feature-assets` decides this first). Only wholly fictional identities are generated. Providers may refuse or treat differently images of real people, the Steam warranty covers personal rights, and the project may forbid a category outright.
-* Art that is not one of the 44 families has no route here.
+* Art that is not one of the 45 families has no route here.
 
 ## Providers
 * The ChatGPT login is the default local provider once you have run `hoi4-imagegen login` (a browser sign-in and a one-time risk note). Every image runs on gpt-6-luna at high reasoning effort, and the route refuses a response whose model or effort differs. The backend's own image tool chooses the quality and size, which the route cannot force, so check the pixels. It calls an undocumented backend that OpenAI does not support for other tools, and it is never part of a hosted deployment.
@@ -41,7 +41,7 @@ Use the `hoi4_imagegen` MCP (tools `hoi4.image_*`). It owns canvas sizes, alpha,
 6. `hoi4.image_process { candidate_id }`. The deterministic fit for the family. If it says `no_transparency_in_source`, the provider returned an opaque picture: regenerate with a model that has native alpha, or use a matte workflow only when the background is one flat colour. Counters and division symbols are different: the model draws one solid black silhouette on plain white, and processing renders vanilla's green or grey look and, for counters, the NATO box. Pass `counter_symbol` (a preset such as `medium_armor` or `infantry+support`, or marks such as `cross+wheels`) when the sub-unit key does not say which symbol it needs. The result reports the symbol it used.
 7. `hoi4.image_validate { targets: [artifact] }`. The artifact's own family and its full check set always apply. Fix errors, then validate again. A pass is geometry only.
 8. `hoi4.image_preview`. Look at the native-size panels first, then at the second sheet: the candidate beside the family's vanilla references. Read `vanilla_check` in the reply.
-9. `hoi4.image_review`. The v3 questions are asked against the vanilla references. Answer every one honestly. The review also measures the file against vanilla itself and refuses an approval that does not match (`review_vanilla_mismatch` names the features). Approve only if all answers are true, otherwise `changes_requested`, then `hoi4.image_edit` with a precise instruction and go back to step 6. Use `override_vanilla_check` with an `override_reason` only for a deliberate mod style the user asked for.
+9. `hoi4.image_review`. The v3 questions are asked against the vanilla references. Answer every one honestly. The first, `shows_brief_subject`, asks whether the image shows what the brief asks for: no measured check can judge that, so look at the image against the brief the reply quotes. The review also measures the file against vanilla itself and refuses an approval that does not match (`review_vanilla_mismatch` names the features). Approve only if all answers are true, otherwise `changes_requested`, then `hoi4.image_edit` with a precise instruction and go back to step 6. Use `override_vanilla_check` with an `override_reason` only for a deliberate mod style the user asked for.
 10. `hoi4.image_install { target, approval_id }`. The default `mode: handoff` writes the sprite into `docs/assets/<feature>/gfx_handoff.md`, and the main agent wires `.gfx`. The result's `script` field (also in the handoff as "In script") is what the mod's script must say for the game to find the art, for example `picture = <asset>` for an idea, or "name the sub-unit `<asset>`" for a counter. For families whose sprite the game builds from a key (ideas, decisions, traits, technologies, sub-units, raid types), choose the asset name to be that key.
 11. When the feature is done, list in the handoff every asset installed and any `GFX-STYLE-DRIFT` warning.
 
