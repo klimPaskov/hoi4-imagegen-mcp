@@ -96,6 +96,15 @@ pub struct ProcessingSwitches {
     /// left out because thin green lines are the style, not a key colour.
     #[serde(default, skip_serializing_if = "is_false")]
     pub crisp: bool,
+    /// With `keep_colours`: snap each glyph pixel to the palette measured on the pack's references for the family
+    /// (fill, outline and accent colours), alpha kept. On by default with `keep_colours` (`None`), `false` turns it
+    /// off, and it cannot be set without `keep_colours`. Needs the family's references; it never runs without a pack.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub snap_palette: Option<bool>,
+    /// With `keep_colours`: draw the soft edge glow measured on the pack's references around the glyph and the NATO
+    /// outline, frame by frame. On by default with `keep_colours` (`None`), `false` turns it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edge_glow: Option<bool>,
 }
 
 impl ProcessingSwitches {
@@ -104,11 +113,27 @@ impl ProcessingSwitches {
         *self == ProcessingSwitches::default()
     }
 
-    /// Names of the switches that are on.
+    /// True when the palette snap runs: `keep_colours` is on and `snap_palette` is not `false`.
+    pub fn snaps_palette(&self) -> bool {
+        self.keep_colours && self.snap_palette != Some(false)
+    }
+
+    /// True when the edge glow is drawn: `keep_colours` is on and `edge_glow` is not `false`.
+    pub fn draws_edge_glow(&self) -> bool {
+        self.keep_colours && self.edge_glow != Some(false)
+    }
+
+    /// Names of the switches in force (`snap_palette` and `edge_glow` also when on by default).
     pub fn names(&self) -> Vec<&'static str> {
         let mut out = Vec::new();
         if self.keep_colours {
             out.push("keep_colours");
+        }
+        if self.snaps_palette() {
+            out.push("snap_palette");
+        }
+        if self.draws_edge_glow() {
+            out.push("edge_glow");
         }
         if self.upright_print {
             out.push("upright_print");
@@ -230,6 +255,7 @@ pub fn switch_applies(switch: &str, profile: &Profile) -> bool {
         "upright_print" => matches!(recipe, Recipe::ReportCard | Recipe::PhaseCard),
         "fill_canvas" => recipe == Recipe::Icon,
         "crisp" => matches!(recipe, Recipe::Icon | Recipe::UnitCounter | Recipe::DivisionSymbol),
+        "snap_palette" | "edge_glow" => matches!(recipe, Recipe::UnitCounter | Recipe::DivisionSymbol),
         _ => false,
     }
 }
@@ -308,6 +334,11 @@ impl StylePack {
             for s in e.processing.names() {
                 if !switch_applies(s, profile) {
                     return Err(Error::Invalid(format!("{at}.processing.{s} does not apply to {family} (see docs/reference.md, style packs)")));
+                }
+            }
+            for (on, s) in [(e.processing.snap_palette, "snap_palette"), (e.processing.edge_glow, "edge_glow")] {
+                if on == Some(true) && !e.processing.keep_colours {
+                    return Err(Error::Invalid(format!("{at}.processing.{s} works on art kept in its own colours: it needs keep_colours")));
                 }
             }
             if e.processing.keep_colours && e.processing.fill_canvas {
@@ -658,6 +689,26 @@ mod tests {
         );
         p.validate().unwrap();
         assert!(parse("name = \"x\"\n[families.decision]\nlook = \"a\"\nunknown = 1\n").is_err(), "unknown keys are refused");
+    }
+
+    #[test]
+    fn snap_palette_and_edge_glow_default_on_with_keep_colours_and_need_it() {
+        let keep = ProcessingSwitches { keep_colours: true, ..Default::default() };
+        assert!(keep.snaps_palette() && keep.draws_edge_glow());
+        assert_eq!(keep.names(), vec!["keep_colours", "snap_palette", "edge_glow"]);
+        let off = ProcessingSwitches { keep_colours: true, snap_palette: Some(false), edge_glow: Some(false), ..Default::default() };
+        assert!(!off.snaps_palette() && !off.draws_edge_glow());
+        assert!(!ProcessingSwitches { snap_palette: Some(true), ..Default::default() }.snaps_palette(), "never without keep_colours");
+        // the default is not written, so a pack saved before 0.3.6 keeps its profile hash
+        assert_eq!(toml::to_string(&keep).unwrap(), "keep_colours = true\n");
+        let mut p = pack();
+        p.families.insert(
+            Family::CounterLarge,
+            PackEntry { processing: ProcessingSwitches { snap_palette: Some(true), ..Default::default() }, ..Default::default() },
+        );
+        assert!(p.validate().unwrap_err().to_string().contains("needs keep_colours"));
+        p.families.get_mut(&Family::CounterLarge).unwrap().processing.keep_colours = true;
+        p.validate().unwrap();
     }
 
     #[test]

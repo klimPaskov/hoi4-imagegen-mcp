@@ -207,6 +207,30 @@ impl Engine {
         }
     }
 
+    /// The look of a style pack's references for kept-colours unit art: the glyph size, the glyph palette
+    /// (`snap_palette`) and the edge glow per frame (`edge_glow`), measured on the family's references, with their
+    /// hashes. `None` when the profile has no pack or no reference can be read. A changed or missing reference is
+    /// refused, as at plan time.
+    pub(crate) fn pack_finish(&self, profile: &Profile) -> EResult<Option<imagegen_core::chain::PackFinish>> {
+        let Some(pp) = profile.pack.as_ref() else { return Ok(None) };
+        let p = pack::load(&self.fs, &pp.name)?;
+        let Some(r) = p.resolve(profile.family, None) else { return Ok(None) };
+        pack::verify_references(&self.fs, &pp.name, &r.references)?;
+        let mut images = Vec::new();
+        let mut hashes = Vec::new();
+        for s in &r.references {
+            let bytes = self.fs.read(&s.path, refs::MAX_REFERENCE_BYTES)?;
+            let Ok((image, _)) = decode(&bytes, Some(&s.path), DecodeLimits::default()) else { continue };
+            images.push(image);
+            hashes.push(s.sha256.clone());
+        }
+        if images.is_empty() {
+            return Ok(None);
+        }
+        let look = imagegen_core::recipes::pack_look::measure(&images, profile.frames.max(1), profile.canvas[0]);
+        Ok(Some(imagegen_core::chain::PackFinish { pack: pp.name.clone(), references: hashes, look }))
+    }
+
     /// Pin every reference of a pack to the hash of its file now. Each must be an image inside the project.
     fn pin_pack(&self, p: &mut StylePack) -> EResult<()> {
         let pin = |r: &mut StyleRef| -> EResult<()> {
