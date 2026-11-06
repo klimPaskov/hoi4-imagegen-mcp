@@ -198,6 +198,7 @@ const GENERIC_V3: &[Question] = &[
 
 /// `interface_model_v3`: a model reference has no vanilla art; it is judged as the input of an image-to-3D tool.
 const MODEL_V3: &[Question] = &[
+    SUBJECT,
     ("whole_subject", "Is the one subject shown whole, with a margin on every side and nothing cropped?"),
     ("plain_backdrop", "Is the backdrop plain light grey, with no scene, ground plane or cast shadow?"),
     ("clean_detail", "Is the picture free of film grain, noise and painterly texture that would end up in the model's texture?"),
@@ -275,7 +276,7 @@ mod tests {
 
     #[test]
     fn every_v3_rubric_asks_for_the_brief_subject_and_an_approval_needs_it() {
-        for g in ["icon", "picture", "portrait", "flag", "unit", "interface", "animation", "other"] {
+        for g in ["icon", "picture", "portrait", "flag", "unit", "interface", "animation", "interface_model", "other"] {
             let id = format!("{g}_v3");
             assert_eq!(questions(&id)[0], SUBJECT, "{id}");
             let mut answers: serde_json::Map<String, Value> = questions(&id).iter().map(|(k, _)| (k.to_string(), json!(true))).collect();
