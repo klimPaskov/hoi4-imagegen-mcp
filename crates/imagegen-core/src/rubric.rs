@@ -180,6 +180,15 @@ const GENERIC_V3: &[Question] = &[
     ("no_text_or_watermark", "Is it free of text and watermarks?"),
 ];
 
+/// `interface_model_v3`: a model reference has no vanilla art; it is judged as the input of an image-to-3D tool.
+const MODEL_V3: &[Question] = &[
+    ("whole_subject", "Is the one subject shown whole, with a margin on every side and nothing cropped?"),
+    ("plain_backdrop", "Is the backdrop plain light grey, with no scene, ground plane or cast shadow?"),
+    ("clean_detail", "Is the picture free of film grain, noise and painterly texture that would end up in the model's texture?"),
+    ("form_reads", "Does the lighting and the angle show the subject's whole form, so a 3D tool can rebuild it?"),
+    NO_TEXT,
+];
+
 /// Questions for a rubric id. Rubrics are per group (`icon`, `picture`, `portrait`, `flag`, `unit`, `interface`,
 /// `animation`) and versioned: `_v3` (current, asked against the vanilla references), `_v2` (icon only, the family
 /// form question) and `_v1`. Every family of a group, officer corps spirits included, gets its group's questions.
@@ -197,6 +206,7 @@ pub fn questions(rubric: &str) -> &'static [Question] {
             "unit" => UNIT_V3,
             "interface" => INTERFACE_V3,
             "animation" => ANIMATION_V3,
+            "interface_model" => MODEL_V3,
             _ => GENERIC_V3,
         };
     }
