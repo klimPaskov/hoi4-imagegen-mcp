@@ -483,7 +483,7 @@ fn the_review_measures_pack_art_against_the_packs_references() {
     let set = &ok["vanilla_check"]["reference_set"];
     assert_eq!(
         (set["kind"].as_str(), set["pack"].as_str(), set["entry"].as_str(), set["rule"].as_str()),
-        (Some("style_pack"), Some("house"), Some("decision"), Some("pack_match_v1"))
+        (Some("style_pack"), Some("house"), Some("decision"), Some("pack_match_v2"))
     );
     assert_eq!(ok["vanilla_check"]["status"], "pass");
 
@@ -520,11 +520,11 @@ fn the_review_measures_pack_art_against_the_packs_references() {
 fn the_pack_match_rule_accepts_the_spread_of_its_own_references() {
     // leave one out over synthetic sets: each reference passes ranges fitted on the others
     let rows: Vec<_> = (0..8)
-        .map(|i| imagegen_core::vanillamatch::measure(&disc(40, 40, 13.0 + f64::from(i) * 0.6, [70 + i as u8 * 3, 198, 190, 255])).unwrap())
+        .map(|i| imagegen_core::pack::measure_reference(&disc(40, 40, 13.0 + f64::from(i) * 0.6, [70 + i as u8 * 3, 198, 190, 255])).unwrap())
         .collect();
     assert_eq!(imagegen_core::pack::leave_one_out(Family::Decision, &rows), Some((8, 8)));
     let cal = imagegen_core::pack::calibrate(Family::Decision, &rows).unwrap();
-    assert_eq!(cal.version, "pack_match_v1");
+    assert_eq!(cal.version, "pack_match_v2");
     let mut bar = Rgba::new(40, 40);
     for y in 18..21 {
         for x in 2..38 {
