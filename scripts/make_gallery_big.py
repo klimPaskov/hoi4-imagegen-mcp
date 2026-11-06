@@ -319,6 +319,9 @@ def make_standard(job, attempt):
         # caller references (per-brief vanilla anchors or the TNO section's); from 0.3.2 their form wins over vanilla's
         req["references"] = [{"path": r["path"], "role": r["role"]} for r in job["references"]]
         rec["anchors"] = job["references"]
+    if job.get("style_pack"):
+        # a mod style pack (0.3.4+): its references, form, canvas and processing switches
+        req["style_pack"] = rec["style_pack"] = job["style_pack"]
     if style:
         req["style"] = style
         style_on(style, family)

@@ -21,7 +21,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import make_gallery_big as m  # noqa: E402
 
-HELD = {"agency_upgrade", "mio_trait", "operative_portrait", "scientist_portrait"}
+HELD = set()  # families waiting for a later build (the four held for 0.3.4 ran on it on 2026-11-06)
 CACHE = os.path.join(m.WORK, "vanilla-check-cache.json")
 COMPARE = os.environ.get("GALLERY_COMPARE", "")
 STYLES = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gallery_styles.json"), encoding="utf-8"))["styles"]

@@ -938,8 +938,9 @@
   },
   {
    "asset": "micrometer_on_shaft",
-   "brief": "A brass micrometer gripping a polished steel shaft, fine shavings curled beside it, grainy sepia ink sketch of precision machining.",
-   "style": "ink"
+   "brief": "A brass micrometer gripping a polished steel shaft, fine shavings curled beside it, precision machining.",
+   "style": "ink",
+   "brief_before_backdrop_rule": "A brass micrometer gripping a polished steel shaft, fine shavings curled beside it, grainy sepia ink sketch of precision machining."
   },
   {
    "asset": "sealed_export_crate",
@@ -973,8 +974,9 @@
   },
   {
    "asset": "half_built_prototype",
-   "brief": "A half-assembled prototype vehicle on a workshop bench, tools scattered around it, skeleton frame without panels, bold carved two-colour linocut look.",
-   "style": "linocut"
+   "brief": "A half-assembled prototype vehicle on a workshop bench, tools scattered around it, skeleton frame without panels.",
+   "style": "linocut",
+   "brief_before_backdrop_rule": "A half-assembled prototype vehicle on a workshop bench, tools scattered around it, skeleton frame without panels, bold carved two-colour linocut look."
   },
   {
    "asset": "smoke_flow_wing",
@@ -1177,8 +1179,9 @@
   },
   {
    "asset": "engraving_press_workshop",
-   "brief": "An engraver's plate and small press with ink-stained rollers and a magnifying lens, a forgery workshop hidden in a Parisian attic, bold carved two-colour linocut look.",
-   "style": "linocut"
+   "brief": "An engraver's plate and small press with ink-stained rollers and a magnifying lens, a forgery workshop hidden in a Parisian attic.",
+   "style": "linocut",
+   "brief_before_backdrop_rule": "An engraver's plate and small press with ink-stained rollers and a magnifying lens, a forgery workshop hidden in a Parisian attic, bold carved two-colour linocut look."
   },
   {
    "asset": "intercept_operator_antennas",
@@ -1212,8 +1215,9 @@
   },
   {
    "asset": "rooftop_pigeon_loft",
-   "brief": "A rooftop pigeon loft with carrier pigeons perched at open doors over British chimneys at sunrise, soft flat gouache look.",
-   "style": "gouache"
+   "brief": "A rooftop pigeon loft with carrier pigeons perched at open doors over British chimneys at sunrise.",
+   "style": "gouache",
+   "brief_before_backdrop_rule": "A rooftop pigeon loft with carrier pigeons perched at open doors over British chimneys at sunrise, soft flat gouache look."
   },
   {
    "asset": "pocket_watch_camera",
@@ -1669,8 +1673,9 @@
   },
   {
    "asset": "refugee_ferry_crossing",
-   "brief": "An overloaded river ferry packed with refugees clutching bundles and bicycles crosses beneath a heavy sky, a child perched on a suitcase, grim mood; grainy ink and sepia look.",
-   "style": "ink"
+   "brief": "A crowded passenger ferry crossing a grey harbour at dawn, families with suitcases at the rail, gulls overhead, documentary black and white press photo.",
+   "style": "ink",
+   "brief_before_moderation_rewording": "An overloaded river ferry packed with refugees clutching bundles and bicycles crosses beneath a heavy sky, a child perched on a suitcase, grim mood; grainy ink and sepia look."
   },
   {
    "asset": "football_stadium_goal",
@@ -2282,125 +2287,149 @@
  "operative_portrait": [
   {
    "asset": "trench_coat_watcher",
-   "brief": "A lean man in a turned-up trench coat and low fedora, face half in shadow, glancing sideways, wet cobbled street lamp-lit behind him, tense mood.",
-   "style": null
+   "brief": "A lean man in a turned-up trench coat and low fedora, face half in shadow, glancing sideways, tense mood.",
+   "style": null,
+   "brief_before_backdrop_rule": "A lean man in a turned-up trench coat and low fedora, face half in shadow, glancing sideways, wet cobbled street lamp-lit behind him, tense mood."
   },
   {
    "asset": "attic_radio_operator",
-   "brief": "A young woman radio operator in headphones hunched over a hidden transmitter in a cramped attic, one hand on a Morse key, a slit of dim light across her face.",
-   "style": null
+   "brief": "A young woman radio operator with headphones around her neck, hair pinned back, alert and secretive expression.",
+   "style": null,
+   "brief_before_backdrop_rule": "A young woman radio operator in headphones hunched over a hidden transmitter in a cramped attic, one hand on a Morse key, a slit of dim light across her face."
   },
   {
    "asset": "swiss_diplomat_attache",
-   "brief": "A neutral diplomat in a morning coat and striped trousers, leather attache case in hand, polished and unreadable expression, marble embassy hall and tall windows behind him.",
-   "style": "linocut"
+   "brief": "A neutral diplomat in a morning coat and wing collar, polished and unreadable expression.",
+   "style": "linocut",
+   "brief_before_backdrop_rule": "A neutral diplomat in a morning coat and striped trousers, leather attache case in hand, polished and unreadable expression, marble embassy hall and tall windows behind him."
   },
   {
    "asset": "bicycle_courier_girl",
-   "brief": "A teenage French courier girl in a beret and cardigan, wheeling a bicycle with a bread basket, sly innocent smile, a sunny village lane behind her, hopeful mood.",
-   "style": null
+   "brief": "A teenage French courier girl in a beret and cardigan, sly innocent smile.",
+   "style": null,
+   "brief_before_backdrop_rule": "A teenage French courier girl in a beret and cardigan, wheeling a bicycle with a bread basket, sly innocent smile, a sunny village lane behind her, hopeful mood."
   },
   {
    "asset": "istanbul_cafe_informant",
-   "brief": "A Turkish informant in a fez and rumpled suit, sipping tea at a cafe table with a folded newspaper, watchful eyes, steam and a crowded bazaar street blurred behind him.",
-   "style": null
+   "brief": "A Turkish informant in a fez and rumpled suit, watchful eyes over a thin moustache.",
+   "style": null,
+   "brief_before_backdrop_rule": "A Turkish informant in a fez and rumpled suit, sipping tea at a cafe table with a folded newspaper, watchful eyes, steam and a crowded bazaar street blurred behind him."
   },
   {
    "asset": "shanghai_fedora_agent",
-   "brief": "A Japanese agent in a fedora and tailored western suit, cigarette between his fingers, neon-lit Shanghai waterfront with sampans and gaslight blurred behind him.",
-   "style": null
+   "brief": "A Japanese agent in a fedora and tailored western suit, a cigarette at his lips, cool level gaze.",
+   "style": null,
+   "brief_before_backdrop_rule": "A Japanese agent in a fedora and tailored western suit, cigarette between his fingers, neon-lit Shanghai waterfront with sampans and gaslight blurred behind him."
   },
   {
    "asset": "lisbon_fur_collar_spy",
-   "brief": "A glamorous woman spy in a veiled hat and fur-collared coat, gloved hand holding a cigarette holder, appraising stare, an elegant Lisbon hotel lobby behind her.",
-   "style": null
+   "brief": "A glamorous woman spy in a veiled hat and fur-collared coat, appraising stare.",
+   "style": null,
+   "brief_before_backdrop_rule": "A glamorous woman spy in a veiled hat and fur-collared coat, gloved hand holding a cigarette holder, appraising stare, an elegant Lisbon hotel lobby behind her."
   },
   {
    "asset": "priest_disguise_smuggler",
-   "brief": "A Polish resistance courier disguised as a country priest in a black cassock and wide hat, rosary in hand, a sharp glance hiding purpose, a village chapel behind him.",
-   "style": null
+   "brief": "A Polish resistance courier disguised as a country priest in a black cassock and wide-brimmed hat, a sharp glance hiding purpose.",
+   "style": null,
+   "brief_before_backdrop_rule": "A Polish resistance courier disguised as a country priest in a black cassock and wide hat, rosary in hand, a sharp glance hiding purpose, a village chapel behind him."
   },
   {
    "asset": "factory_worker_infiltrator",
-   "brief": "A Soviet infiltrator in a worker's flat cap and oil-stained overalls, lunch tin under his arm, blank dutiful face, steaming machinery hall behind him. Grainy ink and sepia sketch.",
-   "style": "ink"
+   "brief": "A Soviet infiltrator in a worker's flat cap and oil-stained overalls, blank dutiful face.",
+   "style": "ink",
+   "brief_before_backdrop_rule": "A Soviet infiltrator in a worker's flat cap and oil-stained overalls, lunch tin under his arm, blank dutiful face, steaming machinery hall behind him. Grainy ink and sepia sketch."
   },
   {
    "asset": "tango_hall_informant",
-   "brief": "An Argentine informant in a white dinner jacket and slicked hair, lounging by a smoky tango hall bar, charming smirk with a watchful eye, warm amber lights behind him.",
-   "style": null
+   "brief": "An Argentine informant in a white dinner jacket and slicked-back hair, charming smirk with a watchful eye.",
+   "style": null,
+   "brief_before_backdrop_rule": "An Argentine informant in a white dinner jacket and slicked hair, lounging by a smoky tango hall bar, charming smirk with a watchful eye, warm amber lights behind him."
   },
   {
    "asset": "bowler_hat_umbrella_officer",
-   "brief": "A British intelligence officer disguised as a city clerk in a bowler hat and rolled umbrella, neat moustache, mild expression, foggy London pavement behind him.",
-   "style": null
+   "brief": "A British intelligence officer disguised as a city clerk in a bowler hat and dark overcoat, neat moustache, mild expression.",
+   "style": null,
+   "brief_before_backdrop_rule": "A British intelligence officer disguised as a city clerk in a bowler hat and rolled umbrella, neat moustache, mild expression, foggy London pavement behind him."
   },
   {
    "asset": "thai_fisherman_scout",
-   "brief": "A Thai scout disguised as a fisherman in a conical straw hat and rolled trousers, holding a net, quiet watchful smile, long-tail boats on a calm river behind him.",
-   "style": null
+   "brief": "A Thai scout disguised as a fisherman in a conical straw hat and plain collarless shirt, quiet watchful smile.",
+   "style": null,
+   "brief_before_backdrop_rule": "A Thai scout disguised as a fisherman in a conical straw hat and rolled trousers, holding a net, quiet watchful smile, long-tail boats on a calm river behind him."
   }
  ],
  "scientist_portrait": [
   {
    "asset": "rocket_engineer_blueprints",
-   "brief": "A German-speaking rocket engineer in his thirties, rolled sleeves and a tie, pencil behind his ear, leaning over large rocket blueprints in a hangar lit by tall windows.",
-   "style": null
+   "brief": "A German-speaking rocket engineer in his thirties, rolled sleeves and a loosened tie, pencil behind his ear, intent expression.",
+   "style": null,
+   "brief_before_backdrop_rule": "A German-speaking rocket engineer in his thirties, rolled sleeves and a tie, pencil behind his ear, leaning over large rocket blueprints in a hangar lit by tall windows."
   },
   {
    "asset": "chemist_flask_goggles",
-   "brief": "A British chemist in a white lab coat and safety goggles pushed up on his forehead, holding a glowing flask, shelves of glassware in a cramped laboratory behind him.",
-   "style": null
+   "brief": "A British chemist in a white lab coat with safety goggles pushed up on his forehead, curious half smile.",
+   "style": null,
+   "brief_before_backdrop_rule": "A British chemist in a white lab coat and safety goggles pushed up on his forehead, holding a glowing flask, shelves of glassware in a cramped laboratory behind him."
   },
   {
    "asset": "nuclear_physicist_blackboard",
-   "brief": "A pensive Danish physicist in tweed with tousled hair and a pipe, standing before a blackboard covered in scrawled diagrams, soft grey light from a high window. Bold two-colour linocut.",
-   "style": "linocut"
+   "brief": "A pensive Danish physicist in a tweed jacket with tousled hair and a pipe, chalk dust on his lapel.",
+   "style": "linocut",
+   "brief_before_backdrop_rule": "A pensive Danish physicist in tweed with tousled hair and a pipe, standing before a blackboard covered in scrawled diagrams, soft grey light from a high window. Bold two-colour linocut."
   },
   {
    "asset": "radar_engineer_antenna",
-   "brief": "An American radar engineer in shirt sleeves and horn-rimmed glasses, standing beside a rotating dish antenna on a coastal cliff, windblown hair and an eager smile.",
-   "style": null
+   "brief": "An American radar engineer in shirt sleeves and horn-rimmed glasses, windblown hair and an eager look.",
+   "style": null,
+   "brief_before_backdrop_rule": "An American radar engineer in shirt sleeves and horn-rimmed glasses, standing beside a rotating dish antenna on a coastal cliff, windblown hair and an eager smile."
   },
   {
    "asset": "aircraft_designer_drafting",
-   "brief": "An Italian aircraft designer in his forties at a drafting table, pencil and set square in hand, a sleek wing model on the desk, warm afternoon light through a hangar door.",
-   "style": null
+   "brief": "An Italian aircraft designer in his forties in a waistcoat and bow tie, pencil tucked behind his ear, confident look.",
+   "style": null,
+   "brief_before_backdrop_rule": "An Italian aircraft designer in his forties at a drafting table, pencil and set square in hand, a sleek wing model on the desk, warm afternoon light through a hangar door."
   },
   {
    "asset": "japanese_radio_physicist",
-   "brief": "A Japanese physicist in round glasses and a dark high-collar jacket, adjusting the dials of a large vacuum-tube apparatus, quiet concentration, a wood-panelled laboratory behind him.",
-   "style": null
+   "brief": "A Japanese physicist in round glasses and a dark high-collar jacket, quiet concentration.",
+   "style": null,
+   "brief_before_backdrop_rule": "A Japanese physicist in round glasses and a dark high-collar jacket, adjusting the dials of a large vacuum-tube apparatus, quiet concentration, a wood-panelled laboratory behind him."
   },
   {
    "asset": "woman_physicist_chamber",
-   "brief": "A French woman physicist in a white lab coat with her hair tied back, peering at a glass cloud chamber, thoughtful and radiant, instruments gleaming behind her.",
-   "style": null
+   "brief": "A French woman physicist in a white lab coat with her hair tied back, thoughtful and radiant.",
+   "style": null,
+   "brief_before_backdrop_rule": "A French woman physicist in a white lab coat with her hair tied back, peering at a glass cloud chamber, thoughtful and radiant, instruments gleaming behind her."
   },
   {
    "asset": "soviet_metallurgist_foundry",
-   "brief": "A broad-shouldered Soviet metallurgist in a leather apron and cap, holding tongs, face lit orange by molten steel, a vast foundry hall blazing behind him.",
-   "style": null
+   "brief": "A broad-shouldered Soviet metallurgist in a leather apron over a work shirt and a cloth cap, stern proud face.",
+   "style": null,
+   "brief_before_backdrop_rule": "A broad-shouldered Soviet metallurgist in a leather apron and cap, holding tongs, face lit orange by molten steel, a vast foundry hall blazing behind him."
   },
   {
    "asset": "swedish_geologist_tweed",
-   "brief": "A Swedish geologist in a heavy wool jacket and spectacles, examining a rock sample with a hand lens, field tent and misty pine hills behind him. Soft flat matte gouache.",
-   "style": "gouache"
+   "brief": "A Swedish geologist in a heavy wool jacket and spectacles, weathered cheeks and a calm gaze.",
+   "style": "gouache",
+   "brief_before_backdrop_rule": "A Swedish geologist in a heavy wool jacket and spectacles, examining a rock sample with a hand lens, field tent and misty pine hills behind him. Soft flat matte gouache."
   },
   {
    "asset": "codebreaker_mathematician",
-   "brief": "A shy British mathematician in a rumpled sweater and wire glasses, surrounded by punched paper strips and a cipher machine in a cluttered hut, intense stare.",
-   "style": null
+   "brief": "A shy British mathematician in a rumpled sweater and wire glasses, intense distracted gaze.",
+   "style": null,
+   "brief_before_backdrop_rule": "A shy British mathematician in a rumpled sweater and wire glasses, surrounded by punched paper strips and a cipher machine in a cluttered hut, intense stare."
   },
   {
    "asset": "indian_astronomer_dome",
-   "brief": "An Indian astronomer in a pressed white shirt and waistcoat, one hand on a brass telescope in an open-domed observatory, starry twilight sky visible behind him, quiet wonder.",
-   "style": null
+   "brief": "An Indian astronomer in a pressed white shirt and waistcoat, gentle composed expression.",
+   "style": null,
+   "brief_before_backdrop_rule": "An Indian astronomer in a pressed white shirt and waistcoat, one hand on a brass telescope in an open-domed observatory, starry twilight sky visible behind him, quiet wonder."
   },
   {
    "asset": "penicillin_doctor_microscope",
-   "brief": "An Australian medical researcher in a white coat bending over a microscope with petri dishes beside her, calm hopeful expression, bright clinic window behind.",
-   "style": null
+   "brief": "An Australian woman medical researcher in a white coat, calm hopeful expression.",
+   "style": null,
+   "brief_before_backdrop_rule": "An Australian medical researcher in a white coat bending over a microscope with petri dishes beside her, calm hopeful expression, bright clinic window behind."
   }
  ],
  "advisor_card": [
@@ -3092,8 +3121,9 @@
   },
   {
    "asset": "attack_bayonet",
-   "brief": "A rifle with a fixed bayonet pointing right, with a small bold arrow above it showing the thrust forward.",
-   "style": null
+   "brief": "A simple upright rifle with a short blade fixed at the muzzle, plain flat pictogram, readable at small size.",
+   "style": null,
+   "brief_before_moderation_rewording": "A rifle with a fixed bayonet pointing right, with a small bold arrow above it showing the thrust forward."
   },
   {
    "asset": "defence_shield",

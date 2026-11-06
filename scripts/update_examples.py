@@ -21,7 +21,7 @@ import make_gallery_big as m  # noqa: E402
 TILE = (38, 39, 46)
 # hand picks for the README's six examples (varied focus frames, 0.3.3 technology side view)
 PICKS = {"focus": "embassy_flags_handshake_v033", "technology": "sloped_armour_medium_tank"}
-HELD_NOTE = "An example follows when hoi4-imagegen 0.3.4 lands; the 0.2.x example was removed."
+HELD_NOTE = "An example follows with a later hoi4-imagegen build. The old example was removed."
 
 
 def scale_for(w, h):
@@ -52,11 +52,16 @@ def main(repo):
     fams_md = os.path.join(repo, "docs", "families.md")
     text = open(fams_md, encoding="utf-8").read()
     examples = {}
-    for f in sorted(os.listdir(gallery)):
-        if not f.endswith(".webp") or f == "contact-sheet.webp":
-            continue
-        fam = f[:-5]
+    have = {f[:-5] for f in os.listdir(gallery) if f.endswith(".webp") and f != "contact-sheet.webp"}
+    for fam in sorted(have | set(by_fam)):
+        f = fam + ".webp"
         items = by_fam.get(fam)
+        if fam not in have:
+            # a family that waited for a later build: its note under the family heading becomes the image tag
+            note = re.compile(r"(### " + re.escape(fam) + r"\n\n)\*An example follows when hoi4-imagegen [^*\n]*\*")
+            if not note.search(text):
+                continue
+            text = note.sub(lambda mt: mt.group(1) + f'<img src="gallery/{fam}.webp">', text)
         tag = re.compile(r'<img src="gallery/' + re.escape(fam) + r'\.webp"[^>]*>')
         if not items:
             os.remove(os.path.join(gallery, f))
