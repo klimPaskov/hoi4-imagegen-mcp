@@ -23,7 +23,8 @@ jobs:
       matrix:
         include:
           - { target: x86_64-pc-windows-msvc, os: windows-latest, ext: zip }
-          - { target: aarch64-apple-darwin, os: macos-15, ext: tar.gz }
+          # cross-compiled on the Intel runner: arm64 macOS runners stopped starting for this repository on 2026-11-06
+          - { target: aarch64-apple-darwin, os: macos-15-intel, ext: tar.gz, cross: true }
           - { target: x86_64-apple-darwin, os: macos-15-intel, ext: tar.gz }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04, ext: tar.gz }
           - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04-arm, ext: tar.gz }
@@ -54,6 +55,8 @@ jobs:
             tar -czf "$name.tar.gz" "$name"
           fi
       - name: Smoke test
+        # a cross-compiled binary cannot run on the build machine
+        if: ${{ !matrix.cross }}
         shell: bash
         run: |
           set -eu
@@ -87,3 +90,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --notes "Per-platform binaries of hoi4-imagegen (CLI) and hoi4-imagegen-mcp (MCP stdio server). Unsigned; verify with SHA256SUMS and \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
+
+  stamp-docs:
+    # the README's latest-release line and the reference's archive names follow the tag, so no release edits them by hand
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Stamp the release tag into the docs
+        run: python3 scripts/stamp_release.py "$GITHUB_REF_NAME"
+      - name: Commit to main
+        run: |
+          set -eu
+          if git diff --quiet; then echo "already stamped"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Docs name the latest release, $GITHUB_REF_NAME"
+          git push origin HEAD:main
