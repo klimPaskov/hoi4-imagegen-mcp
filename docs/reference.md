@@ -422,7 +422,7 @@ The check is a gate, not a verdict. Art that looks wrong in a way these features
 | Provider | Needs |
 |---|---|
 | ChatGPT login | `hoi4-imagegen login` once. Uses your own ChatGPT plan. No API key |
-| OpenAI API | `OPENAI_API_KEY` | (default model gpt-image-2.6-flare, edits gpt-image-2.6-sunburst, 2.5 kept as fallback). The ChatGPT sign-in route is unaffected: it stays on gpt-6-luna.
+| OpenAI API (default gpt-image-2.6-flare, edits gpt-image-2.6-sunburst, 2.5 as fallback) | `OPENAI_API_KEY` |
 | Google Gemini API | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
 | fal | `FAL_KEY` |
 | ComfyUI | an endpoint in the project config, and optionally `COMFYUI_API_KEY` |
