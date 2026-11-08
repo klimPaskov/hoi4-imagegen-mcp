@@ -86,12 +86,13 @@ The example is one focus icon. An AI client calls the tools below. Each is also 
      "reviewer": "claude",
      "answers": {
        "vanilla_form": true, "vanilla_medium": true, "vanilla_framing": true,
-       "readable_at_native_size": true, "no_text_or_watermark": true, "period_and_theme_fit": true
+       "readable_at_native_size": true, "no_text_or_watermark": true, "period_and_theme_fit": true,
+       "shows_brief_subject": true
      }
    }
    ```
 
-   The icon group has the six questions above, each asked against the vanilla references beside the candidate. Answer them honestly: `true` only when the side-by-side sheet shows the same form, medium and framing. `hoi4.image_families` lists the questions of every group. An approval needs every answer true, a preview of this exact file with the vanilla sheet, and the measured vanilla-match check to pass. The review runs that check itself. When it fails, the reply (`review_vanilla_mismatch`) names each measured feature outside vanilla's range, for example `subject_span 0.95 (vanilla 0.32..0.92, median 0.62)`. Fix the art or ask for another round. A mod with a deliberate style of its own may approve with `"override_vanilla_check": true` and an `"override_reason"`, and both are recorded. An agent may approve, and its name is recorded. The reply carries an `approval_id`. If the art is not good enough, use `"verdict": "changes_requested"` with notes, then `hoi4.image_edit { "candidate_id": "iron_pact.steel_gate-v1", "instruction": "...", "idempotency_key": "..." }` and process the new candidate.
+   The icon group has the seven questions above. The first six are asked against the vanilla references beside the candidate, and `shows_brief_subject` against the brief, which the reply quotes. Answer them honestly: `true` only when the side-by-side sheet shows the same form, medium and framing. `hoi4.image_families` lists the questions of every group. An approval needs every answer true, a preview of this exact file with the vanilla sheet, and the measured vanilla-match check to pass. The review runs that check itself. When it fails, the reply (`review_vanilla_mismatch`) names each measured feature outside vanilla's range, for example `subject_span 0.95 (vanilla 0.32..0.92, median 0.62)`. Fix the art or ask for another round. A mod with a deliberate style of its own may approve with `"override_vanilla_check": true` and an `"override_reason"`, and both are recorded. An agent may approve, and its name is recorded. The reply carries an `approval_id`. If the art is not good enough, use `"verdict": "changes_requested"` with notes, then `hoi4.image_edit { "candidate_id": "iron_pact.steel_gate-v1", "instruction": "...", "idempotency_key": "..." }` and process the new candidate.
 
 8. **Install.** `hoi4.image_install { "target": "iron_pact.steel_gate-v1-p1", "approval_id": "apr-..." }`. This writes `gfx/interface/goals/iron_pact/focus_steel_gate.dds` and puts the sprite and its `_shine` entry into `docs/assets/iron_pact/gfx_handoff.md`. Add `"mode": "register"` to insert them into the mod's `.gfx` file instead.
 
