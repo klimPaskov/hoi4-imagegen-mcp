@@ -71,7 +71,7 @@ See many more in the [gallery](docs/gallery/big/README.md): every family beside 
 
 ## Quick start
 
-1. **Install it.** The easy way is [HOI4 Mod Setup](https://github.com/klimPaskov/HOI4-Mod-Setup/releases/latest) 0.9.2 or later: tick **Install hoi4-imagegen** on the image step. Setup downloads the [latest release](https://github.com/klimPaskov/hoi4-imagegen-mcp/releases/latest) (<!-- latest-release -->v0.3.6<!-- /latest-release -->) for your computer, checks its SHA-256, installs it in your mod and then opens the ChatGPT sign-in in your browser by itself. Other backends are under **Use another backend**. To install by hand, download the archive for your platform from the [releases](https://github.com/klimPaskov/hoi4-imagegen-mcp/releases) (Windows, macOS and Linux, `SHA256SUMS` included) and unpack it somewhere on your `PATH`.
+1. **Install it.** The easy way is [HOI4 Mod Setup](https://github.com/klimPaskov/HOI4-Mod-Setup/releases/latest) 0.9.2 or later: tick **Install hoi4-imagegen** on the image step. Setup downloads the [latest release](https://github.com/klimPaskov/hoi4-imagegen-mcp/releases/latest) (<!-- latest-release -->v0.3.7<!-- /latest-release -->) for your computer, checks its SHA-256, installs it in your mod and then opens the ChatGPT sign-in in your browser by itself. Other backends are under **Use another backend**. To install by hand, download the archive for your platform from the [releases](https://github.com/klimPaskov/hoi4-imagegen-mcp/releases) (Windows, macOS and Linux, `SHA256SUMS` included) and unpack it somewhere on your `PATH`.
 2. **Sign in once** with your ChatGPT account, and no API key is needed. Setup does this step for you. By hand it is one command, which opens the browser, with nothing to type or confirm:
 
    ```sh
@@ -103,7 +103,7 @@ The binaries are unsigned, so Windows SmartScreen and macOS Gatekeeper may warn.
 
 ## Tools
 
-There are 21 tools. Seven plan families by group, and each takes a required `family` whose schema lists only that group's families.
+There are 22 tools. Seven plan families by group, and each takes a required `family` whose schema lists only that group's families.
 
 | Tool | What it does |
 |---|---|
@@ -120,6 +120,7 @@ There are 21 tools. Seven plan families by group, and each takes a required `fam
 | `hoi4.image_install`, `hoi4.image_ledger`, `hoi4.image_cancel` | The gated install, provenance, cancel and recover |
 | `hoi4.image_login` | Opens the ChatGPT sign-in in the browser, for an agent or a setup tool |
 | `hoi4.image_audit` | A read-only audit of the whole mod: sprite reuse across families, missing textures, undefined sprites, wrong canvas sizes |
+| `hoi4.image_set` | Every icon of one focus tree file as one set: one shared style, one asset per distinct sprite, briefs from the focus names |
 
 Every tool is also on the command line: `hoi4-imagegen call <tool> '<json>'`. The [reference](docs/reference.md#tools) has the full table.
 

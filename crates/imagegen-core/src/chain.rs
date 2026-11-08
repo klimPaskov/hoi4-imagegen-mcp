@@ -13,12 +13,14 @@
 //! | Recipe | Families | Required stages, in order |
 //! |---|---|---|
 //! | `icon` v1 | transparent icons, technology, modifier icon, GUI texture | `fit_subject` (`conform` when finished art was imported at an accepted size), `grayscale` for grayscale families; technology adds `tech_overlay` when the caller asks for a tier numeral |
+//! | `bop_side` v1 | balance of power side | `fit_subject` (the emblem in colour), `bop_stages`: the grey standard (the main image), the `_improved` companion and, when asked for, the `_bad` and `_bad_improved` companions |
 //! | `raid` v1 | raid | `fit_subject`, `gold_gradient` (vanilla's gold ramp and black outline), or one `conform` for imported finished art |
 //! | `doctrine` v2 | doctrine | `fit_subject`, `doctrine_look` (black units, pale outline and glow), or one `conform` for imported finished art |
 //! | `vignette` v1 | agency upgrade | `round_vignette` (the disc in vanilla's muted palette with its darkened edge), `fit_subject`, or one `conform` for imported finished art |
 //! | `picture` v1 | opaque pictures, news, super event | `flatten_on`, `cover_resize` or `conform`, `grayscale` for news |
 //! | `report_card` v2 | report event | `report_card` or `conform` (an imported finished card) |
 //! | `phase_card` v1 | operation picture | `phase_card` (the report card on vanilla's phase picture mask) or `conform` (an imported finished card) |
+//! | `operation_card` v1 | operation icon | `operation_card` (the picture as vanilla's tilted, outlined 85x85 card with a soft shadow) or `conform` (an imported finished card); the 48x48 map medallion is a derived companion |
 //! | `selected_strip` v1 | faction logo, agency logo | `fit_subject`, `selected_frame` (or one `conform` for an imported finished strip) |
 //! | `landmark_strip` v1 | building | `fit_subject`, `second_frame`: the ruined state, a second candidate of the same asset (or one `conform`) |
 //! | `unit_counter` v1 | battalion and on-map counters | `unit_glyph` (silhouette to vanilla's material), `nato_frame` (the NATO box as frame 2), or one `conform` for an imported finished strip that is already in vanilla's material; any other strip is drawn again from its frame 1 (`frame_of`, `unit_glyph`, `nato_frame`) |
@@ -103,6 +105,8 @@ pub enum Recipe {
     ReportCard,
     /// Operation phase picture: the report card on vanilla's phase mask.
     PhaseCard,
+    /// Operation icon: the picture as vanilla's tilted, outlined 85x85 card (its 48x48 map medallion is a derived companion).
+    OperationCard,
     /// Two frames, the second selected.
     SelectedStrip,
     /// Two frames: the landmark, then its ruined state (a second candidate of the same asset), as vanilla does.
@@ -143,6 +147,8 @@ pub enum Recipe {
     KeptUnitArt,
     /// A style pack's panel (`fill_canvas`): a transparent icon family whose art fills the whole canvas.
     FilledIcon,
+    /// A balance of power side: the fitted emblem in colour, then its stages (standard grey, improved, optionally the cracked bad pair).
+    BopSide,
 }
 
 impl Recipe {
@@ -153,6 +159,7 @@ impl Recipe {
             Recipe::Picture => "picture",
             Recipe::ReportCard => "report_card",
             Recipe::PhaseCard => "phase_card",
+            Recipe::OperationCard => "operation_card",
             Recipe::SelectedStrip => "selected_strip",
             Recipe::LandmarkStrip => "landmark_strip",
             Recipe::UnitCounter => "unit_counter",
@@ -172,6 +179,7 @@ impl Recipe {
             Recipe::UprightPrint => "upright_print",
             Recipe::KeptUnitArt => "kept_unit_art",
             Recipe::FilledIcon => "filled_icon",
+            Recipe::BopSide => "bop_side",
         }
     }
 
@@ -179,6 +187,7 @@ impl Recipe {
     pub fn version(self) -> u32 {
         match self {
             Recipe::ReportCard => crate::recipes::report_card::RECIPE_VERSION,
+            Recipe::OperationCard => crate::recipes::operation_card::RECIPE_VERSION,
             Recipe::UnitCounter | Recipe::DivisionSymbol => crate::recipes::unit_art::RECIPE_VERSION,
             Recipe::LineArt => crate::recipes::line_art::RECIPE_VERSION,
             Recipe::Raid => crate::recipes::raid::RECIPE_VERSION,
@@ -187,6 +196,7 @@ impl Recipe {
             Recipe::AnimGlow | Recipe::AnimKeyframes | Recipe::AnimScroll | Recipe::AnimSpin => crate::animation::RECIPE_VERSION,
             // v2 (0.3.6): the pack's palette snap and edge glow
             Recipe::KeptUnitArt => 2,
+            Recipe::BopSide => crate::recipes::bop::RECIPE_VERSION,
             _ => 1,
         }
     }
@@ -196,6 +206,7 @@ impl Recipe {
         match self {
             Recipe::Achievement => &["_grey", "_not_eligible"],
             Recipe::Flag => &["medium", "small"],
+            Recipe::BopSide => &["_improved"],
             _ => &[],
         }
     }
@@ -209,6 +220,7 @@ pub fn recipe_of(profile: &Profile) -> Recipe {
         Family::CounterLarge | Family::CounterSmall | Family::DivisionEmblem if sw.keep_colours => Recipe::KeptUnitArt,
         Family::ReportEvent => Recipe::ReportCard,
         Family::OperationPicture => Recipe::PhaseCard,
+        Family::OperationIcon => Recipe::OperationCard,
         Family::FactionLogo | Family::AgencyLogo => Recipe::SelectedStrip,
         Family::Building => Recipe::LandmarkStrip,
         Family::CounterLarge | Family::CounterSmall => Recipe::UnitCounter,
@@ -225,6 +237,7 @@ pub fn recipe_of(profile: &Profile) -> Recipe {
         Family::AnimBlendKeyframes => Recipe::AnimKeyframes,
         Family::AnimScroll => Recipe::AnimScroll,
         Family::AnimSpin => Recipe::AnimSpin,
+        Family::BopSide => Recipe::BopSide,
         _ if sw.fill_canvas => Recipe::FilledIcon,
         _ if profile.imagegen.background == Background::Opaque => Recipe::Picture,
         _ => Recipe::Icon,
@@ -248,6 +261,9 @@ pub enum Finisher {
     DerivedCompanions,
     /// The frames of a blend key-frame strip: the base and its edits, fitted with one shared crop and scale.
     KeyFrames,
+    /// The stages of a balance of power side made from the fitted colour emblem: the grey standard (the main image),
+    /// the improved companion and, when asked for, the cracked `_bad` and `_bad_improved` companions.
+    BopStages,
 }
 
 impl Finisher {
@@ -261,6 +277,7 @@ impl Finisher {
             Finisher::SecondFrame => "second_frame",
             Finisher::DerivedCompanions => "derived_companions",
             Finisher::KeyFrames => "key_frames",
+            Finisher::BopStages => "bop_stages",
         }
     }
 }
@@ -410,7 +427,7 @@ pub fn plan_finishing_with(
         return Err(Error::Invalid(format!("overlay (a tier numeral) is for technology pictures, not {}", profile.family)));
     }
     match recipe {
-        Recipe::Icon => {
+        Recipe::Icon | Recipe::BopSide => {
             if imported && accepted_single(size) {
                 ops.push(Op::Conform { width: size[0], height: size[1] });
             } else if crisp {
@@ -475,6 +492,22 @@ pub fn plan_finishing_with(
                 ops.push(Op::FlattenOn { background: FLATTEN_BACKGROUND });
                 let seed = seed_from_sha(candidate_sha256);
                 ops.push(if recipe == Recipe::ReportCard { Op::ReportCard { seed } } else { Op::PhaseCard { seed } });
+            }
+        }
+        Recipe::OperationCard => {
+            let clear_corners = [
+                (0, 0),
+                (img.width.saturating_sub(1), 0),
+                (0, img.height.saturating_sub(1)),
+                (img.width.saturating_sub(1), img.height.saturating_sub(1)),
+            ]
+            .iter()
+            .all(|(x, y)| img.alpha(*x, *y) == 0);
+            if imported && size == [85, 85] && clear_corners {
+                ops.push(Op::Conform { width: 85, height: 85 });
+            } else {
+                ops.push(Op::FlattenOn { background: FLATTEN_BACKGROUND });
+                ops.push(Op::OperationCard { seed: seed_from_sha(candidate_sha256) });
             }
         }
         Recipe::SelectedStrip | Recipe::LandmarkStrip => {
@@ -719,6 +752,9 @@ pub fn plan_finishing_with(
             }
         }
     }
+    if recipe == Recipe::BopSide {
+        finishers.push(Finisher::BopStages);
+    }
     if !crate::lookup::derived_companions(profile.family, canvas).is_empty() {
         finishers.push(Finisher::DerivedCompanions);
     }
@@ -740,6 +776,8 @@ pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
     let mut stages: Vec<Vec<&'static str>> = match recipe_of(profile) {
         Recipe::Icon if profile.processing().crisp => vec![vec!["area_fit", "conform"]],
         Recipe::Icon => vec![vec!["fit_subject", "fit_in_box", "conform"]],
+        Recipe::BopSide if profile.processing().crisp => vec![vec!["area_fit", "conform"], vec!["bop_stages"]],
+        Recipe::BopSide => vec![vec!["fit_subject", "fit_in_box", "conform"], vec!["bop_stages"]],
         Recipe::UprightPrint => vec![vec!["fit_subject", "cover_resize", "area_cover", "conform"]],
         Recipe::KeptUnitArt if counter => vec![vec!["fit_in_box", "area_fit", "conform"], vec!["nato_outline", "conform"]],
         Recipe::KeptUnitArt => vec![vec!["fit_in_box", "area_fit", "conform"]],
@@ -747,6 +785,7 @@ pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
         Recipe::Picture => vec![vec!["flatten_on"], vec!["cover_resize", "conform"]],
         Recipe::ReportCard => vec![vec!["report_card", "conform"]],
         Recipe::PhaseCard => vec![vec!["phase_card", "conform"]],
+        Recipe::OperationCard => vec![vec!["operation_card", "conform"]],
         Recipe::SelectedStrip => vec![vec!["fit_subject", "conform"], vec!["selected_frame", "conform"]],
         Recipe::LandmarkStrip => vec![vec!["fit_subject", "conform"], vec!["second_frame", "conform"]],
         Recipe::UnitCounter => vec![vec!["unit_glyph", "conform"], vec!["nato_frame", "conform"]],

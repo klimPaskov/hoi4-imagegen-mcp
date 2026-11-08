@@ -34,8 +34,17 @@ status -> families -> icon | picture | portrait | flag | unit | interface   (fre
 | `hoi4.image_cancel` | Cancels a running job, reconciles one that a crashed run left behind, or retires an uncertain idempotency key (`abandon: true`) |
 | `hoi4.image_login` | Opens the ChatGPT sign-in page in the user's browser and returns at once. The sign-in finishes in the background, and `hoi4.image_status` reports it. Signing in accepts the risk note, which the result includes. Local only |
 | `hoi4.image_audit` | Audits the whole mod on the shared engine (hoi4-agent-tools): which families use each sprite and texture, cross-family reuse (`GFX-FAMILY-REUSE`, a warning, with a per-mod allowlist), missing textures, undefined sprites, missing focus shine (an error: the game then draws a `?`), wrong canvas sizes and report cards without transparent corners. Read only |
+| `hoi4.image_set` | Set mode: plans (and with `generate` makes) every icon of one focus tree file as one set. See [set mode](#set-mode) |
 
-That is 21 tools.
+That is 22 tools.
+
+### Set mode
+
+`hoi4.image_set` (`hoi4-imagegen call hoi4.image_set '{"focus_tree": "common/national_focus/GER.txt"}'`) reads one focus tree file with the shared HOI4 engine, the same index and trace as the audit. It keeps the `icon` of every focus in that file and gives every distinct sprite one `focus` asset, so focuses that share a sprite share one asset and nothing is made twice. Each brief names the focus by its English name and description from the mod's localisation, and says the icon is one of a set with distinct subjects.
+
+Every icon gets the same `style_pack`, style anchors (`references`), `provider`, `model` and `quality`, so the set shares one look. The surest way is to generate one icon first, approve it, and pass it as a `style_anchor` for the rest. By default only icons the game cannot show yet (an undefined sprite or a missing texture) are planned, and `only_missing: false` plans every one. Plans are free. With `generate: true` and an `idempotency_key`, each icon is generated under `<idempotency_key>-<asset>`, so a rerun after an interruption repeats nothing that finished. A failed icon is reported and the rest go on.
+
+The reply lists every icon: the sprite the tree names, the asset, its focuses and their names, the plan id, the cost estimate and the sprite name its install registers (`installs_as`). The install names focus sprites `GFX_focus_<asset>`, so where `tree_names_it` is false, point the focus's `icon` at `installs_as`. `shared_sprites` lists the sprites several focuses share, and `dynamic` the icons built at run time, which cannot be planned.
 
 ## Families
 
@@ -55,7 +64,7 @@ There are 45 families in seven groups. The group names the tool that plans them.
 
 The built-in canvas, frames, accepted sizes and pixel class of every family come from the installed game, version 1.19.4.1. The data is in `crates/imagegen-core/data/vanilla-measurement.json`, made by `scripts/measure_families.py`. A unit test fails when a family stops matching it. Examples: focus 100x88, idea_spirit 60x68, advisor_card 65x67, decision 33x32, report_event 210x176, news_event 397x153, flags 82x52, 41x26 and 10x7.
 
-The emblem inside an icon is fitted at vanilla's size too, measured as the median over the family's vanilla files. mio_trait and agency_upgrade keep an 8 px margin and operation_icon 6 px, the clear margin every vanilla file of those families has. raid keeps 4 px and idea_concern 3 px, the margins closest to the vanilla median. A test (it needs the game) checks these and focus, decision_category_icon, mio_department, doctrine and commander_trait against the vanilla median, within 1 px.
+The emblem inside an icon is fitted at vanilla's size too, measured as the median over the family's vanilla files. mio_trait and agency_upgrade keep an 8 px margin, the clear margin every vanilla file of those families has. raid keeps 4 px and idea_concern 3 px, the margins closest to the vanilla median. A test (it needs the game) checks these and focus, decision_category_icon, mio_department, doctrine and commander_trait against the vanilla median, within 1 px.
 
 A mod can override the canvas and naming in its own `.tools/gfx/profiles.json` (the kit's file) or in `.hoi4-imagegen/config.toml`. Without an override the vanilla size is used. `hoi4.image_families` shows the override next to the vanilla value, and `hoi4-imagegen calibrate` shows where a built-in value is not the dominant vanilla size. `gui_texture` and `super_event` have no vanilla texture to measure, so the mod defines their canvas.
 
@@ -139,6 +148,10 @@ On an opaque source, the unit recipe reads light coloured marks inside a dark sh
 
 A technology picture can carry vanilla's tier numeral. Vanilla bakes the numeral into the texture: no `.gui` layer or sprite draws it (the tech tree item in `interface/countrytechtreeview.gui` shows one `GFX_technology_medium` icon). Pass `overlay` to `hoi4.image_process`, for example `{"tier": 2}`, or `{"tier": 3, "gem": true}` for the blue gem that battleship, cruiser and carrier pictures have before the numeral. The tool stamps vanilla's serif numeral in its gold and shadow, in vanilla's place at the top right (`position` moves it). The stamp is a recorded `tech_overlay` step.
 
+**Balance of power sides (since 0.3.8).** One `bop_side` request makes the emblem's stages the way vanilla's pairs do. The model draws one emblem in muted colour. The tool saves vanilla's `bop_<TAG>_<name>_side` (the emblem in grey) and `bop_<TAG>_<name>_improved_side` (the same emblem in its own colours, with a pale gold glow), both 72x88 in `gfx/interface/bop/`, and registers `GFX_bop_<name>_side` and `GFX_bop_<name>_improved_side`. Pass `cracked_stage: true` to `hoi4.image_process` for the weakened pair that vanilla draws for its bad sides: `bop_<name>_bad_side` (the grey emblem cracked, no glow) and `bop_<name>_bad_improved_side` (the colour emblem with the same cracks and a red glow). Every stage is an edit of the one fitted emblem, so the emblem is identical in all of them.
+
+**Operation icons (since 0.3.8).** `operation_icon` is vanilla's operation card: `icon = GFX_operations_<name>`, the 85x85 close-up picture in `gfx/interface/operations/`, slightly tilted with a one pixel outline and a soft shadow on transparent corners (a dim picture is lifted to vanilla's brightness). The 48x48 map icon, `map_icon = GFX_operations_<name>_map`, is made from the finished card as a companion in `gfx/interface/operations/<feature>/map/<name>_map.dds`: the card's centre in vanilla's round gold ring. Both are installed and registered together. The 59x58 phase icons (`GFX_phase_<name>_small`) are another sprite and are not generated.
+
 Some checks guard a family's look:
 
 * `line_art` (special_project_icon) refuses a filled area larger than 250 px, `GFX-FILLED-INTERIOR`. Vanilla's largest is 171 px and its median 4.
@@ -167,7 +180,7 @@ A plan picks style references for the family on its own. The mod comes first and
 
 A pinned style profile is tier 1 only when it applies to the family. A plan's `style: <name>` always applies it. Otherwise a profile applies by itself only when its `families` list names the family, or when it has `default: true` (then it covers the families it lists, or every family when it lists none). A profile with an empty `families` list and no `default` is available by name to any family but never applied by itself. `default: false` turns automatic use off. A profile that names the family ranks above a `default: true` profile for all families. The plan says which profile it applied and why.
 
-Tier 4 keeps each family to the vanilla files of its one form. Commander traits leave out the operative traits. operation_icon takes only the 59x58 phase icons and operation_picture only the 210x176 phase pictures, building takes only the 128x64 painted landmark strips, and bop_side leaves out the coloured `_improved` and `_max` state variants. A `gui_texture` takes vanilla references only when the request names its `texture_kind`: `button` (`gfx/interface/button_*` and `gfx/interface/buttons/`), `frame` (`gfx/interface/*_frame*`), `panel` (`gfx/interface/tiles/tiled_*`) or `background` (`gfx/interface/*_bg` of at least 256 px a side). The kind also adds its vanilla form to the prompt.
+Tier 4 keeps each family to the vanilla files of its one form. Commander traits leave out the operative traits. operation_icon takes only the 85x85 operation cards and operation_picture only the 210x176 phase pictures, building takes only the 128x64 painted landmark strips, and bop_side leaves out the coloured `_improved` and `_max` state variants. A `gui_texture` takes vanilla references only when the request names its `texture_kind`: `button` (`gfx/interface/button_*` and `gfx/interface/buttons/`), `frame` (`gfx/interface/*_frame*`), `panel` (`gfx/interface/tiles/tiled_*`) or `background` (`gfx/interface/*_bg` of at least 256 px a side). The kind also adds its vanilla form to the prompt.
 
 When the mod's own references (tier 2 or 3) show a form, such as a frame or a background, that form wins over the vanilla form the family rules describe.
 
@@ -414,7 +427,7 @@ The check is a gate, not a verdict. Art that looks wrong in a way these features
 | Provider | Needs |
 |---|---|
 | ChatGPT login | `hoi4-imagegen login` once. Uses your own ChatGPT plan. No API key |
-| OpenAI API | `OPENAI_API_KEY` |
+| OpenAI API (default gpt-image-2.6-flare, edits gpt-image-2.6-sunburst, 2.5 as fallback) | `OPENAI_API_KEY` |
 | Google Gemini API | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
 | fal | `FAL_KEY` |
 | ComfyUI | an endpoint in the project config, and optionally `COMFYUI_API_KEY` |
@@ -446,11 +459,11 @@ The releases are on GitHub: <https://github.com/klimPaskov/hoi4-imagegen-mcp/rel
 
 | Platform | Archive |
 |---|---|
-| Windows x64 | `hoi4-imagegen-v0.3.6-x86_64-pc-windows-msvc.zip` |
-| macOS arm64 | `hoi4-imagegen-v0.3.6-aarch64-apple-darwin.tar.gz` |
-| macOS x64 | `hoi4-imagegen-v0.3.6-x86_64-apple-darwin.tar.gz` |
-| Linux x64 | `hoi4-imagegen-v0.3.6-x86_64-unknown-linux-gnu.tar.gz` |
-| Linux arm64 | `hoi4-imagegen-v0.3.6-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows x64 | `hoi4-imagegen-v0.3.7-x86_64-pc-windows-msvc.zip` |
+| macOS arm64 | `hoi4-imagegen-v0.3.7-aarch64-apple-darwin.tar.gz` |
+| macOS x64 | `hoi4-imagegen-v0.3.7-x86_64-apple-darwin.tar.gz` |
+| Linux x64 | `hoi4-imagegen-v0.3.7-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux arm64 | `hoi4-imagegen-v0.3.7-aarch64-unknown-linux-gnu.tar.gz` |
 
 Each archive holds both programs, `LICENSE`, `NOTICE`, `README.md` and `UPSTREAM.md`. The release also has a `SHA256SUMS` file. The binaries are **unsigned**, so Windows SmartScreen and macOS Gatekeeper may warn. The archives and `SHA256SUMS` carry GitHub build attestations. To check a download:
 
@@ -544,7 +557,7 @@ Read [docs/rules-and-terms.md](rules-and-terms.md). It summarises what Paradox, 
 * Verified by tests on Windows, macOS and Linux in CI: see [docs/testing.md](testing.md). The test layers are labelled by evidence kind.
 * One signed-in ChatGPT-login probe was recorded on 2026-11-01. Its response is a recorded-real fixture, and faults are injected into it for tests. See [docs/evidence/](evidence/).
 * **Not verified:** the in-game check, including whether a focus icon without a `_shine` sprite logs an error, because it needs a user-operated game session. Runs with real OpenAI, Gemini, fal and ComfyUI keys are also unavailable, because no key with balance was available.
-* The OpenAI 2.5 per-image price is unpublished, so its estimate uses the `gpt-image-2` row as a labelled proxy.
+* The OpenAI 2.5 and 2.6 per-image prices are unpublished (the 2.6 pages list token rates only), so its estimate uses the `gpt-image-2` row as a labelled proxy.
 * `register` mode edits `.gfx` files as text. A parser-based version waits for a shared Rust HOI4 engine.
 * The binaries are unsigned.
 

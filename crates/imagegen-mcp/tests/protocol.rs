@@ -235,7 +235,7 @@ fn golden_path() -> std::path::PathBuf {
 }
 
 #[test]
-fn handshake_lists_exactly_twenty_one_tools_with_stable_schemas() {
+fn handshake_lists_exactly_twenty_two_tools_with_stable_schemas() {
     let mock = MockOpenAi::start(Duration::from_millis(0));
     let dir = project(mock.port);
     let mut c = Client::start(dir.path(), mock.port);
@@ -251,7 +251,7 @@ fn handshake_lists_exactly_twenty_one_tools_with_stable_schemas() {
     let mut want: Vec<&str> = imagegen_mcp::server::TOOL_NAMES.to_vec();
     want.sort_unstable();
     assert_eq!(names, want);
-    assert_eq!(tools.len(), 21);
+    assert_eq!(tools.len(), 22);
 
     // each generation tool's schema lists exactly the families of its group, and nothing else
     let mut seen: Vec<String> = Vec::new();
@@ -356,7 +356,7 @@ fn the_whole_loop_runs_over_stdio() {
     let plan =
         c.ok("hoi4.image_icon", json!({"family": "focus", "feature_slug": "iron_pact", "asset": "steel_gate", "brief": "a riveted steel gate"}));
     assert_eq!(plan["generated"], false);
-    assert_eq!(plan["plan"]["model"], "gpt-image-2.5-flare");
+    assert_eq!(plan["plan"]["model"], "gpt-image-2.6-flare");
     let plan_id = plan["plan_id"].as_str().unwrap().to_string();
 
     let gen = c.ok("hoi4.image_generate", json!({"plan_id": plan_id, "idempotency_key": "proto-1"}));
