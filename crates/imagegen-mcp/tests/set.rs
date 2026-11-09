@@ -92,7 +92,10 @@ fn a_focus_tree_is_planned_as_one_set_without_duplicates() {
     assert!(brief.contains("Steel for the Fleet") && brief.contains("More steel mills.") && brief.contains("One of 2 icons"), "{brief}");
     // the colour follows the subject, and the country stays an accent
     assert_eq!(steel["planned_colour"], "navy and sea blue", "{v:#}");
-    assert!(brief.contains("Colour: this icon is mainly navy and sea blue") && brief.contains("No flags, tricolour ribbons"), "{brief}");
+    assert!(
+        brief.contains("the enamel field behind the subject is a muted navy and sea blue") && brief.contains("No national symbols or emblems"),
+        "{brief}"
+    );
     assert!(v["variety"].is_null(), "nothing is generated, so nothing is measured");
     // every icon of the tree on request
     let all = set(&h, json!({"focus_tree": "common/national_focus/test_tree.txt", "only_missing": false})).unwrap();

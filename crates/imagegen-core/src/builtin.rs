@@ -104,12 +104,12 @@ pub fn is_small_icon(family: Family, canvas: [u32; 2]) -> bool {
 /// one in ten on a diamond, square or rectangular plaque, about one in fifteen on a heraldic shield, and about one in
 /// eight have no frame at all. Frames, colours and compositions vary, so the rule names the range.
 const FOCUS_RULES: &[&str] = &[
-    "The Hearts of Iron IV national focus icon form: one emblem in aged painterly metal and enamel. Vanilla focus icons do not share one frame. Most (about seven in ten) set the subject on a round plaque or medallion, often with a laurel wreath, ribbons, crossed swords or flags around it. Others use a diamond, square or rectangular plaque (about one in ten), a heraldic shield (about one in fifteen), or no frame at all, a free-standing subject such as a flag, a star, a crown, a document, a building or an aircraft (about one in eight). Pick the form, frame colour and composition that suit this brief instead of defaulting to a round plaque.",
-    "A flag, harp or other national emblem belongs only on a focus that is directly national (politics, the army, the nation's own identity), as one clear element. Other focuses carry none. Any flag is invented, never a real country's flag, unless the brief names that country.",
-    "The subject is large: it fills most of the emblem and may overlap its frame, never a small figure inside a wide empty plaque.",
-    "A strong central symbol that supports the focus's story, readable contrast at {w}x{h} pixels.",
+    "The Hearts of Iron IV national focus icon form: one compact emblem like vanilla's. Most are a round medallion: a thin, worn bronze or gold rim around a flat, muted enamel disc, with a modest laurel or oak wreath, a pair of wings or a short plain ribbon banner around it. A few use a pointed shield, a diamond or a hexagon plaque with the same thin rim. Never a wide, stretched, ornate or picture-frame border, no rivets, filigree or knotwork on the rim.",
+    "The subject is painted the way vanilla paints it: desaturated, nearly monochrome silver-grey metal or sepia, with crisp painted highlights and simple, bold shapes, an illustration and never a photo-like or full-colour painting. One main object, at most one small supporting one, and no landscape or scene behind it. It fills most of the disc and may break out of the rim at the top or bottom.",
+    "Colour comes from the enamel field and the trim, not from the subject: the field is one muted colour that suits the focus (slate or sea blue for fleets and air, dark red for revolt and unrest, tan or ochre for land and industry, pale grey-blue for science and intelligence, teal for trade, cream for diplomacy), and green only for farming and forests.",
+    "No flag, harp or other national emblem unless the focus is about the nation itself (politics, the army, its own identity), and then as one clear element. Any flag is invented, never a real country's flag, unless the brief names that country.",
+    "Readable contrast at {w}x{h} pixels: a few large shapes, no fine detail that disappears at that size.",
     "Real transparent background around the emblem: no backdrop behind it.",
-    colour_by_subject_rule!(),
     "Leave a small empty margin around the emblem.",
 ];
 /// National spirits may be emblems, figures, objects or small scenes, so the form stays open and only readability at
@@ -1112,7 +1112,7 @@ mod tests {
         assert!(!r.contains("never a scene"));
         let focus = set[&Family::Focus].imagegen.prompt.rules.join(" ");
         assert!(focus.contains("Any flag is invented, never a real country's flag, unless the brief names that country"));
-        assert!(focus.contains("Colour follows what the icon shows, not the country"), "{focus}");
+        assert!(focus.contains("Colour comes from the enamel field and the trim, not from the subject"), "{focus}");
     }
 
     #[test]
@@ -1430,13 +1430,14 @@ mod tests {
         let cases: [(Family, &str, &[&str]); 14] = [
             (
                 Family::Focus,
-                "national focus icon form: one emblem",
+                "national focus icon form: one compact emblem like vanilla's",
                 &[
-                    "do not share one frame",
-                    "round plaque or medallion",
-                    "heraldic shield",
-                    "no frame at all",
-                    "Pick the form",
+                    "round medallion",
+                    "thin, worn bronze or gold rim",
+                    "muted enamel disc",
+                    "Never a wide, stretched, ornate or picture-frame border",
+                    "desaturated, nearly monochrome",
+                    "Colour comes from the enamel field",
                     "Any flag is invented",
                 ],
             ),

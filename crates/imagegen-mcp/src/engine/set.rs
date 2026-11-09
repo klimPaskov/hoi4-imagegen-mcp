@@ -62,15 +62,24 @@ impl Engine {
         // the dominant colour of each icon follows its subject, never the country, so the set has contrast
         let colours = set::colour_plan(&chosen);
         // the directly national focuses (a third of the set at most) may carry one national element
-        let national = set::national_plan(&chosen);
+        // ... and only when the tree's country is known, so the element is that country's
+        let national: Vec<Option<&str>> = if tree.nation.is_some() { set::national_plan(&chosen) } else { vec![None; chosen.len()] };
         let national_plan = national.clone();
+        // the frame of each icon varies as vanilla's do (wreaths, wings, a plain rim, now and then a shield), never
+        // the same next to each other; with the caller's own anchors the frame is left to them
+        let frames = set::frame_plan(&chosen);
+        let own_anchors = p.references.as_ref().is_some_and(|r| !r.is_empty());
         let mut hues: Vec<(String, String)> = Vec::new();
-        for ((icon, colour), national) in chosen.iter().zip(colours.iter()).zip(national.iter().copied()) {
+        for (((icon, colour), national), frame) in chosen.iter().zip(colours.iter()).zip(national.iter().copied()).zip(frames.iter()) {
+            let mut brief = set::icon_brief_coloured(icon, chosen.len(), colour, national, tree.nation.as_deref());
+            if !own_anchors {
+                brief.push_str(&set::frame_sentence(frame.0, frame.1));
+            }
             let mut req = json!({
                 "family": "focus",
                 "feature_slug": feature_slug,
                 "asset": icon.asset,
-                "brief": set::icon_brief_coloured(icon, chosen.len(), colour, national),
+                "brief": brief,
                 "references": anchors,
             });
             for (k, v) in [("provider", &p.provider), ("model", &p.model), ("quality", &p.quality), ("style_pack", &p.style_pack)] {
@@ -84,6 +93,7 @@ impl Engine {
                 .and_then(|(_, entries)| entries.first().map(|e| e.name.clone()));
             let mut row = json!({
                 "planned_colour": colour,
+                "planned_frame": (!own_anchors).then_some(frame.0),
                 "national_element": national,
                 "sprite": icon.sprite,
                 "asset": icon.asset,
@@ -137,6 +147,7 @@ impl Engine {
         Ok(json!({
             "focus_tree": tree.file,
             "feature_slug": feature_slug,
+            "nation": tree.nation,
             "icons_in_tree": tree.icons.len(),
             "planned": icons.len() - icons.iter().filter(|i| i.get("plan_id").is_none()).count(),
             "generated": made,

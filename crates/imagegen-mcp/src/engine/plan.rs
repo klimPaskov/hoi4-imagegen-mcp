@@ -286,10 +286,12 @@ impl Engine {
             }
         }
         // the sub-family's measured form note follows the family's form sentence, except beside anchors (the caller's
-        // or a pack's) and where a pack's form replaces the family's
+        // or a pack's), where a pack's form replaces the family's, and for focus icons: their form sentence states
+        // vanilla's medallion and muted subject, and the measured note ("an open, loose subject, in strong colour")
+        // pulled sets away from it (the Irish passes 1 to 7)
         let sub_note = subfamily
             .and_then(|id| imagegen_core::subfamily::for_family(req.family)?.get(id)?.form_note.clone())
-            .filter(|_| form != FormPrecedence::CallerReferences && !pack_form);
+            .filter(|_| form != FormPrecedence::CallerReferences && !pack_form && req.family != Family::Focus);
         if let Some(note) = &sub_note {
             let at = prompt_profile.imagegen.prompt.rules.len().min(1 + usize::from(req.texture_kind.is_some()));
             prompt_profile.imagegen.prompt.rules.insert(at, note.clone());
