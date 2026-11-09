@@ -341,7 +341,9 @@ fn subfamilies_are_inferred_named_limited_and_fall_back() {
     let sub = p.subfamily.as_ref().unwrap();
     assert_eq!((sub.id.as_str(), sub.how.as_str(), sub.references_from_subfamily), ("naval", "inferred", true), "{sub:?}");
     assert!(sent(&p).iter().all(|f| f.contains("navy_fleet")), "{:?}", sent(&p));
-    assert!(p.prompt.text.contains("Vanilla national focus icon naval files"), "the form note goes into the prompt: {}", p.prompt.text);
+    // focus icons leave the measured form note out: it asked for loose subjects in strong colour, against the
+    // focus form sentence (the Irish passes); the references still come from the sub-family
+    assert!(!p.prompt.text.contains("Vanilla national focus icon naval files"), "no form note for focus icons: {}", p.prompt.text);
     // named in the request, whatever the brief says
     let p = plan(&h, "named", "a quiet harbour town", json!({"subfamily": "air"}));
     assert_eq!(p.subfamily.as_ref().unwrap().how, "named");
