@@ -15,12 +15,6 @@ use crate::api::{GenerateParams, SetParams};
 
 use super::{EResult, Engine, EngineError};
 
-/// Vanilla national focus icons that every icon of a set sends as style anchors when the caller names none and no
-/// style pack applies, so the whole set shares one frame family (a round dark plaque ringed by a gold laurel wreath) and
-/// one finish instead of each icon copying a different automatic pick. A file the game folder lacks is skipped.
-const SET_STYLE_ANCHORS: &[&str] =
-    &["focus_AST_its_fight_work_or_perish", "focus_FIN_motti_tactics", "focus_JAP_uplift_ainu_revolution_theory", "focus_mex_privatisation"];
-
 /// The feature slug of a set when the caller names none: the tree file's stem as snake_case.
 fn slug_of(file: &str) -> String {
     let stem = file.rsplit('/').next().unwrap_or(file);
@@ -58,20 +52,10 @@ impl Engine {
             ));
         }
         let profile = self.family_profile(Family::Focus)?.clone();
-        // one frame family for the whole set: the caller's anchors, else a pack's, else a few vanilla national focus icons
+        // the caller's anchors; otherwise each icon picks its own vanilla anchors, so frames and finish vary as in vanilla
         let anchors: Value = match &p.references {
             Some(r) if !r.is_empty() => json!(r),
-            _ if self.choose_pack(p.style_pack.as_deref())?.is_some() => json!([]),
-            _ => {
-                let game = self.game_dir();
-                let found: Vec<Value> = SET_STYLE_ANCHORS
-                    .iter()
-                    .filter_map(|n| game.as_ref().map(|g| g.join("gfx/interface/goals").join(format!("{n}.dds"))))
-                    .filter(|path| path.is_file())
-                    .map(|path| json!({"path": path.to_string_lossy(), "role": "style_anchor"}))
-                    .collect();
-                json!(found)
-            }
+            _ => json!([]),
         };
         let mut icons = Vec::new();
         let (mut total_usd, mut made, mut failed) = (0f64, 0usize, 0usize);

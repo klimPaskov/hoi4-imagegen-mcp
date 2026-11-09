@@ -503,7 +503,7 @@ pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
 /// element only where the focus is directly national (`national` names its kind), none elsewhere.
 pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str, national: Option<&str>) -> String {
     let mut brief = icon_brief(icon, set_size);
-    brief.push_str(" Draw it as a Hearts of Iron IV national focus icon, with the same frame as every icon of this set and the reference icons: a round dark plaque ringed by a gold laurel wreath, painted in aged metal and enamel. The subject sits inside the plaque and may overlap the wreath a little. Never frameless, never a bare cut-out floating on the background. One clear main subject.");
+    brief.push_str(" Subjects may be framed or free-standing, as in the vanilla national focus icons; the frame varies from icon to icon and the subject may break out of it. One clear main subject.");
     brief.push_str(&format!(" Colour: this icon is mainly {colour}, as its subject calls for."));
     if !GREEN_COLOURS.contains(&colour) {
         brief.push_str(" Green is not a main colour of this icon (a national element may use its own colours).");
