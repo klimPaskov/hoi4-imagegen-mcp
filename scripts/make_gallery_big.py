@@ -38,7 +38,7 @@ RES = os.environ.get("GALLERY_RES") or os.path.join(WORK, "big-results")
 BIN = os.environ.get("HOI4_IMAGEGEN_BIN") or (
     os.path.join(WORK, "hoi4-imagegen.exe") if os.path.exists(os.path.join(WORK, "hoi4-imagegen.exe")) else "hoi4-imagegen"
 )
-BRIEFS = os.path.join(ROOT, "scripts", "gallery_briefs.json")
+BRIEFS = os.environ.get("GALLERY_BRIEFS") or os.path.join(ROOT, "scripts", "gallery_briefs.json")
 STYLES = {
     "linocut": ("bold two-colour linocut propaganda print", ["thick carved black lines", "flat red and cream colours on dark paper", "visible carving texture"], ["styles_src/linocut_a.png", "styles_src/linocut_b.png"]),
     "gouache": ("soft matte gouache painting", ["flat colour shapes", "muted pastel palette of dusty blue, ochre and sage green", "visible brush strokes"], ["styles_src/gouache_a.png", "styles_src/gouache_b.png"]),

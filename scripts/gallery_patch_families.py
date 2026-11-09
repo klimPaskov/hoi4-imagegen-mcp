@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Replace the generated examples of some families in the published gallery, and leave every other image alone.
 
-  gallery_patch_families.py <repo root> <family> [<family> ...] [--exclude family/asset,...] [--drop section/family ...]
+  gallery_patch_families.py <repo root> [--section vanilla|tno|tfr] <family> [<family> ...] [--exclude family/asset,...] [--drop section/family ...]
 
 build_gallery_site.py rebuilds the whole site from every run folder. This script is for a run of a few families: it takes
 their results from .work/big-results (the vanilla section), runs the same checks (validation passed, processed on a current
@@ -11,6 +11,11 @@ examples and references), for a mod style whose examples are not made yet.
 
 A balance of power side is shown as its stage set: every emblem gives one row of four images (standard, improved, and the
 cracked pair), the way vanilla's own sides come in pairs.
+
+`--section tno` (or `tfr`) takes the families of a mod style section instead: point GALLERY_MOD and GALLERY_RES at that style's scratch mod
+and results. GALLERY_FILE_SUFFIX (for example `-r2`) is added to every published file name, so a regenerated image never
+reuses the name of the one it replaces and no cache can serve the old picture. GALLERY_BUILD_LABEL (`main@<commit>`) is
+recorded as the build of every image the run publishes, for images made by code that no release carries yet.
 
 Environment as for make_gallery_big.py (HOI4_IMAGEGEN_BIN, GALLERY_MOD).
 """
@@ -68,6 +73,13 @@ def reset_vanilla_refs(out, fam, images):
 
 
 def main(argv):
+    section = "vanilla"
+    if "--section" in argv:
+        i = argv.index("--section")
+        section = argv[i + 1]
+        del argv[i : i + 2]
+    suffix = os.environ.get("GALLERY_FILE_SUFFIX", "")
+    build_label = os.environ.get("GALLERY_BUILD_LABEL", "")  # for images made by unreleased code: `main@<commit>`
     exclude = set()
     if "--exclude" in argv:
         i = argv.index("--exclude")
@@ -84,13 +96,13 @@ def main(argv):
     manifest = json.load(open(mpath, encoding="utf-8"))
     cache = json.load(open(g.CACHE, encoding="utf-8")) if os.path.exists(g.CACHE) else {}
     drop_keys = {tuple(d.split("/")) for d in drops}
-    keep = [e for e in manifest["images"] if not (e["section"] == "vanilla" and e["family"] in fams) and (e["section"], e["family"]) not in drop_keys]
+    keep = [e for e in manifest["images"] if not (e["section"] == section and e["family"] in fams) and (e["section"], e["family"]) not in drop_keys]
     for sec, fam in drop_keys:
         shutil.rmtree(os.path.join(out, sec, fam), ignore_errors=True)
     new = []
     for fam in fams:
-        clear_family(out, "vanilla", fam)
-        folder = os.path.join(out, "vanilla", fam)
+        clear_family(out, section, fam)
+        folder = os.path.join(out, section, fam)
         os.makedirs(folder, exist_ok=True)
         for fam_, asset, rec in g.entries(m.MOD, m.RES, [fam]):
  
@@ -115,20 +127,21 @@ def main(argv):
                 parts = [(k, comp[k] if k else parts[0][1]) for k, _ in STAGES]
             for key, src in parts:
                 name = asset + key
+                fname = name + suffix
                 w, h = Image.open(src).size
-                native = g.webp(src, os.path.join(folder, name + ".webp"))
+                native = g.webp(src, os.path.join(folder, fname + ".webp"))
                 k = g.scale_for(w, h)
-                enlarged = g.webp(src, os.path.join(folder, name + f"@{k}x.webp"), k) if k > 1 else None
+                enlarged = g.webp(src, os.path.join(folder, fname + f"@{k}x.webp"), k) if k > 1 else None
                 label = dict(STAGES)[key] if fam == "bop_side" else ""
-                new.append({"section": "vanilla", "family": fam, "asset": name, "brief": rec.get("brief", "") + (f" ({label} stage)" if label else ""),
-                            "build": made, "processed_on": processed, "size": [w, h], "vanilla_check": vc["status"], "subfamily": None,
-                            "native": f"vanilla/{fam}/{name}.webp", "enlarged": f"vanilla/{fam}/{name}@{k}x.webp" if enlarged else None, "scale": k})
+                new.append({"section": section, "family": fam, "asset": name, "brief": rec.get("brief", "") + (f" ({label} stage)" if label else ""),
+                            "build": build_label or made, "processed_on": build_label or processed, "size": [w, h], "vanilla_check": vc["status"], "subfamily": None,
+                            "native": f"{section}/{fam}/{fname}.webp", "enlarged": f"{section}/{fam}/{fname}@{k}x.webp" if enlarged else None, "scale": k})
         print(fam, sum(1 for e in new if e["family"] == fam), "images", flush=True)
     # vanilla references of the right sprite type
-    if "bop_side" in fams:
+    if section == "vanilla" and "bop_side" in fams:
         imgs = [read(f"{GAME}/gfx/interface/bop/{n}.dds") for row in BOP_VANILLA for n in row]
         reset_vanilla_refs(out, "bop_side", imgs)
-    if "operation_icon" in fams:
+    if section == "vanilla" and "operation_icon" in fams:
         reset_vanilla_refs(out, "operation_icon", [read(f"{GAME}/gfx/interface/operations/{n}.dds") for n in OPERATION_VANILLA])
     order = list(m.briefs())
     key = lambda e: (["vanilla", "tno", "tfr"].index(e["section"]) if e["section"] in ("vanilla", "tno", "tfr") else 9, order.index(e["family"]) if e["family"] in order else 99)  # noqa: E731
