@@ -70,7 +70,7 @@ const SCROLL_CHECKS: &[&str] = &["size", "opaque", "frames", "animation", "check
 /// otherwise comes out in that country's colours and symbols on every icon, with no contrast between icons.
 macro_rules! colour_by_subject_rule {
     () => {
-        "Colour follows what the icon shows, not the country: steel grey and olive for armies and their equipment, navy and sea blue for fleets, brass and amber for industry and fire, red for unrest, green only for fields and forests, pale blue and white for science and air. A country named in the brief gets its colours and symbols as a small accent at most (a ribbon, a flag, one emblem), and only when the subject is the nation itself, never as the colour of the whole icon."
+        "Colour follows what the icon shows, not the country: steel grey and olive for armies and their equipment, navy and sea blue for fleets, brass and amber for industry and fire, red for unrest, green only for fields and forests, pale blue and white for science and air. A country named in the brief gives no flags, tricolour ribbons, harps, roundels, shamrocks or Celtic knotwork and no national colours as trim, unless the subject is the nation's own identity, and then one element at most. Green is the main colour only for fields and forests."
     };
 }
 
@@ -105,7 +105,7 @@ pub fn is_small_icon(family: Family, canvas: [u32; 2]) -> bool {
 /// eight have no frame at all. Frames, colours and compositions vary, so the rule names the range.
 const FOCUS_RULES: &[&str] = &[
     "The Hearts of Iron IV national focus icon form: one emblem in aged painterly metal and enamel. Vanilla focus icons do not share one frame. Most (about seven in ten) set the subject on a round plaque or medallion, often with a laurel wreath, ribbons, crossed swords or flags around it. Others use a diamond, square or rectangular plaque (about one in ten), a heraldic shield (about one in fifteen), or no frame at all, a free-standing subject such as a flag, a star, a crown, a document, a building or an aircraft (about one in eight). Pick the form, frame colour and composition that suit this brief instead of defaulting to a round plaque.",
-    "Flags and ribbons use invented colours, never a real country's flag, unless the brief names that country.",
+    "Draw no flag, ribbon, roundel or other national emblem unless the focus is about the nation's own identity, and then only one. Any flag is invented, never a real country's flag, unless the brief names that country.",
     "The subject is large: it fills most of the emblem and may overlap its frame, never a small figure inside a wide empty plaque.",
     "A strong central symbol that supports the focus's story, readable contrast at {w}x{h} pixels.",
     "Real transparent background around the emblem: no backdrop behind it.",
@@ -1111,7 +1111,7 @@ mod tests {
         assert!(r.contains("or a small scene") && r.contains("readable at {w}x{h} pixels"), "{r}");
         assert!(!r.contains("never a scene"));
         let focus = set[&Family::Focus].imagegen.prompt.rules.join(" ");
-        assert!(focus.contains("invented colours, never a real country's flag, unless the brief names that country"));
+        assert!(focus.contains("Any flag is invented, never a real country's flag, unless the brief names that country"));
         assert!(focus.contains("Colour follows what the icon shows, not the country"), "{focus}");
     }
 
@@ -1431,7 +1431,14 @@ mod tests {
             (
                 Family::Focus,
                 "national focus icon form: one emblem",
-                &["do not share one frame", "round plaque or medallion", "heraldic shield", "no frame at all", "Pick the form", "invented colours"],
+                &[
+                    "do not share one frame",
+                    "round plaque or medallion",
+                    "heraldic shield",
+                    "no frame at all",
+                    "Pick the form",
+                    "Any flag is invented",
+                ],
             ),
             (
                 Family::DecisionCategoryIcon,

@@ -271,6 +271,7 @@ const SUBJECT_COLOURS: &[(&[&str], &str)] = &[
         &["army", "armies", "tank", "armour", "armor", "infantry", "conscript", "division", "garrison", "artillery", "military", "rearm"],
         "steel grey and olive",
     ),
+    (&["peat", "turf", "bog"], "earth brown and tan"),
     (
         &[
             "industry",
@@ -300,7 +301,7 @@ const SUBJECT_COLOURS: &[(&[&str], &str)] = &[
         &["revolt", "revolution", "rebel", "rebellion", "protest", "strike", "unrest", "uprising", "communis", "workers", "terror"],
         "dark red and black",
     ),
-    (&["spy", "spies", "intelligence", "espionage", "secret", "police", "surveillance", "sabotage", "propaganda"], "dark charcoal and cold blue"),
+    (&["spy", "spies", "intelligence", "espionage", "secret", "police", "surveillance", "sabotage", "propaganda"], "cold blue and pale grey"),
     (&["trade", "economy", "economic", "bank", "money", "finance", "tax", "debt", "loan", "invest"], "gold and deep blue"),
     (
         &["diplomacy", "diplomatic", "treaty", "treaties", "alliance", "negotiation", "union", "peace", "neutral", "neutrality", "embassy"],
@@ -319,6 +320,47 @@ const SPARE_COLOURS: &[&str] = &[
     "burnt orange and dark brown",
 ];
 
+/// Colours whose main hue is green. A set may have at most one or two such icons (a sixth of it, at least one), and
+/// only where the subject is green itself.
+const GREEN_COLOURS: &[&str] = &["green and golden wheat"];
+/// Palettes that are dark overall: two neighbouring icons never both take one.
+const DARK_COLOURS: &[&str] = &["dark red and black", "burnt orange and dark brown", "dark violet and plum"];
+/// Words that make a focus about the nation's own identity: only such an icon may carry one national element.
+const IDENTITY_WORDS: &[&str] = &[
+    "flag",
+    "anthem",
+    "identity",
+    "independence",
+    "sovereignty",
+    "republic",
+    "constitution",
+    "unification",
+    "reunification",
+    "nationalism",
+    "patriot",
+    "patriotic",
+    "homeland",
+];
+/// What to draw for a subject that models tend to get wrong, by a word in the focus name.
+const SUBJECT_HINTS: &[(&[&str], &str)] = &[
+    (
+        &["peat", "turf", "bog"],
+        "Draw peat cutting: a brown bog, a turf-cutting spade and neat stacks of cut turf. No coal, no mine cart, no factory.",
+    ),
+    (
+        &["spy", "spies", "intelligence", "espionage"],
+        "Keep it to one simple object, such as a closed folder with a keyhole or a trench-coated figure. No gloved hands, headphones or machinery.",
+    ),
+    (&["trade", "treaty", "treaties", "economy"], "One handshake or one pair of scales, nothing else: no ships, buildings or globes."),
+];
+
+/// True when the focus is about the nation's own identity (by its name, or its description when the name has no
+/// subject word), so one national element is allowed on its icon.
+pub fn is_identity_focus(icon: &SetIcon) -> bool {
+    let names = icon.names.join(" ").to_lowercase();
+    IDENTITY_WORDS.iter().any(|w| has_word(&names, w))
+}
+
 /// True when a word of the text is `word` or a simple inflection of it (`navy`, `navies`, `industrial` for
 /// `industry` is a word of its own in the table, so it is listed there).
 fn has_word(text: &str, word: &str) -> bool {
@@ -334,7 +376,10 @@ fn has_word(text: &str, word: &str) -> bool {
 /// spare colour. Icons no word places take the spare colours in turn.
 pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
     let cap = icons.len().div_ceil(4).max(2);
+    let green_cap = (icons.len() / 6).max(1);
     let mut used: BTreeMap<&'static str, usize> = BTreeMap::new();
+    let mut greens = 0usize;
+    let mut previous: Option<&'static str> = None;
     let mut spare = 0usize;
     let mut out = Vec::with_capacity(icons.len());
     for icon in icons {
@@ -342,38 +387,63 @@ pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
         let names = icon.names.join(" ").to_lowercase();
         let descriptions = icon.descriptions.join(" ").to_lowercase();
         let place = |text: &str| SUBJECT_COLOURS.iter().find(|(words, _)| words.iter().any(|w| has_word(text, w))).map(|(_, c)| *c);
-        let by_subject = place(&names).or_else(|| place(&descriptions)).filter(|c| used.get(c).copied().unwrap_or(0) < cap);
+        let allowed = |c: &&'static str| {
+            used.get(c).copied().unwrap_or(0) < cap
+                && (!GREEN_COLOURS.contains(c) || greens < green_cap)
+                && !(previous.is_some_and(|p| DARK_COLOURS.contains(&p)) && DARK_COLOURS.contains(c))
+        };
+        let by_subject = place(&names).or_else(|| place(&descriptions)).filter(|c| allowed(c));
         let colour = by_subject.unwrap_or_else(|| {
-            // the next spare colour that is still under the cap
+            // the next spare colour that is still allowed
             for _ in 0..SPARE_COLOURS.len() {
                 let c = SPARE_COLOURS[spare % SPARE_COLOURS.len()];
                 spare += 1;
-                if used.get(c).copied().unwrap_or(0) < cap {
+                if allowed(&c) {
                     return c;
                 }
             }
             SPARE_COLOURS[spare % SPARE_COLOURS.len()]
         });
         *used.entry(colour).or_insert(0) += 1;
+        if GREEN_COLOURS.contains(&colour) {
+            greens += 1;
+        }
+        previous = Some(colour);
         out.push(colour);
     }
     out
 }
 
-/// The brief of one icon in a set, with the colour planned for it: the dominant colour follows the subject, and the
-/// country's own colours and symbols stay a small accent.
+/// The brief of one icon in a set, with the colour planned for it: the dominant colour follows the subject, green is
+/// never the main colour unless the plan says so, and national iconography is left out unless the focus is about the
+/// nation's own identity (then one element).
 pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str) -> String {
     let mut brief = icon_brief(icon, set_size);
-    brief.push_str(&format!(
-        " Colour: this icon is mainly {colour}, as its subject calls for. The country's own colours and symbols are at most a small accent (a ribbon, a flag, one emblem), never the colour of the whole icon."
-    ));
+    brief.push_str(&format!(" Colour: this icon is mainly {colour}, as its subject calls for."));
+    if !GREEN_COLOURS.contains(&colour) {
+        brief.push_str(" Green is not a main colour of this icon.");
+    }
+    if is_identity_focus(icon) {
+        brief
+            .push_str(" This focus is about the nation's identity, so exactly one national element (a flag or one emblem) is allowed, nothing more.");
+    } else {
+        brief.push_str(
+            " No national iconography at all: no flags, tricolour ribbons, harps, roundels, shamrocks or Celtic knotwork, and no national colours as trim.",
+        );
+    }
+    brief.push_str(" Keep it simple: one main object and at most two supporting ones, readable at a small size.");
+    let names = icon.names.join(" ").to_lowercase();
+    if let Some((_, hint)) = SUBJECT_HINTS.iter().find(|(words, _)| words.iter().any(|w| has_word(&names, w))) {
+        brief.push(' ');
+        brief.push_str(hint);
+    }
     brief
 }
 
 /// How alike the dominant colours of a generated set are.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Variety {
-    /// `ok`, `too_alike` (over 45 percent of the icons share one bucket, or the set spans fewer than three) or `too_few` (fewer than five icons to judge).
+    /// `ok`, `too_alike` (over 45 percent of the icons share one bucket, or the set spans fewer than three), `too_green` (more green icons than a sixth of the set, at least one) or `too_few` (fewer than five icons to judge).
     pub verdict: &'static str,
     /// Icons measured.
     pub icons: usize,
@@ -383,7 +453,11 @@ pub struct Variety {
     pub largest_share: f64,
     /// Icons per hue bucket, `metal` for those with no colour beyond metal.
     pub buckets: BTreeMap<String, Vec<String>>,
-    /// What to do, when the verdict is `too_alike`.
+    /// Icons whose dominant hue is green (bucket `h3` to `h5`), and the most a set of this size may have.
+    pub green_icons: Vec<String>,
+    /// The most green icons a set of this size may have: a sixth of it, at least one.
+    pub green_cap: usize,
+    /// What to do, when the verdict is not `ok`.
     pub advice: Option<String>,
 }
 
@@ -439,17 +513,23 @@ pub fn judge_variety(items: &[(String, String)]) -> Variety {
     let distinct_hues = buckets.keys().filter(|k| k.as_str() != "metal").count();
     let largest = buckets.values().map(Vec::len).max().unwrap_or(0);
     let largest_share = if n == 0 { 0.0 } else { (largest as f64 / n as f64 * 1000.0).round() / 1000.0 };
+    let green_icons: Vec<String> = ["h3", "h4", "h5"].iter().filter_map(|k| buckets.get(*k)).flatten().cloned().collect();
+    let green_cap = (n / 6).max(1);
     let verdict = if n < 5 {
         "too_few"
     } else if largest_share > 0.45 || buckets.len() < 3 {
         "too_alike"
+    } else if green_icons.len() > green_cap {
+        "too_green"
     } else {
         "ok"
     };
-    let advice = (verdict == "too_alike").then(|| {
-        "Too many icons share one dominant colour. Make the ones in the largest bucket again with a different planned colour (set icons carry one in their brief), or choose references with more varied colours.".to_string()
-    });
-    Variety { verdict, icons: n, distinct_hues, largest_share, buckets, advice }
+    let advice = match verdict {
+        "too_alike" => Some("Too many icons share one dominant colour. Make the ones in the largest bucket again with a different planned colour (set icons carry one in their brief), or choose references with more varied colours.".to_string()),
+        "too_green" => Some(format!("Too many icons are mainly green ({} of {n}, at most {green_cap}). Make the green ones again unless their subject is green itself (fields, forests).", green_icons.len())),
+        _ => None,
+    };
+    Variety { verdict, icons: n, distinct_hues, largest_share, buckets, green_icons, green_cap, advice }
 }
 
 #[cfg(test)]
@@ -517,7 +597,15 @@ mod tests {
         assert_eq!(plan[4], "green and golden wheat");
         assert_eq!(plan[5], "pale blue and white");
         let b = icon_brief_coloured(&icons[1], 6, plan[1]);
-        assert!(b.contains("mainly steel grey and olive") && b.contains("never the colour of the whole icon"), "{b}");
+        assert!(
+            b.contains("mainly steel grey and olive") && b.contains("Green is not a main colour") && b.contains("No national iconography at all"),
+            "{b}"
+        );
+        let flag = SetIcon { names: vec!["The Flag of the Republic".into()], ..icon_named("flag") };
+        assert!(is_identity_focus(&flag) && icon_brief_coloured(&flag, 6, "cream and gold with deep red").contains("exactly one national element"));
+        assert!(!is_identity_focus(&icons[0]));
+        let peat = SetIcon { names: vec!["Peat and Coal for Power".into()], ..icon_named("peat") };
+        assert!(icon_brief_coloured(&peat, 6, "brass, amber and smoke grey").contains("No coal, no mine cart"));
     }
 
     #[test]
@@ -560,5 +648,25 @@ mod tests {
             .collect();
         assert_eq!(judge_variety(&mixed).verdict, "ok");
         assert_eq!(judge_variety(&mixed[..3]).verdict, "too_few");
+    }
+
+    #[test]
+    fn green_is_budgeted_and_dark_palettes_never_neighbour() {
+        // twelve farming focuses: only two may be mainly green
+        let icons: Vec<SetIcon> = (0..12).map(|i| icon_named(&format!("Farm {i}"))).collect();
+        let refs: Vec<&SetIcon> = icons.iter().collect();
+        let plan = colour_plan(&refs);
+        assert_eq!(plan.iter().filter(|c| GREEN_COLOURS.contains(c)).count(), 2, "{plan:?}");
+        // unrest then a second dark subject: the second takes a lighter colour
+        let pair = [icon_named("Border Unrest"), icon_named("Terror Cells")];
+        let refs: Vec<&SetIcon> = pair.iter().collect();
+        let plan = colour_plan(&refs);
+        assert_eq!(plan[0], "dark red and black");
+        assert!(!DARK_COLOURS.contains(&plan[1]), "{plan:?}");
+        // a set with four green icons of twelve is too green
+        let greens: Vec<(String, String)> =
+            (0..12).map(|i| (format!("i{i}"), ["h4", "h4", "h4", "h4", "h0", "h1", "h6", "h7", "h8", "h9", "h10", "metal"][i].to_string())).collect();
+        let v = judge_variety(&greens);
+        assert_eq!((v.verdict, v.green_icons.len(), v.green_cap), ("too_green", 4, 2), "{v:?}");
     }
 }
