@@ -279,6 +279,9 @@ pub enum Finisher {
     /// The stages of a balance of power side made from the fitted colour emblem: the grey standard (the main image),
     /// the improved companion and, when asked for, the cracked `_bad` and `_bad_improved` companions.
     BopStages,
+    /// The subject placed on a frame the tool owns (`frame_set`), or left frameless: the frame key, the template hash
+    /// and the fit are recorded in the step's detail.
+    Frame,
 }
 
 impl Finisher {
@@ -293,6 +296,7 @@ impl Finisher {
             Finisher::DerivedCompanions => "derived_companions",
             Finisher::KeyFrames => "key_frames",
             Finisher::BopStages => "bop_stages",
+            Finisher::Frame => "frame",
         }
     }
 }
@@ -375,6 +379,9 @@ pub struct FinishOptions {
     /// size the fit scales to, and the palette and glow of the `snap_palette` and `edge_glow` switches). `None`
     /// without a pack or without readable references.
     pub pack_look: Option<PackFinish>,
+    /// A frame the tool draws (its key, or `none`): the subject is placed on it by the `frame` finisher. `None` leaves
+    /// the family's processing as it was (the model draws the frame).
+    pub frame: Option<String>,
 }
 
 /// A style pack's measured look on unit art, and where it came from.
@@ -442,6 +449,10 @@ pub fn plan_finishing_with(
         return Err(Error::Invalid(format!("overlay (a tier numeral) is for technology pictures, not {}", profile.family)));
     }
     match recipe {
+        Recipe::Icon if opts.frame.is_some() => {
+            // a subject for a frame of the component library: trimmed only, the frame step fits it into the plate
+            ops.push(Op::TrimToSubject { min_alpha: 16 });
+        }
         Recipe::Icon | Recipe::BopSide => {
             if imported && accepted_single(size) {
                 ops.push(Op::Conform { width: size[0], height: size[1] });
@@ -796,6 +807,13 @@ pub fn plan_finishing_with(
     if recipe == Recipe::BopSide {
         finishers.push(Finisher::BopStages);
     }
+    if let Some(frame) = &opts.frame {
+        if recipe != Recipe::Icon || !crate::frameset::framed_family(profile.family) {
+            return Err(Error::Invalid(format!("frame {frame:?} is for focus icons, not {}", profile.family)));
+        }
+        finishers.push(Finisher::Frame);
+        notes.push(format!("the subject is placed on the tool's frame {frame}"));
+    }
     if !crate::lookup::derived_companions(profile.family, canvas).is_empty() {
         finishers.push(Finisher::DerivedCompanions);
     }
@@ -816,7 +834,7 @@ pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
     let counter = matches!(profile.family, Family::CounterLarge | Family::CounterSmall);
     let mut stages: Vec<Vec<&'static str>> = match recipe_of(profile) {
         Recipe::Icon if profile.processing().crisp => vec![vec!["area_fit", "conform"]],
-        Recipe::Icon => vec![vec!["fit_subject", "fit_in_box", "conform"]],
+        Recipe::Icon => vec![vec!["fit_subject", "fit_in_box", "conform", "frame"]],
         Recipe::BopSide if profile.processing().crisp => vec![vec!["area_fit", "conform"], vec!["bop_stages"]],
         Recipe::BopSide => vec![vec!["fit_subject", "fit_in_box", "conform"], vec!["bop_stages"]],
         Recipe::UprightPrint => vec![vec!["fit_subject", "cover_resize", "area_cover", "conform"]],
@@ -891,6 +909,11 @@ pub fn audit(rec: &ProcessedRecord, profile: &Profile) -> Vec<String> {
                 problems.push(format!("the {} companion is {}x{}, the game needs {}x{}", d.key, c.size[0], c.size[1], d.strip()[0], d.strip()[1]))
             }
             Some(_) => {}
+        }
+    }
+    for f in r.finishers.iter().filter(|f| f.name == Finisher::Frame.name()) {
+        if let Some(list) = f.detail.get("problems").and_then(|p| p.as_array()) {
+            problems.extend(list.iter().filter_map(|p| p.as_str().map(|t| format!("frame: {t}"))));
         }
     }
     let last_out = r.finishers.last().map(|f| f.output_sha256.as_str()).or_else(|| rec.steps.last().map(|s| s.output_sha256.as_str()));

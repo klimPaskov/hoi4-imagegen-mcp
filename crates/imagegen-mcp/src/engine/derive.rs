@@ -482,6 +482,8 @@ impl Engine {
             r.report["alternates"] = json!(alt_listed);
             r.report["sheet"] = json!(format!("{family}.png"));
             families.insert(family.as_str().to_string(), r.report.clone());
+            // a derive over a pack keeps the family's frame set entry
+            entry.frames = p.families.get(&family).and_then(|e| e.frames.clone());
             p.families.insert(family, entry);
         }
         let saved = self.save_pack(p, existing.is_some())?;

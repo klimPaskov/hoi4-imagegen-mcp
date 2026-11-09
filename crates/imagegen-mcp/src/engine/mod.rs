@@ -22,6 +22,7 @@ pub mod autostyle;
 pub mod derive;
 pub mod diversity;
 pub mod finish;
+pub mod frame;
 pub mod generate;
 pub mod install;
 pub mod misc;
@@ -341,6 +342,8 @@ pub struct Artifact {
     pub record: Option<ProcessedRecord>,
     /// The sub-family the root candidate was planned in, when it had one.
     pub subfamily: Option<String>,
+    /// Who drew the frame, from the plan (a focus icon's frame key, `none` or `model`).
+    pub frame: Option<imagegen_core::frameset::FramePlan>,
 }
 
 impl Artifact {
@@ -397,6 +400,7 @@ impl Engine {
                 provider: root.provider,
                 record: Some(p),
                 subfamily: root.subfamily,
+                frame: root.frame,
             });
         }
         if let Some(c) = find_candidate(id) {
@@ -422,6 +426,7 @@ impl Engine {
                 provider: c.provider,
                 record: None,
                 subfamily: c.subfamily,
+                frame: c.frame,
             });
         }
         Err(EngineError::new("not_found", format!("no candidate or processed artifact '{id}' in the ledger"), RetryClass::Terminal))

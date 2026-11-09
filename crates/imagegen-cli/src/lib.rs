@@ -56,6 +56,9 @@ pub enum Command {
     /// Style packs: a mod's house style across families (`.hoi4-imagegen/packs/<name>/pack.toml`).
     #[command(subcommand)]
     Pack(PackCommand),
+    /// The focus icon component library: blank frames and pieces for component-built icons.
+    #[command(subcommand)]
+    Frame(FrameCommand),
     /// Run any hoi4.image_* operation with JSON parameters (a string, or @file).
     Call {
         /// Tool name, for example hoi4.image_process.
@@ -84,6 +87,32 @@ pub enum Command {
     ChatgptLogin {
         /// login, status or logout
         action: String,
+    },
+}
+
+/// `frame` subcommands.
+#[derive(Subcommand, Debug)]
+pub enum FrameCommand {
+    /// List the focus icon component library (the asset skill's blank frames and pieces, a pack's, and the project's
+    /// added frames) and write a contact sheet with each frame's placement box.
+    List {
+        /// The style pack whose library to list (its own frames folders); without it the skill's components.
+        #[arg(long)]
+        pack: Option<String>,
+    },
+    /// Add a processed blank frame (planned with frame "blank") to the project's library.
+    Add {
+        /// The processed artifact.
+        artifact_id: String,
+        /// Frame key (default: the asset name).
+        #[arg(long)]
+        key: Option<String>,
+        /// Placement box x0,y0,x1,y1 (measured when left out).
+        #[arg(long, value_delimiter = ',')]
+        r#box: Vec<u32>,
+        /// Let sets use it (after you looked at it).
+        #[arg(long)]
+        approve: bool,
     },
 }
 
@@ -367,6 +396,15 @@ pub fn execute(engine: &Engine, cli: &Cli, out: &mut dyn Write) -> i32 {
             let v = dispatch(engine, fam.group().tool_name(), params)?;
             let text = plan_text(&v["plan"]);
             Ok((v, 0, Some(text)))
+        }
+        Command::Frame(FrameCommand::List { pack }) => Ok((engine.frame_list(pack.as_deref())?, 0, None)),
+        Command::Frame(FrameCommand::Add { artifact_id, key, r#box, approve }) => {
+            let place = match r#box.as_slice() {
+                [] => None,
+                [a, b, c, d] => Some([*a, *b, *c, *d]),
+                _ => return Err(EngineError::invalid("--box is four numbers: x0,y0,x1,y1")),
+            };
+            Ok((engine.frame_add(artifact_id, key.as_deref(), place, *approve)?, 0, None))
         }
         Command::Pack(cmd) => match cmd {
             PackCommand::Import { name, from, top_family, replace } => {

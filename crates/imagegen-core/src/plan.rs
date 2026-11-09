@@ -78,6 +78,12 @@ pub struct PlanRequest {
     /// packs existed keep their hash.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_pack: Option<String>,
+    /// Focus icons: who draws the frame. `auto` or `model` (the default): the model draws the whole icon from the
+    /// brief and the references. A frame key of the component library: the model draws the subject alone and the tool
+    /// places it on that blank frame. `blank`: the model draws an empty frame for the library. Left out when unset, so
+    /// plans made before frames were data keep their hash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame: Option<String>,
 }
 
 /// How a caller's own style anchors combine with the automatic references.
@@ -209,6 +215,9 @@ pub struct Plan {
     /// The style pack this plan applied, and which of its entries (new in 0.3.4).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_pack: Option<PackReport>,
+    /// The frame of the library the subject goes on, or `blank` (new in 0.3.9). Absent when the model draws the icon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame: Option<crate::frameset::FramePlan>,
     /// Estimate.
     pub estimate: PlanEstimate,
     /// Output paths.
@@ -580,6 +589,7 @@ mod tests {
                 style_mode: None,
                 subfamily: None,
                 style_pack: None,
+                frame: None,
             },
             asset_id: "iron.wall".into(),
             profile: ProfileRef { id: "focus".into(), hash: "h".into(), kit_sha256: None, style_pack: None, backdrop: None },
@@ -598,6 +608,7 @@ mod tests {
             style_selection: None,
             subfamily: None,
             style_pack: None,
+            frame: None,
             estimate: PlanEstimate {
                 usd_per_call: 0.006,
                 calls: 1,

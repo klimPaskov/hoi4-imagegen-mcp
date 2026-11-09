@@ -8,6 +8,7 @@
 use imagegen_core::error::RetryClass;
 use imagegen_core::export;
 use imagegen_core::family::Family;
+use imagegen_core::frameset;
 use imagegen_core::set::{self, FocusTreeSet};
 use serde_json::{json, Value};
 
@@ -28,6 +29,46 @@ fn slug_of(file: &str) -> String {
 }
 
 impl Engine {
+    /// The icons built from the component library, and the library: a share of the icons whose focus names what a
+    /// piece shows (see `imagegen_core::frameset::plan_components`). Every other icon is made from scratch.
+    fn set_components(
+        &self,
+        p: &SetParams,
+        chosen: &[&set::SetIcon],
+        feature_slug: &str,
+    ) -> EResult<(Vec<Option<frameset::ComponentPick>>, super::frame::Library)> {
+        let pack = self.choose_pack(p.style_pack.as_deref())?;
+        let lib = self.library(pack.as_ref().map(|c| &c.pack), Family::Focus)?;
+        let share = p.component_share.unwrap_or(lib.share);
+        if !(0.0..=1.0).contains(&share) {
+            return Err(EngineError::invalid("component_share is 0 to 1"));
+        }
+        let texts: Vec<String> = chosen.iter().map(|i| i.names.join(" ")).collect();
+        let mut plan = frameset::plan_components(&texts, &lib.frames, &lib.pieces, share, frameset::seed_of(feature_slug));
+        // a piece must stand out from its plate: measure both and swap frames where they are too alike
+        let read = |path: &str| {
+            self.fs
+                .read(path, 8 * 1024 * 1024)
+                .ok()
+                .and_then(|b| imagegen_core::pixels::decode(&b, Some(path), imagegen_core::pixels::DecodeLimits::default()).ok())
+                .map(|(img, _)| img)
+        };
+        let plates: std::collections::BTreeMap<String, f64> = lib
+            .frames
+            .iter()
+            .filter_map(|f| read(&f.path).map(|img| (f.key.clone(), frameset::mean_luma(&img, f.place).unwrap_or(frameset::CLEAR_PLATE_LUMA))))
+            .collect();
+        let used: std::collections::BTreeSet<String> = plan.iter().flatten().map(|p| p.piece.clone()).collect();
+        let pieces: std::collections::BTreeMap<String, f64> = lib
+            .pieces
+            .iter()
+            .filter(|p| used.contains(&p.key))
+            .filter_map(|p| read(&p.path).and_then(|img| frameset::mean_luma(&img, [0, 0, img.width, img.height])).map(|l| (p.key.clone(), l)))
+            .collect();
+        frameset::fix_contrast(&mut plan, &plates, &pieces);
+        Ok((plan, lib))
+    }
+
     /// Plan, and with `generate` make, the icons of one focus tree file.
     pub fn set(&self, p: SetParams) -> EResult<Value> {
         let tree: FocusTreeSet = set::focus_tree_set(self.fs.root(), self.game_dir().as_deref(), &p.focus_tree)?;
@@ -57,7 +98,10 @@ impl Engine {
         // the dominant colour of each icon follows its subject, never the country, so the set has contrast
         let colours = set::colour_plan(&chosen);
         let mut hues: Vec<(String, String)> = Vec::new();
-        for (icon, colour) in chosen.iter().zip(colours.iter()) {
+        // most icons are made from scratch; a share of the generic ones is built from the component library (a blank
+        // frame and a matching piece, no paid call) for variety and consistency
+        let (built, lib) = self.set_components(&p, &chosen, &feature_slug)?;
+        for (n, (icon, colour)) in chosen.iter().zip(colours.iter()).enumerate() {
             let mut req = json!({
                 "family": "focus",
                 "feature_slug": feature_slug,
@@ -84,6 +128,32 @@ impl Engine {
                 "installs_as": installs_as,
                 "tree_names_it": installs_as.as_deref().is_some_and(|s| s == icon.sprite),
             });
+            if let Some(pick) = built.get(n).cloned().flatten() {
+                let piece = lib.piece(&pick.piece).map(|x| x.path.clone()).unwrap_or_default();
+                row["built_from"] = json!({"frame": pick.frame, "piece": pick.piece, "piece_path": piece});
+                if generate {
+                    let mut import =
+                        json!({"path": piece, "family": "focus", "feature_slug": feature_slug, "asset": icon.asset, "frame": pick.frame});
+                    if let Some(sp) = &p.style_pack {
+                        import["style_pack"] = json!(sp);
+                    }
+                    match serde_json::from_value(json!({"import": import}))
+                        .map_err(|e| EngineError::invalid(e.to_string()))
+                        .and_then(|x| self.process(x))
+                    {
+                        Ok(v) => {
+                            made += 1;
+                            row["processed"] = json!({"artifact_id": v.get("artifact_id"), "path": v.get("path")});
+                        }
+                        Err(e) => {
+                            failed += 1;
+                            row["error"] = json!({"code": e.code, "message": e.message});
+                        }
+                    }
+                }
+                icons.push(row);
+                continue;
+            }
             let plan = match serde_json::from_value(req).map_err(|e| EngineError::invalid(e.to_string())).and_then(|r| self.plan(r)) {
                 Ok(plan) => plan,
                 Err(e) => {
@@ -136,6 +206,12 @@ impl Engine {
             "dynamic": tree.dynamic,
             "shared_sprites": shared.iter().map(|i| json!({"sprite": i.sprite, "focuses": i.focuses})).collect::<Vec<_>>(),
             "estimate_usd": (total_usd * 10000.0).round() / 10000.0,
+            "components": {
+                "built": built.iter().flatten().count(),
+                "share": p.component_share.unwrap_or(lib.share),
+                "frames_in_library": lib.frames.len(),
+                "pieces_in_library": lib.pieces.len(),
+            },
             "style": {"style_pack": p.style_pack, "references": p.references, "provider": p.provider, "model": p.model, "quality": p.quality},
             "variety": if generate { json!(set::judge_variety(&hues)) } else { Value::Null },
             "icons": icons,

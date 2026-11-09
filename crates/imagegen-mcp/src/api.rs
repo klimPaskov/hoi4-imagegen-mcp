@@ -119,6 +119,9 @@ macro_rules! group_request {
             /// Style pack to apply (`.hoi4-imagegen/packs/<name>/pack.toml`): its references for this family are sent as style anchors, its look line and form override go into the prompt, and its canvas and processing switches apply. Without it the project's default pack applies; `none` turns that off. A family the pack does not cover uses the normal style tiers.
             #[serde(default)]
             pub style_pack: Option<String>,
+            /// Focus icons only. `auto` or `model` (default, the main way): the model draws the whole icon from the brief and the references. A frame key of the component library (hoi4.image_references frame_list): the model draws the subject alone and the tool places it on that blank frame. `blank`: the model draws an empty frame, which frame_add can put into the library after a look.
+            #[serde(default)]
+            pub frame: Option<String>,
             /// Candidates to produce in one go (1 to 4); each is a separate provider call.
             #[serde(default)]
             pub variants: Option<u8>,
@@ -166,6 +169,7 @@ macro_rules! group_request {
                     style_mode: self.style_mode,
                     subfamily: self.subfamily,
                     style_pack: self.style_pack,
+                    frame: self.frame,
                 };
                 (req, follow)
             }
@@ -231,6 +235,12 @@ pub enum ReferencesAction {
     /// vanilla and placeholders, rank by distance from vanilla's style, pick a diverse set, detect the canvas, draft
     /// the look, form and processing switches, write contact sheets for review and save the pack.
     PackDerive,
+    /// List the focus icon component library (blank frames with their placement boxes, pieces) for a pack (`name`) or
+    /// none, and write a contact sheet of it.
+    FrameList,
+    /// Add a processed blank frame (planned with `frame: "blank"`, `artifact_id`) to the project's library as `name`
+    /// (default: the asset); `frame_box` sets its placement box, `approve` true lets sets use it.
+    FrameAdd,
 }
 
 /// `hoi4.image_references`
@@ -281,6 +291,15 @@ pub struct ReferencesParams {
     /// Picks to leave out after review (`pack_derive`): `focus:3`.
     #[serde(default)]
     pub drop: Option<Vec<String>>,
+    /// Processed blank frame to add (`frame_add`).
+    #[serde(default)]
+    pub artifact_id: Option<String>,
+    /// Placement box `[x0, y0, x1, y1]` of the frame (`frame_add`); measured when absent.
+    #[serde(default)]
+    pub frame_box: Option<[u32; 4]>,
+    /// Let sets use the added frame (`frame_add`), after a person looked at it.
+    #[serde(default)]
+    pub approve: Option<bool>,
 }
 
 /// `hoi4.image_generate`
@@ -350,6 +369,10 @@ pub struct ImportSpec {
     /// model_reference only: `transparent` checks and processes the import as a subject on real alpha. Default `grey`.
     #[serde(default)]
     pub backdrop: Option<imagegen_core::profile::Backdrop>,
+    /// Focus icons: a frame key of the component library; the imported image (a piece, or a subject on transparency)
+    /// is placed on that blank frame.
+    #[serde(default)]
+    pub frame: Option<String>,
 }
 
 /// `hoi4.image_process`
@@ -551,6 +574,11 @@ pub struct SetParams {
     /// Style pack every icon of the set uses.
     #[serde(default)]
     pub style_pack: Option<String>,
+    /// Share of the set built from the component library (a blank frame and a matching piece, no paid call), for
+    /// variety among generic icons: only icons whose focus names what a piece shows, spread through the set. Default
+    /// 0.25 (a style pack's `frames.share`, and 0 for a pack without frames); 0 makes every icon from scratch.
+    #[serde(default)]
+    pub component_share: Option<f64>,
     /// Style anchors every icon of the set sends, for one shared look (for example the set's first approved icon).
     #[serde(default)]
     pub references: Option<Vec<ReferenceInput>>,

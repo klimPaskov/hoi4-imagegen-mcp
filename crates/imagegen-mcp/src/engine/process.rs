@@ -84,6 +84,7 @@ impl Engine {
             asset: Some(artifact.asset.clone()),
             overlay: p.overlay.clone(),
             pack_look,
+            frame: artifact.frame.as_ref().filter(|f| f.on_frame()).map(|f| f.key.clone()),
         };
         let plan = chain::plan_finishing_with(&profile, artifact.canvas, &prepared, imported, keyed, &artifact.recorded_sha256, &opts)?;
         let symbol = match recipe {
@@ -113,16 +114,22 @@ impl Engine {
         let mut companions: Vec<(String, Rgba)> = Vec::new();
         for f in &plan.finishers {
             let input_sha256 = main.pixels_sha256();
-            let made = self.run_finisher(
-                *f,
-                &main,
-                p.portrait_crop,
-                second.as_ref().map(|(id, img)| (id.as_str(), img)),
-                &keyframes,
-                &profile,
-                artifact.canvas,
-                p.cracked_stage == Some(true),
-            )?;
+            let made = if *f == Finisher::Frame {
+                let fp = artifact.frame.as_ref().ok_or_else(|| EngineError::invalid("this asset was planned without a frame decision"))?;
+                let (img, detail) = self.run_frame_finisher(&main, fp, artifact.canvas)?;
+                super::finish::FinishOutput { main: img, companions: Vec::new(), detail }
+            } else {
+                self.run_finisher(
+                    *f,
+                    &main,
+                    p.portrait_crop,
+                    second.as_ref().map(|(id, img)| (id.as_str(), img)),
+                    &keyframes,
+                    &profile,
+                    artifact.canvas,
+                    p.cracked_stage == Some(true),
+                )?
+            };
             finishers.push(FinisherRecord {
                 name: f.name().to_string(),
                 input_sha256,
@@ -244,6 +251,15 @@ impl Engine {
         if self.config.policy.forbidden_families.contains(&spec.family) {
             return Err(EngineError::refused("family_forbidden_by_project", format!("this project forbids {}", spec.family), RetryClass::Terminal));
         }
+        // a component-built focus icon: the imported subject (a piece) goes on a frame of the library
+        let frame = match &spec.frame {
+            Some(key) => {
+                let pack = self.choose_pack(spec.style_pack.as_deref())?;
+                let piece = spec.path.as_deref().map(|p| imagegen_core::frameset::key_of(p.rsplit('/').next().unwrap_or(p)));
+                Some(self.frame_plan_for(key, piece.as_deref(), pack.as_ref().map(|c| &c.pack), spec.family)?)
+            }
+            None => None,
+        };
         let frames = profile.frames.max(1);
         let (bytes, format, img, source_label, note) = match (&spec.path, &spec.frames) {
             (Some(path), None) => {
@@ -352,6 +368,7 @@ impl Engine {
             usage: None,
             note: Some(note),
             subfamily: None,
+            frame,
         };
         self.ledger.append(kind::IMPORTED, Some(&aid), Some(&rec.candidate_id), &rec)?;
         self.artifact(&rec.candidate_id)

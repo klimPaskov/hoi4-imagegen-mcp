@@ -55,6 +55,9 @@ impl Engine {
             return Err(EngineError::invalid("a model reference's background is set with backdrop (grey or transparent), not transparent"));
         }
         let profile = profile.with_backdrop_opt(req.backdrop)?;
+        // a frame of the component library (the subject alone is drawn) or a blank frame; none when the model draws
+        // the whole icon, the main way
+        let frame_plan = self.decide_frame(&req, pack_choice.as_ref().map(|c| &c.pack))?;
         if let (Some(c), Some(r)) = (&pack_choice, &pack_resolved) {
             pack::verify_references(&self.fs, &c.pack.name, &r.references)?;
         }
@@ -278,6 +281,9 @@ impl Engine {
             let (rules, negative) = pack::prompt_rules(&profile, r);
             prompt_profile.imagegen.prompt.rules = rules;
             prompt_profile.imagegen.prompt.negative = negative;
+        }
+        if let Some(fp) = &frame_plan {
+            super::frame::apply_prompt(&mut prompt_profile, &fp.key);
         }
         if let Some(kind) = req.texture_kind {
             if !pack_form {
@@ -553,6 +559,7 @@ impl Engine {
             style_selection: Some(style_selection),
             subfamily: subfamily_choice,
             style_pack: pack_report,
+            frame: frame_plan,
             style_sha256: match &req.style {
                 Some(n) => Some(imagegen_core::hashing::sha256_hex(&self.fs.read(&style::style_path(n)?, 256 * 1024)?)),
                 None => None,

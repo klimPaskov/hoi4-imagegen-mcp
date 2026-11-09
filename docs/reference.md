@@ -8,6 +8,7 @@ The full reference for `hoi4-imagegen-mcp`. The [README](../README.md) is the sh
 
 * [What it does](#what-it-does)
 * [Tools](#tools)
+* [Focus icon components](#focus-icon-components)
 * [Families](#families)
 * [Processing chains](#processing-chains)
 * [Style references](#style-references)
@@ -67,6 +68,25 @@ Every icon gets the same `style_pack`, style anchors (`references`), `provider`,
 The reply lists every icon: the sprite the tree names, the asset, its focuses and their names, the plan id, the cost estimate and the sprite name its install registers (`installs_as`). The install names focus sprites `GFX_focus_<asset>`, so where `tree_names_it` is false, point the focus's `icon` at `installs_as`. `shared_sprites` lists the sprites several focuses share, and `dynamic` the icons built at run time, which cannot be planned.
 
 **Colour and variety (since 0.3.9).** A tree about one country used to come out in that country's colours on every icon, with no contrast between icons. Now the colour follows what each icon shows: every set icon's brief names a dominant colour planned from its subject words (navy and sea blue for fleets, steel grey and olive for armies, brass and amber for industry, pale blue and white for science, dark red for unrest, and so on), and the country's own colours and symbols are at most a small accent. No colour goes to more than a quarter of the set. The focus, idea spirit and general icon rules say the same, so single icons follow it too. With `generate: true` the reply has `variety`: each generated candidate's dominant hue, the share of the largest bucket and a verdict. Every HOI4 icon sits in a frame of brass, bronze or wood, so that warm metal and every grey or dark pixel are left out and the bucket is the colour of the enamel, cloth and scene (12 buckets of 30 degrees, or `metal` for an icon with no colour beyond metal). `too_alike` means over 45 percent of the icons share one bucket, or the set spans fewer than three. It lists the icons in each bucket so the largest can be made again. `too_few` means fewer than five icons to judge. The focus name places an icon first and its description only when the name names no subject. Each icon row carries `planned_colour` and, once generated, `dominant_hue`.
+
+**Components in a set (since 0.3.9).** About a quarter of a set (`component_share`, default 0.25, or a pack's `frames.share`) is built from the [focus icon components](#focus-icon-components) instead of being generated: only icons whose focus name says what one of the pieces shows (a tank for armour, a cog for industry, a dove for peace...), spread so no two sit side by side, each with a different piece and consecutive ones on different frames. A piece goes on a frame whose plate differs from it in brightness, so it does not vanish on its plate. Those rows carry `built_from` (frame, piece) and no plan; with `generate: true` they are imported onto their frame, which costs nothing. Every other icon is made from scratch as before. `component_share: 0` makes the whole set from scratch, and a style pack with no `frames` entry builds nothing from components.
+
+### Focus icon components
+
+The main way to make a focus icon is the model drawing all of it, frame included, from the brief and the references. Component-built icons add variety and consistency to generic icons. The asset skill ships blank frames and transparent pieces in `assets/visual_components/focus_backgrounds` and `focus_pieces`. The tool finds them in any skill under `.claude/skills` or `.agents/skills`, or under `[templates] dir`.
+
+| `frame` | What happens |
+|---|---|
+| `auto` or `model` (default) | The model draws the whole icon. The prompt and the plan are the same as before frames were data. |
+| a frame key | The model draws the subject alone ("subject only, no frame, no plaque") and processing places it on that blank frame's plate. |
+| `blank` | The model draws an empty frame for the library. |
+
+* **Frames.** Each PNG is a frame whose key is the file stem without `focus_background_`. A subject goes in its placement box. The 8 frames the skill ships are known by SHA-256, and their boxes were checked by eye. Any other frame is measured: the clear inside of a ring, the largest smooth plate, or the solid box shrunk to 62 percent. A `frames.toml` next to the PNGs can set `key`, `form`, `box` and `weight` per file. In a set, frames are weighted by vanilla's mix of forms: round plates seven in ten, shields one in fifteen. The plain white ball is used only by key: a blind review judged it unfinished beside framed icons.
+* **Pieces.** Each piece PNG is a subject, keyed by its stem without `focus_piece_`. The words it matches are its name plus a short list per piece the skill ships.
+* **Placing.** Processing trims the subject and fits it to 92 percent of the box, aspect kept and enlarged at most 1.25 times. It centres the frame on the 100x88 canvas and draws the subject over the plate. The `frame` step records the frame's path and SHA-256, the piece, the box, the scale and the fill. The audit reports a subject that fills under 55 percent of the plate or leaves the canvas. A frame file that changed after planning is refused.
+* **More frames.** Plan a focus icon with `frame: "blank"` and a brief such as "a bronze laurel wreath around a dark red enamel plate", then generate and process it. Look at it, then add it with `hoi4-imagegen frame add <processed id> --key laurel_red --approve` (or `hoi4.image_references` `frame_add`). It goes into `.hoi4-imagegen/frames` with its measured box, unless `--box` gives one. Without `--approve` it is listed and never used.
+* **Packs.** A style pack's `[families.focus.frames]` names its own `dir` of frames, its own `pieces` and its `share`. A pack without that entry builds nothing from components, because its house style is not vanilla's frames.
+* `hoi4-imagegen frame list` (`hoi4.image_references` `frame_list`) prints the library and writes a contact sheet to the cache folder. The sheet shows each frame with its box in green, then the pieces.
 
 ## Families
 

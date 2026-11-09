@@ -296,6 +296,11 @@ impl Engine {
                 self.save_pack(pack, p.replace.unwrap_or(false))
             }
             ReferencesAction::PackValidate => self.pack_validate(&need(&p.name, "name")?),
+            ReferencesAction::FrameList => self.frame_list(p.name.as_deref()),
+            ReferencesAction::FrameAdd => {
+                let id = need(&p.artifact_id, "artifact_id")?;
+                self.frame_add(&id, p.name.as_deref(), p.frame_box, p.approve.unwrap_or(false))
+            }
             ReferencesAction::PackDerive => {
                 let o = super::derive::DeriveOptions {
                     from_mod: p.from_mod.as_deref().map(std::path::PathBuf::from),

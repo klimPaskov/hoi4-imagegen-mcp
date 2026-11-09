@@ -20,6 +20,8 @@ pub mod diversity;
 pub mod error;
 pub mod export;
 pub mod family;
+pub mod framebox;
+pub mod frameset;
 pub mod fsio;
 pub mod gate;
 pub mod hashing;

@@ -150,6 +150,7 @@ impl Engine {
         cracked_stage: bool,
     ) -> EResult<FinishOutput> {
         match finisher {
+            Finisher::Frame => Err(EngineError::invalid("the frame finisher needs the plan's frame decision and is run by the process step")),
             Finisher::BopStages => {
                 // the fitted colour emblem is the input: every stage is an edit of it, and the cracks follow its pixels
                 let seed = imagegen_core::chain::seed_from_sha(&img.pixels_sha256()) as u64;

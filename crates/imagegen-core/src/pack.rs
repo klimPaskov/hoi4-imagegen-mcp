@@ -211,6 +211,10 @@ pub struct PackEntry {
     /// `gui_texture` only: references, look and form per texture kind.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub kinds: BTreeMap<GuiTextureKind, KindEntry>,
+    /// Focus icons: the frames the tool places subjects on (its own set, or only `none`). Without it the pack's focus
+    /// icons keep the model-drawn frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frames: Option<crate::frameset::PackFrames>,
 }
 
 /// A style pack.

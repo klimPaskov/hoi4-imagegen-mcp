@@ -18,6 +18,11 @@ import re
 import subprocess
 import sys
 
+# Notes printed under a family's table.
+FAMILY_NOTES = {
+    "focus": '**Frames (since 0.3.9).** The model draws the whole icon, frame included, from the brief and the references: that is the default (`frame` `auto` or `model`) and the main way. For variety among generic icons a focus icon can also be built from the asset skill\'s components (`assets/visual_components/focus_backgrounds` and `focus_pieces`): `frame: "<key>"` places a subject on that blank frame\'s plate, an import with `frame` puts a piece there without a paid call, and `hoi4.image_set` builds about a quarter of a tree\'s generic icons that way. See [focus icon components](reference.md#focus-icon-components).',
+}
+
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -376,6 +381,9 @@ def docs():
                 w(f"| Made | {man['date'][:10]} on `{man['model']}` (high reasoning effort), ChatGPT's current image model, quality {man['image_quality']}, source {man['source_image_size']} |")
             w(f"| Image SHA-256 | `{man['sha256']}` |")
             w("")
+            if name in FAMILY_NOTES:
+                w(FAMILY_NOTES[name])
+                w("")
             if imported:
                 spec = IMPORT_CALLS[name]
                 req = {"import": {**spec, "family": name, "feature_slug": "gallery", "asset": rec["asset"]}}

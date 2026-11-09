@@ -452,6 +452,7 @@ impl Engine {
                 processing: old.processing,
                 references: Vec::new(),
                 kinds: BTreeMap::new(),
+                frames: old.frames,
             };
             for (k, x) in &old.kinds {
                 entry.kinds.insert(*k, KindEntry { references: Vec::new(), ..x.clone() });

@@ -13,6 +13,7 @@
 //! | Flag ladder 82x52, 41x26, 10x7 | Rust only | [`flags`] |
 //! | Focus `_shine` registration block | Rust only | [`focus_shine`] |
 //! | Selected and disabled frame 2 | Rust only, fitted to vanilla | [`frames`] |
+//! | Subject on a tool-owned frame (focus icons) | Rust only, frames derived from art | [`icon_frame`] |
 //! | Horizontal frame strips | Rust only | [`strip`] |
 //! | Flatten on colour | Rust only | [`flatten`] |
 //! | Companions the game looks up (small emblem, text icon, miniature, half size) | Rust only, fitted to vanilla | [`derived`] |
@@ -38,6 +39,7 @@ pub mod flags;
 pub mod flatten;
 pub mod focus_shine;
 pub mod frames;
+pub mod icon_frame;
 pub mod line_art;
 pub mod operation_card;
 pub mod pack_look;

@@ -211,6 +211,8 @@ common/doctrines/subdoctrines/land/combat_support_subdoctrines.txt:282 icon = GF
 | Made | 2026-11-02 on `gpt-6-luna` (high reasoning effort), ChatGPT's current image model, quality medium, source 1337x1176 |
 | Image SHA-256 | `42cd960afb33b1ebc8eb20ebc2b3830b94aa0c78e6eea211485e5a45a1ae8580` |
 
+**Frames (since 0.3.9).** The model draws the whole icon, frame included, from the brief and the references: that is the default (`frame` `auto` or `model`) and the main way. For variety among generic icons a focus icon can also be built from the asset skill's components (`assets/visual_components/focus_backgrounds` and `focus_pieces`): `frame: "<key>"` places a subject on that blank frame's plate, an import with `frame` puts a piece there without a paid call, and `hoi4.image_set` builds about a quarter of a tree's generic icons that way. See [focus icon components](reference.md#focus-icon-components).
+
 ```sh
 hoi4-imagegen call hoi4.image_icon '{"family": "focus", "feature_slug": "gallery", "asset": "steel_gate", "brief": "A heavy riveted steel gate set in a stone fortress wall in a mountain pass, dramatic side light, painted style, 1940s", "approve": true, "idempotency_key": "gallery-focus-1"}'
 ```
