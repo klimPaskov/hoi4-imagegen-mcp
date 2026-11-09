@@ -56,13 +56,15 @@ impl Engine {
         let (mut total_usd, mut made, mut failed) = (0f64, 0usize, 0usize);
         // the dominant colour of each icon follows its subject, never the country, so the set has contrast
         let colours = set::colour_plan(&chosen);
+        // the directly national focuses (a third of the set at most) may carry one national element
+        let national = set::national_plan(&chosen);
         let mut hues: Vec<(String, String)> = Vec::new();
-        for (icon, colour) in chosen.iter().zip(colours.iter()) {
+        for ((icon, colour), national) in chosen.iter().zip(colours.iter()).zip(national.iter().copied()) {
             let mut req = json!({
                 "family": "focus",
                 "feature_slug": feature_slug,
                 "asset": icon.asset,
-                "brief": set::icon_brief_coloured(icon, chosen.len(), colour),
+                "brief": set::icon_brief_coloured(icon, chosen.len(), colour, national),
                 "references": p.references.clone().unwrap_or_default(),
             });
             for (k, v) in [("provider", &p.provider), ("model", &p.model), ("quality", &p.quality), ("style_pack", &p.style_pack)] {
@@ -76,6 +78,7 @@ impl Engine {
                 .and_then(|(_, entries)| entries.first().map(|e| e.name.clone()));
             let mut row = json!({
                 "planned_colour": colour,
+                "national_element": national,
                 "sprite": icon.sprite,
                 "asset": icon.asset,
                 "focuses": icon.focuses,
