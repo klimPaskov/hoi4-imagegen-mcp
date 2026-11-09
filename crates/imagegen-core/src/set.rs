@@ -428,7 +428,7 @@ const SUBJECT_HINTS: &[(&[&str], &str)] = &[
         "Show the aircraft as an emblem sitting inside its frame like the other icons of the set, not a loose cut-out floating on the background.",
     ),
     (&["neutrality", "neutral", "peace"], "Show a dove with an olive branch, scales or a closed gate, not a handshake."),
-    (&["trade", "economy", "bank", "finance"], "Show crates, scales or a 1930s steam cargo ship (not a sailing ship), not a handshake."),
+    (&["trade", "economy", "bank", "finance"], "Show crates being loaded by a harbour crane, with at most the bow of a 1930s steam cargo ship, or scales; not a ship at sea, not a sailing ship, not a handshake."),
     (&["unrest", "protest", "strike", "revolt", "rebel", "uprising", "riot"], "Show raised fists, a burning barricade or a torn banner, not a prison gate."),
 ];
 
@@ -453,9 +453,9 @@ pub const NATIONAL_ELEMENTS: &[(&str, &str)] = &[
 /// The frames a set hands out, as vanilla mixes them: `(key, what the brief says)`. Most are a round medallion with a
 /// wreath; the rest vary the ornament or, now and then, the plaque's shape. All keep vanilla's thin rim.
 pub const FRAMES: &[(&str, &str)] = &[
-    ("laurel", "a round medallion with a gilded laurel wreath curving up both sides"),
+    ("laurel", "a round medallion with a dull bronze laurel wreath curving up both sides"),
     ("oak", "a round medallion with a dark bronze oak-leaf wreath"),
-    ("plain", "a round medallion with a plain thin rim and no wreath, the subject breaking out of the rim at the top"),
+    ("plain", "a round medallion with a heavier dark bronze rim and no wreath, the subject breaking out of the rim at the top but no larger than the other icons' subjects"),
     ("wings", "a round medallion with a pair of spread metal wings at its sides"),
     ("arms", "a round medallion with crossed rifles or sabres behind it"),
     ("shield", "a pointed heraldic shield in place of the disc, with the same thin rim"),
