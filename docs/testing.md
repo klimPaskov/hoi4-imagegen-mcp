@@ -19,6 +19,7 @@ Evidence kinds stay separate. Nothing marked synthetic is provider evidence.
 | L2 audit | `imagegen-mcp/tests/audit.rs` | `hoi4.image_audit` on a synthetic mod: traced uses per family, `GFX-FAMILY-REUSE` as a warning with every use, `GFX-CANVAS-SIZE` from headers, `GFX-CARD-CORNERS` from decoded pixels, missing textures, shine companions, the allowlist (default file and named file), family filter, limit; install refuses a sprite name another family already uses and passes with an allowlist alias or the same family | Synthetic mod, shared engine trace |
 | L3 protocol | `imagegen-mcp/tests/protocol.rs` | The real binary over stdio: handshake, twenty-two tools, each group tool's `family` enum listing exactly its group, schema hashes, argument rejection, the full loop, preview as an image block, cancel from a second request, clean exit | Loopback mock server |
 | L8 ChatGPT login | `imagegen-mcp/tests/plugin_gates.rs`, `provider-chatgpt-login` and its `tests/recorded_replay.rs` | The route registers in local modes and never in hosted mode, even when signed in and named in the project file. PKCE (RFC 7636 vector), token requests, SSE parsing, token refresh, the sign-in flow against a local socket, the credential store, and gpt-6-luna at high effort enforced: another model, a lower effort or a missing report is refused. A moderation refusal is reported as one. Faults are injected into **recorded-real** responses (`tests/fixtures/recorded-real/`, captured 2026-11-01). No request leaves the machine | Recorded-real replay, synthetic fixtures and loopback |
+| L6 macOS keychain (manual, 2026-11-09) | v0.3.8 release binaries on an Apple Silicon Mac, macOS 26.5. `hoi4-imagegen login` stores the tokens in the login Keychain under `hoi4-imagegen.chatgpt-login`, they survive new CLI processes (`doctor`, `call`), and `hoi4-imagegen logout` removes them. One idea_spirit icon was planned, generated on the ChatGPT login, processed, validated (0 errors), looked at, reviewed, installed and audited (0 findings). **Open:** `hoi4-imagegen-mcp` is a second ad-hoc signed program, so macOS asks for the login keychain password on each start and after each update ([#54](https://github.com/klimPaskov/hoi4-imagegen-mcp/issues/54)) | Real credential store and provider, observed by a person |
 
 ## Unavailable, and why
 
@@ -26,7 +27,7 @@ Evidence kinds stay separate. Nothing marked synthetic is provider evidence.
 |---|---|
 | L4 real-provider end to end for OpenAI, Gemini, fal and ComfyUI; recordings for their L1 | No provider key with balance was available. The ChatGPT-login route had one signed-in probe (`docs/evidence/2026-11-01-luna-probe.json`) |
 | L5 in game, including the `_shine` question | Needs a user-operated game session |
-| L6 keychain behaviour on macOS and Linux | CI runs the test suite on Windows, macOS and Linux, but the real credential stores of macOS and Linux were not exercised by a person |
+| L6 keychain behaviour on Linux | CI runs the test suite on Linux, but the real Secret Service was not exercised by a person |
 | L7 HOI4 Factory gates | Hosted-mode tests on the Factory side belong to that repository |
 | L9 model-id drift | A scheduled job comparing the tables with provider model lists; not built |
 
