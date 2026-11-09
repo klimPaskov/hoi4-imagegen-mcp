@@ -402,14 +402,14 @@ pub fn is_national_focus(icon: &SetIcon) -> bool {
 }
 
 /// The kinds of national element an icon may carry, in the order they are handed out so that no two national icons of a
-/// set use the same one (the country's flag in the scene, its colours as a ribbon or sash, its emblem worked into the
-/// subject, its traditional cross or knotwork, a landmark or landscape). Each is part of the scene, never a logo.
+/// set use the same one (the country's flag in the scene, its emblem worked into the subject, its traditional cross or
+/// knotwork, a landmark or landscape, and last its colours as a ribbon or sash, so a set shows its flag colours once). Each is part of the scene, never a logo.
 pub const NATIONAL_ELEMENTS: &[(&str, &str)] = &[
     ("flag", "the country's flag flying as part of the scene (behind the subject, on a mast or on a pole)"),
-    ("sash", "the country's flag colours as a ribbon, sash or banner worked into the wreath or the frame"),
     ("emblem", "the country's national emblem or instrument worked into the subject itself (carved, embroidered or painted on it)"),
     ("knotwork", "the country's traditional cross or knotwork worked into the frame or the subject"),
     ("landmark", "a recognisable landmark, building or landscape of the country in the background of the scene"),
+    ("sash", "the country's flag colours as a ribbon, sash or banner worked into the wreath or the frame"),
 ];
 
 /// Which icons of a set may carry one national element, and which kind: the directly national focuses, at most a third
@@ -778,7 +778,7 @@ mod tests {
         let plan = national_plan(&refs);
         let chosen: Vec<&str> = names.iter().zip(&plan).filter(|(_, y)| y.is_some()).map(|(n, _)| *n).collect();
         let kinds: Vec<&str> = plan.iter().flatten().copied().collect();
-        assert_eq!(kinds, ["flag", "sash", "emblem"], "each national icon gets a different kind");
+        assert_eq!(kinds, ["flag", "emblem", "knotwork"], "each national icon gets a different kind");
         assert!(national_repeats(&plan).is_empty());
         assert_eq!(chosen, ["Irish Neutrality", "Expand the Irish Army", "Gaelic Cultural Revival"]);
         // twelve armies: only a third carry the emblem
