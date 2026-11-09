@@ -487,7 +487,7 @@ pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str, nation
 /// How alike the dominant colours of a generated set are.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Variety {
-    /// `ok`, `too_alike` (over 45 percent of the icons share one bucket, or the set spans fewer than three), `too_green` (more green icons than a sixth of the set, at least one) or `too_few` (fewer than five icons to judge).
+    /// `ok`, `too_alike` (over 45 percent of the icons share one coloured bucket, over 70 percent have no colour beyond metal, or the set spans fewer than three), `too_green` (more green icons than a sixth of the set, at least one) or `too_few` (fewer than five icons to judge).
     pub verdict: &'static str,
     /// Icons measured.
     pub icons: usize,
@@ -547,7 +547,8 @@ pub fn dominant_hue(img: &crate::pixels::Rgba) -> String {
 }
 
 /// Judge a set from `(icon name, dominant hue bucket)` pairs. Five or more icons are judged: the set is `too_alike`
-/// when over 45 percent of them share one bucket (`metal` counts as one), or when the set spans fewer than three.
+/// when over 45 percent of them share one coloured bucket, when over 70 percent have no colour beyond metal (muted
+/// brown, grey and brass icons are fine in a minority, but not as the whole set), or when the set spans fewer than three.
 pub fn judge_variety(items: &[(String, String)]) -> Variety {
     let mut buckets: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (name, bucket) in items {
@@ -555,13 +556,14 @@ pub fn judge_variety(items: &[(String, String)]) -> Variety {
     }
     let n = items.len();
     let distinct_hues = buckets.keys().filter(|k| k.as_str() != "metal").count();
-    let largest = buckets.values().map(Vec::len).max().unwrap_or(0);
+    let largest = buckets.iter().filter(|(k, _)| k.as_str() != "metal").map(|(_, v)| v.len()).max().unwrap_or(0);
+    let metal_share = if n == 0 { 0.0 } else { buckets.get("metal").map_or(0, Vec::len) as f64 / n as f64 };
     let largest_share = if n == 0 { 0.0 } else { (largest as f64 / n as f64 * 1000.0).round() / 1000.0 };
     let green_icons: Vec<String> = ["h3", "h4", "h5"].iter().filter_map(|k| buckets.get(*k)).flatten().cloned().collect();
     let green_cap = (n / 6).max(1);
     let verdict = if n < 5 {
         "too_few"
-    } else if largest_share > 0.45 || buckets.len() < 3 {
+    } else if largest_share > 0.45 || metal_share > 0.7 || buckets.len() < 3 {
         "too_alike"
     } else if green_icons.len() > green_cap {
         "too_green"
