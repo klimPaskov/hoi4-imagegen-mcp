@@ -104,9 +104,9 @@ pub fn is_small_icon(family: Family, canvas: [u32; 2]) -> bool {
 /// one in ten on a diamond, square or rectangular plaque, about one in fifteen on a heraldic shield, and about one in
 /// eight have no frame at all. Frames, colours and compositions vary, so the rule names the range.
 const FOCUS_RULES: &[&str] = &[
-    "The Hearts of Iron IV national focus icon form: one compact emblem like vanilla's. Most are a round medallion: a thin, worn, darkened bronze rim (dull old gold at most, never bright yellow gold) around a flat, muted enamel disc, with a modest laurel or oak wreath, a pair of wings or a short plain ribbon banner around it. A few use a pointed shield, a diamond or a hexagon plaque with the same thin rim. Never a wide, stretched, ornate or picture-frame border, no rivets, filigree or knotwork on the rim.",
-    "The subject is painted the way vanilla paints it: desaturated, nearly monochrome, slightly grimy silver-grey metal or sepia with deep shadows, crisp painted highlights and simple, bold shapes, an illustration and never a photo-like or full-colour painting. One main object, at most one small supporting one, and no landscape or scene behind it. It fills most of the disc and may break out of the rim at the top or bottom.",
-    "Colour comes from the enamel field and the trim, not from the subject: the field is one clearly coloured, deep enamel that suits the focus, never grey or brown like the metal and never a bright or pale sky (slate or sea blue for fleets and air, dark red for revolt and unrest, tan or ochre for land and industry, pale grey-blue for science and intelligence, teal for trade, cream for diplomacy), and green only for farming and forests.",
+    "The Hearts of Iron IV national focus icon form: one compact emblem like vanilla's. Most are a round medallion: a thin, worn bronze or gold rim around a flat, muted enamel disc, with a modest laurel or oak wreath, a pair of wings or a short plain ribbon banner around it. A few use a pointed shield, a diamond or a hexagon plaque with the same thin rim. Never a wide, stretched, ornate or picture-frame border, no rivets, filigree or knotwork on the rim.",
+    "The subject is painted the way vanilla paints it: desaturated, nearly monochrome silver-grey metal or sepia, with crisp painted highlights and simple, bold shapes, an illustration and never a photo-like or full-colour painting. One main object, at most one small supporting one, and no landscape or scene behind it. It fills most of the disc and may break out of the rim at the top or bottom.",
+    "Colour comes from the enamel field and the trim, not from the subject: the field is one muted colour that suits the focus (slate or sea blue for fleets and air, dark red for revolt and unrest, tan or ochre for land and industry, pale grey-blue for science and intelligence, teal for trade, cream for diplomacy), and green only for farming and forests.",
     "No flag, harp or other national emblem unless the focus is about the nation itself (politics, the army, its own identity), and then as one clear element. Any flag is invented, never a real country's flag, unless the brief names that country.",
     "Readable contrast at {w}x{h} pixels: a few large shapes, no fine detail that disappears at that size.",
     "Real transparent background around the emblem: no backdrop behind it.",
@@ -1433,8 +1433,7 @@ mod tests {
                 "national focus icon form: one compact emblem like vanilla's",
                 &[
                     "round medallion",
-                    "thin, worn, darkened bronze rim",
-                    "never bright yellow gold",
+                    "thin, worn bronze or gold rim",
                     "muted enamel disc",
                     "Never a wide, stretched, ornate or picture-frame border",
                     "desaturated, nearly monochrome",
