@@ -68,12 +68,18 @@ impl Engine {
         // the frame of each icon varies as vanilla's do (wreaths, wings, a plain rim, now and then a shield), never
         // the same next to each other; with the caller's own anchors the frame is left to them
         let frames = set::frame_plan(&chosen);
+        // the tree's key focuses (its start, branch hubs, choices, ends) stand out with a frame of their own design
+        let standouts = set::standout_plan(&chosen);
         let own_anchors = p.references.as_ref().is_some_and(|r| !r.is_empty());
         let mut hues: Vec<(String, String)> = Vec::new();
-        for (((icon, colour), national), frame) in chosen.iter().zip(colours.iter()).zip(national.iter().copied()).zip(frames.iter()) {
+        for ((((icon, colour), national), frame), standout) in
+            chosen.iter().zip(colours.iter()).zip(national.iter().copied()).zip(frames.iter()).zip(standouts.iter().copied())
+        {
             let mut brief = set::icon_brief_coloured(icon, chosen.len(), colour, national, tree.nation.as_deref());
-            if !own_anchors {
-                brief.push_str(&set::frame_sentence(frame.0, frame.1));
+            match (own_anchors, standout, icon.key.as_deref()) {
+                (true, _, _) => {}
+                (false, Some(s), Some(why)) => brief.push_str(&set::standout_sentence(s, why)),
+                _ => brief.push_str(&set::frame_sentence(frame.0, frame.1)),
             }
             let mut req = json!({
                 "family": "focus",
@@ -93,7 +99,8 @@ impl Engine {
                 .and_then(|(_, entries)| entries.first().map(|e| e.name.clone()));
             let mut row = json!({
                 "planned_colour": colour,
-                "planned_frame": (!own_anchors).then_some(frame.0),
+                "planned_frame": (!own_anchors).then_some(standout.unwrap_or(frame.0)),
+                "key_focus": icon.key,
                 "national_element": national,
                 "sprite": icon.sprite,
                 "asset": icon.asset,

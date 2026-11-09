@@ -46,6 +46,9 @@ pub struct SetIcon {
     pub texture: Option<String>,
     /// True when that texture exists in the mod or the game.
     pub texture_exists: bool,
+    /// Why this is one of the tree's key focuses (its start, a branch hub, a choice between paths, the end of a
+    /// branch), when it is one. Key focuses get an icon that stands out; the rest keep the quiet vanilla look.
+    pub key: Option<String>,
 }
 
 impl SetIcon {
@@ -240,6 +243,7 @@ pub fn focus_tree_set(root: &Path, game: Option<&Path>, file: &str) -> Result<Fo
                 defined: u.defined,
                 texture: u.texture.as_ref().map(|t| t.path.clone()),
                 texture_exists,
+                key: None,
             }),
         }
     }
@@ -265,6 +269,10 @@ pub fn focus_tree_set(root: &Path, game: Option<&Path>, file: &str) -> Result<Fo
         i.names = i.focuses.iter().filter_map(|f| texts.get(f).cloned()).filter(|t| !t.is_empty()).collect();
         i.descriptions = i.focuses.iter().filter_map(|f| texts.get(&format!("{f}_desc")).cloned()).filter(|t| !t.is_empty()).collect();
     }
+    // the key focuses, from the tree's structure
+    if let Ok(bytes) = crate::fsio::read_limited(&root.join(&file), 16 * 1024 * 1024) {
+        mark_key_icons(&mut icons, &focus_structure(bytes));
+    }
     // the country, so a national element names it
     let nation = tree_tag(&icons).and_then(|tag| {
         let keys: BTreeSet<String> = adjective_keys(&tag).into_iter().collect();
@@ -277,6 +285,204 @@ pub fn focus_tree_set(root: &Path, game: Option<&Path>, file: &str) -> Result<Fo
         adjective_keys(&tag).into_iter().find_map(|k| found.get(&k).cloned()).filter(|a| !a.is_empty())
     });
     Ok(FocusTreeSet { file, dynamic, icons, nation })
+}
+
+/// One focus of a tree file: its id, the focuses it requires and whether it excludes another (a choice of paths).
+#[derive(Debug, Clone, PartialEq)]
+pub struct FocusNode {
+    /// The focus id.
+    pub id: String,
+    /// Every focus named in its `prerequisite` blocks.
+    pub prerequisites: Vec<String>,
+    /// True when it has a `mutually_exclusive` block.
+    pub exclusive: bool,
+}
+
+/// The focuses of a tree file (`focus` and `shared_focus` blocks at any depth), with their links.
+pub fn focus_structure(bytes: Vec<u8>) -> Vec<FocusNode> {
+    use hoi4_syntax::{Block, Document};
+    fn walk(doc: &Document, block: &Block, out: &mut Vec<FocusNode>, depth: usize) {
+        if depth > 6 {
+            return;
+        }
+        for e in block.entries() {
+            let key = doc.key(e).to_ascii_lowercase();
+            let Some(b) = e.value.as_block() else { continue };
+            if key == "focus" || key == "shared_focus" {
+                let mut node = FocusNode { id: String::new(), prerequisites: Vec::new(), exclusive: false };
+                for f in b.entries() {
+                    match doc.key(f).to_ascii_lowercase().as_str() {
+                        "id" => {
+                            if let Some(t) = f.value.as_scalar() {
+                                node.id = doc.text(t).to_string();
+                            }
+                        }
+                        "prerequisite" => {
+                            if let Some(pb) = f.value.as_block() {
+                                for p in pb.entries().filter(|p| doc.key(p).eq_ignore_ascii_case("focus")) {
+                                    if let Some(t) = p.value.as_scalar() {
+                                        node.prerequisites.push(doc.text(t).to_string());
+                                    }
+                                }
+                            }
+                        }
+                        "mutually_exclusive" => node.exclusive = true,
+                        _ => {}
+                    }
+                }
+                if !node.id.is_empty() {
+                    out.push(node);
+                }
+            } else {
+                walk(doc, b, out, depth + 1);
+            }
+        }
+    }
+    let doc = Document::parse(bytes);
+    let mut out = Vec::new();
+    walk(&doc, &doc.root, &mut out, 0);
+    out
+}
+
+/// How much each focus matters to its tree, and why: the tree's start (a root that opens a branch), a hub that opens
+/// two or more branches, a choice between paths (mutually exclusive), the end of a long branch (nothing follows it, at
+/// least three steps deep). Each counts 2; a focus that is none of these scores 0.
+pub fn focus_weight(nodes: &[FocusNode]) -> BTreeMap<String, (u32, Vec<&'static str>)> {
+    let mut dependents: BTreeMap<&str, usize> = BTreeMap::new();
+    for n in nodes {
+        for p in &n.prerequisites {
+            *dependents.entry(p.as_str()).or_default() += 1;
+        }
+    }
+    let by_id: BTreeMap<&str, &FocusNode> = nodes.iter().map(|n| (n.id.as_str(), n)).collect();
+    fn depth<'a>(id: &'a str, by_id: &BTreeMap<&'a str, &'a FocusNode>, seen: &mut Vec<&'a str>) -> usize {
+        if seen.contains(&id) || seen.len() > 64 {
+            return 0;
+        }
+        let Some(n) = by_id.get(id) else { return 0 };
+        seen.push(id);
+        let d = n.prerequisites.iter().map(|p| 1 + depth(p, by_id, seen)).max().unwrap_or(0);
+        seen.pop();
+        d
+    }
+    nodes
+        .iter()
+        .map(|n| {
+            let deps = dependents.get(n.id.as_str()).copied().unwrap_or(0);
+            let mut why = Vec::new();
+            if n.prerequisites.is_empty() && deps >= 1 {
+                why.push("the start of the tree");
+            }
+            if deps >= 2 {
+                why.push("it opens several branches");
+            }
+            if n.exclusive {
+                why.push("a choice between paths");
+            }
+            if deps == 0 && depth(&n.id, &by_id, &mut Vec::new()) >= 3 {
+                why.push("the end of a long branch");
+            }
+            (n.id.clone(), (2 * why.len() as u32, why))
+        })
+        .collect()
+}
+
+/// Mark the key icons of a set: about a quarter of it (at least one in a set of four or more), the icons whose focuses
+/// weigh most in the tree ([`focus_weight`]); a directly national focus wins a tie. Icons whose focuses weigh nothing
+/// are never key, so a flat list of focuses has none.
+pub fn mark_key_icons(icons: &mut [SetIcon], nodes: &[FocusNode]) {
+    let weights = focus_weight(nodes);
+    let mut ranked: Vec<(usize, u32, Vec<&'static str>)> = icons
+        .iter()
+        .enumerate()
+        .filter_map(|(i, icon)| {
+            let best = icon.focuses.iter().filter_map(|f| weights.get(f)).max_by_key(|w| w.0)?;
+            (best.0 >= 2).then(|| (i, best.0 + u32::from(is_national_focus(icon)), best.1.clone()))
+        })
+        .collect();
+    ranked.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    let cap = if icons.len() >= 4 { icons.len().div_ceil(4) } else { 0 };
+    for (i, _, why) in ranked.into_iter().take(cap) {
+        icons[i].key = Some(why.join(", "));
+    }
+}
+
+/// Frames for the key focuses, designed for the subject and free of the vanilla references: `(key, subject words,
+/// what the brief says)`. The ones with no words suit any subject.
+pub const STANDOUT_FRAMES: &[(&str, &[&str], &str)] = &[
+    (
+        "cogwheel",
+        &["industry", "industrial", "factory", "factories", "production", "steel", "machine", "development"],
+        "a heavy bronze cogwheel rim around the disc, with smoke and sparks rising behind it",
+    ),
+    (
+        "anchor",
+        &["navy", "naval", "fleet", "ship", "sea", "harbour", "maritime", "coastal"],
+        "a coiled rope ring with a great anchor behind the disc",
+    ),
+    (
+        "great_wings",
+        &["air", "aircraft", "fighter", "bomber", "pilot", "corps"],
+        "great spread bronze wings sweeping up from behind the disc, with a star at the top",
+    ),
+    (
+        "crest",
+        &["army", "armies", "military", "infantry", "soldier", "defence", "defense"],
+        "a heraldic shield over crossed rifles and a laurel spray, with a banner below (no crown)",
+    ),
+    (
+        "wheat",
+        &["farm", "farms", "agriculture", "harvest", "food", "rural"],
+        "a wreath of golden wheat sheaves around the disc, with a sickle crossed behind it",
+    ),
+    (
+        "torch_arch",
+        &["culture", "cultural", "revival", "education", "science", "scientific", "research", "university", "language"],
+        "a tall arched tablet with a lit torch rising behind it",
+    ),
+    (
+        "chains",
+        &["unrest", "revolt", "revolution", "rebel", "uprising", "strike", "independence", "freedom"],
+        "broken chains wrapped around a cracked rim, with flames behind it",
+    ),
+    (
+        "compass",
+        &["trade", "economy", "diplomacy", "treaty", "alliance", "atlantic"],
+        "a compass-rose star behind the disc, its points reaching past the rim",
+    ),
+    ("seal", &["spy", "intelligence", "secret", "espionage"], "a large wax-seal medallion with ribbon tails"),
+    ("sunburst", &[], "a sunburst of bronze rays behind the disc, framed by a laurel"),
+    ("star_banners", &[], "a heraldic shield topped by a star, with banners hanging at its sides"),
+    ("star", &[], "a large five-pointed star plaque with the subject set on it"),
+];
+
+/// The standout frame of each key icon (`None` for the others): the first unused frame whose words the focus names,
+/// else the first unused one that suits any subject, so no two key icons share a frame where the list allows.
+pub fn standout_plan(icons: &[&SetIcon]) -> Vec<Option<&'static str>> {
+    let mut used: Vec<&str> = Vec::new();
+    icons
+        .iter()
+        .map(|icon| {
+            icon.key.as_ref()?;
+            let names = icon.names.join(" ").to_lowercase();
+            let pick = STANDOUT_FRAMES
+                .iter()
+                .find(|(k, words, _)| !used.contains(k) && words.iter().any(|w| has_word(&names, w)))
+                .or_else(|| STANDOUT_FRAMES.iter().find(|(k, words, _)| !used.contains(k) && words.is_empty()))
+                .or_else(|| STANDOUT_FRAMES.iter().find(|(k, _, _)| !used.contains(k)))
+                .map_or("sunburst", |f| f.0);
+            used.push(pick);
+            Some(pick)
+        })
+        .collect()
+}
+
+/// The brief sentence of a key focus's icon.
+pub fn standout_sentence(frame: &str, why: &str) -> String {
+    let what = STANDOUT_FRAMES.iter().find(|(k, _, _)| *k == frame).map_or("a sunburst of bronze rays behind the disc", |f| f.2);
+    format!(
+        " This is one of the tree's key focuses ({why}), so its icon stands out from the ordinary ones. Frame: {what}. Design this frame yourself for this focus, bolder and more ornate than the plain medallions, and do not copy a frame from the reference images. Give it more presence: dramatic light, and a few vivid colour accents on the subject (this overrides the grey-subject rule), while it stays one compact emblem readable at native size."
+    )
 }
 
 /// The brief of one icon: what the focuses are called and say, and that the icon is one of a set with distinct
@@ -731,6 +937,7 @@ mod tests {
     #[test]
     fn a_brief_names_the_focus_and_the_set() {
         let icon = SetIcon {
+            key: None,
             sprite: "GFX_focus_a".into(),
             asset: "a".into(),
             focuses: vec!["TAG_a".into()],
@@ -747,6 +954,7 @@ mod tests {
 
     fn icon_named(name: &str) -> SetIcon {
         SetIcon {
+            key: None,
             sprite: format!("GFX_focus_{name}"),
             asset: name.to_lowercase().replace(' ', "_"),
             focuses: vec![name.into()],
@@ -892,6 +1100,53 @@ mod tests {
         assert_eq!(tree_tag(&[named("army_reform"), named("navy")]), None);
         assert_eq!(adjective_keys("IRE")[1], "IRE_democratic_ADJ");
         assert!(neutral.contains("not a handshake") && trade.contains("not a handshake"));
+    }
+
+    #[test]
+    fn key_focuses_come_from_the_trees_structure() {
+        let tree = b"focus_tree = {
+            id = t
+            focus = { id = T_root }
+            focus = { id = T_army prerequisite = { focus = T_root } }
+            focus = { id = T_navy prerequisite = { focus = T_army } }
+            focus = { id = T_air prerequisite = { focus = T_army } }
+            focus = { id = T_left prerequisite = { focus = T_root } mutually_exclusive = { focus = T_right } }
+            focus = { id = T_right prerequisite = { focus = T_root } mutually_exclusive = { focus = T_left } }
+            focus = { id = T_end prerequisite = { focus = T_navy focus = T_air } }
+            focus = { id = T_side prerequisite = { focus = T_left } }
+        }"
+        .to_vec();
+        let nodes = focus_structure(tree);
+        assert_eq!(nodes.len(), 8);
+        assert_eq!(nodes[6].prerequisites, ["T_navy", "T_air"]);
+        let w = focus_weight(&nodes);
+        assert_eq!(w["T_root"].0, 4, "start and hub: {:?}", w["T_root"]);
+        assert_eq!(w["T_army"].0, 2);
+        assert_eq!(w["T_left"].0, 2);
+        assert_eq!(w["T_end"].1, ["the end of a long branch"]);
+        assert_eq!(w["T_side"].0, 0);
+        let mut icons: Vec<SetIcon> = ["T_root", "T_army", "T_navy", "T_air", "T_left", "T_right", "T_end", "T_side"]
+            .iter()
+            .map(|f| SetIcon { focuses: vec![f.to_string()], ..icon_named(f) })
+            .collect();
+        mark_key_icons(&mut icons, &nodes);
+        let keys: Vec<&str> = icons.iter().filter(|i| i.key.is_some()).map(|i| i.focuses[0].as_str()).collect();
+        assert_eq!(keys, ["T_root", "T_army"], "a quarter of eight, the heaviest first");
+        // a flat list has no key focuses
+        let mut flat: Vec<SetIcon> = (0..8).map(|i| SetIcon { focuses: vec![format!("F_{i}")], ..icon_named("x") }).collect();
+        mark_key_icons(&mut flat, &focus_structure(b"focus_tree = { focus = { id = F_0 } focus = { id = F_1 } }".to_vec()));
+        assert!(flat.iter().all(|i| i.key.is_none()));
+        // standout frames follow the subject and never repeat
+        let a = SetIcon { key: Some("x".into()), names: vec!["Industrial Development".into()], ..icon_named("a") };
+        let b = SetIcon { key: Some("x".into()), names: vec!["Factory Expansion".into()], ..icon_named("b") };
+        let c = SetIcon { key: Some("x".into()), names: vec!["Irish Neutrality".into()], ..icon_named("c") };
+        let plain = icon_named("d");
+        let plan = standout_plan(&[&a, &plain, &b, &c]);
+        assert_eq!(plan, [Some("cogwheel"), None, Some("sunburst"), Some("star_banners")]);
+        assert!(
+            standout_sentence("anchor", "the start of the tree").contains("great anchor")
+                && standout_sentence("anchor", "x").contains("do not copy a frame")
+        );
     }
 
     #[test]
