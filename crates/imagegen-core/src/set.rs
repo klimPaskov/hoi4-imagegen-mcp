@@ -346,7 +346,8 @@ pub fn focus_structure(bytes: Vec<u8>) -> Vec<FocusNode> {
 
 /// How much each focus matters to its tree, and why: the tree's start (a root that opens a branch), a hub that opens
 /// two or more branches, a choice between paths (mutually exclusive), the end of a long branch (nothing follows it, at
-/// least three steps deep). Each counts 2; a focus that is none of these scores 0.
+/// least three steps deep). Each counts 2, and a hub one more per branch beyond two (up to two more); a focus that
+/// is none of these scores 0.
 pub fn focus_weight(nodes: &[FocusNode]) -> BTreeMap<String, (u32, Vec<&'static str>)> {
     let mut dependents: BTreeMap<&str, usize> = BTreeMap::new();
     for n in nodes {
@@ -382,7 +383,9 @@ pub fn focus_weight(nodes: &[FocusNode]) -> BTreeMap<String, (u32, Vec<&'static 
             if deps == 0 && depth(&n.id, &by_id, &mut Vec::new()) >= 3 {
                 why.push("the end of a long branch");
             }
-            (n.id.clone(), (2 * why.len() as u32, why))
+            // a hub weighs more the more branches it opens (up to two more), so a big hub beats the end of a branch
+            let hub_bonus = if deps >= 2 { (deps as u32 - 2).min(2) } else { 0 };
+            (n.id.clone(), (2 * why.len() as u32 + hub_bonus, why))
         })
         .collect()
 }
@@ -417,7 +420,7 @@ pub const STANDOUT_FRAMES: &[(&str, &[&str], &str)] = &[
     ),
     (
         "anchor",
-        &["navy", "naval", "fleet", "ship", "sea", "harbour", "maritime", "coastal"],
+        &["navy", "naval", "fleet", "ship", "sea", "harbour", "maritime", "coastal", "submarine", "submarines", "flotilla", "flotillas"],
         "a coiled rope ring with a great anchor behind the disc",
     ),
     (
@@ -427,7 +430,7 @@ pub const STANDOUT_FRAMES: &[(&str, &[&str], &str)] = &[
     ),
     (
         "crest",
-        &["army", "armies", "military", "infantry", "soldier", "defence", "defense"],
+        &["army", "armies", "military", "infantry", "soldier", "defence", "defense", "fortify", "fortress", "fortification"],
         "a heraldic shield over crossed rifles and a laurel spray, with a banner below (no crown)",
     ),
     (
@@ -447,17 +450,30 @@ pub const STANDOUT_FRAMES: &[(&str, &[&str], &str)] = &[
     ),
     (
         "compass",
-        &["trade", "economy", "diplomacy", "treaty", "alliance", "atlantic"],
+        &["trade", "economy", "diplomacy", "treaty", "atlantic", "export", "exports"],
         "a compass-rose star behind the disc, its points reaching past the rim",
     ),
-    ("seal", &["spy", "intelligence", "secret", "espionage"], "a large wax-seal medallion with ribbon tails"),
+    ("seal", &["spy", "intelligence", "secret", "espionage", "bureau"], "a large wax-seal medallion with ribbon tails"),
+    (
+        "linked_shields",
+        &["union", "alliance", "cooperation", "pact", "league", "nordic", "federation", "together"],
+        "a ring of small interlinked shields around the disc, joined by a chain",
+    ),
+    (
+        "dam_rays",
+        &["power", "hydroelectric", "electric", "electrification", "energy", "dam"],
+        "a heavy bronze rim with lightning-bolt rays bursting out of it",
+    ),
     ("sunburst", &[], "a sunburst of bronze rays behind the disc, framed by a laurel"),
     ("star_banners", &[], "a heraldic shield topped by a star, with banners hanging at its sides"),
     ("star", &[], "a large five-pointed star plaque with the subject set on it"),
+    ("double_wreath", &[], "a double wreath of laurel and oak with two crossed banners behind the disc"),
+    ("radiant_shield", &[], "a pointed heraldic shield with bronze rays fanning out behind it"),
 ];
 
 /// The standout frame of each key icon (`None` for the others): the first unused frame whose words the focus names,
-/// else the first unused one that suits any subject, so no two key icons share a frame where the list allows.
+/// else the first unused one that suits any subject (never one made for another subject, so a union never gets a
+/// cogwheel), so no two key icons share a frame where the list allows.
 pub fn standout_plan(icons: &[&SetIcon]) -> Vec<Option<&'static str>> {
     let mut used: Vec<&str> = Vec::new();
     icons
@@ -469,7 +485,6 @@ pub fn standout_plan(icons: &[&SetIcon]) -> Vec<Option<&'static str>> {
                 .iter()
                 .find(|(k, words, _)| !used.contains(k) && words.iter().any(|w| has_word(&names, w)))
                 .or_else(|| STANDOUT_FRAMES.iter().find(|(k, words, _)| !used.contains(k) && words.is_empty()))
-                .or_else(|| STANDOUT_FRAMES.iter().find(|(k, _, _)| !used.contains(k)))
                 .map_or("sunburst", |f| f.0);
             used.push(pick);
             Some(pick)
@@ -1120,7 +1135,7 @@ mod tests {
         assert_eq!(nodes.len(), 8);
         assert_eq!(nodes[6].prerequisites, ["T_navy", "T_air"]);
         let w = focus_weight(&nodes);
-        assert_eq!(w["T_root"].0, 4, "start and hub: {:?}", w["T_root"]);
+        assert_eq!(w["T_root"].0, 5, "start, hub, and a third branch: {:?}", w["T_root"]);
         assert_eq!(w["T_army"].0, 2);
         assert_eq!(w["T_left"].0, 2);
         assert_eq!(w["T_end"].1, ["the end of a long branch"]);
