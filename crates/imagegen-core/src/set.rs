@@ -373,26 +373,17 @@ const NATIONAL_WORDS: &[&str] = &[
 ];
 /// What to draw for a subject that models tend to get wrong, by a word in the focus name (the first match counts).
 const SUBJECT_HINTS: &[(&[&str], &str)] = &[
-    (
-        &["peat", "turf", "bog"],
-        "Draw peat cutting: a brown bog, a turf-cutting spade and neat stacks of cut turf. No coal, no mine cart, no factory.",
-    ),
+    (&["peat", "turf", "bog"], "Show peat cutting: a bog, a turf-cutting spade and stacks of cut turf, not coal and not a mine."),
     (
         &["spy", "spies", "intelligence", "espionage"],
-        "Draw a fedora hat above a large keyhole, nothing else. Not a wallet, a notebook, an envelope or a letter, no machinery.",
+        "Show a spy: a fedora, a keyhole or a magnifying glass over a secret document, not a wallet or a notebook.",
     ),
-    (&["neutrality", "neutral", "peace"], "Draw a dove with an olive branch, or a closed gate. Not a handshake."),
-    (&["treaty", "treaties", "diplomacy", "alliance"], "Draw one handshake, nothing else."),
-    (&["trade", "economy", "bank", "finance"], "Draw stacked crates beside a pair of scales, or a cargo ship. Not a handshake."),
+    (&["neutrality", "neutral", "peace"], "Show a dove with an olive branch, scales or a closed gate, not a handshake."),
+    (&["trade", "economy", "bank", "finance"], "Show crates, scales or a cargo ship, not a handshake."),
     (
         &["unrest", "protest", "strike", "revolt", "rebel", "uprising", "riot"],
-        "Draw a few big shapes only: one raised fist before a burning barricade. Not a crowd, not a prison gate or a jail.",
+        "Show raised fists, a burning barricade or a torn banner, not a prison gate.",
     ),
-    (
-        &["industry", "industrial", "factory", "factories"],
-        "Draw one large, simple factory with one chimney: no tiny windows, no pipes, no extra buildings.",
-    ),
-    (&["science", "research", "scientific", "university"], "Draw one microscope, large and simple, nothing else: no building, no book."),
 ];
 
 /// True when the focus is directly national (by its name): politics, the army, culture or the nation's own identity.
@@ -503,7 +494,6 @@ pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
 /// element only where the focus is directly national (`national` names its kind), none elsewhere.
 pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str, national: Option<&str>) -> String {
     let mut brief = icon_brief(icon, set_size);
-    brief.push_str(" Subjects may be framed or free-standing, as in the vanilla national focus icons; the frame varies from icon to icon and the subject may break out of it. One clear main subject.");
     brief.push_str(&format!(" Colour: this icon is mainly {colour}, as its subject calls for."));
     if !GREEN_COLOURS.contains(&colour) {
         brief.push_str(" Green is not a main colour of this icon (a national element may use its own colours).");
@@ -692,7 +682,7 @@ mod tests {
         );
         assert!(!is_national_focus(&icons[0]));
         let peat = SetIcon { names: vec!["Peat and Coal for Power".into()], ..icon_named("peat") };
-        assert!(icon_brief_coloured(&peat, 6, "earth brown and tan", None).contains("No coal, no mine cart"));
+        assert!(icon_brief_coloured(&peat, 6, "earth brown and tan", None).contains("not coal and not a mine"));
     }
 
     #[test]
@@ -790,7 +780,7 @@ mod tests {
         // hints keep the subjects apart: one handshake only
         let neutral = icon_brief_coloured(&icons[0], 12, "cream and soft grey", Some("flag"));
         let trade = icon_brief_coloured(&icons[11], 12, "gold and dark teal", None);
-        assert!(neutral.contains("Not a handshake") && trade.contains("Not a handshake") && !trade.contains("Draw one handshake"));
+        assert!(neutral.contains("not a handshake") && trade.contains("not a handshake"));
     }
 
     #[test]
