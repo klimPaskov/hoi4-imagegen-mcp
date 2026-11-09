@@ -373,17 +373,25 @@ const NATIONAL_WORDS: &[&str] = &[
 ];
 /// What to draw for a subject that models tend to get wrong, by a word in the focus name (the first match counts).
 const SUBJECT_HINTS: &[(&[&str], &str)] = &[
-    (&["peat", "turf", "bog"], "Show peat cutting: a bog, a turf-cutting spade and stacks of cut turf, not coal and not a mine."),
+    (
+        &["peat", "turf", "bog"],
+        "Show peat cutting as a bog with neat stacks of cut turf, not coal and not a mine, and no spade or other tool.",
+    ),
     (
         &["spy", "spies", "intelligence", "espionage"],
-        "Show a spy: a fedora, a keyhole or a magnifying glass over a secret document, not a wallet or a notebook.",
+        "Show a closed folder with a lock and a key, or one eye in a keyhole. Not a detective, not a man in a hat or coat, no magnifying glass, not a wallet.",
+    ),
+    (
+        &["army", "armies", "military", "infantry", "conscript", "soldier", "soldiers"],
+        "Paint it in the stylised painted look of Hearts of Iron IV icons, an illustration and not a realistic photo-like picture: a helmet and rifle, or one bold soldier figure, never a realistic crowd of soldiers.",
+    ),
+    (
+        &["air", "aircraft", "fighter", "pilot", "airfield", "airborne"],
+        "Show the aircraft as an emblem sitting inside its frame like the other icons of the set, not a loose cut-out floating on the background.",
     ),
     (&["neutrality", "neutral", "peace"], "Show a dove with an olive branch, scales or a closed gate, not a handshake."),
     (&["trade", "economy", "bank", "finance"], "Show crates, scales or a cargo ship, not a handshake."),
-    (
-        &["unrest", "protest", "strike", "revolt", "rebel", "uprising", "riot"],
-        "Show raised fists, a burning barricade or a torn banner, not a prison gate.",
-    ),
+    (&["unrest", "protest", "strike", "revolt", "rebel", "uprising", "riot"], "Show raised fists, a burning barricade or a torn banner, not a prison gate."),
 ];
 
 /// True when the focus is directly national (by its name): politics, the army, culture or the nation's own identity.
