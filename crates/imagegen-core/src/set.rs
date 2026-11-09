@@ -492,6 +492,28 @@ pub fn standout_plan(icons: &[&SetIcon]) -> Vec<Option<&'static str>> {
         .collect()
 }
 
+/// Focus words for which hands (a handshake, clasped hands) are the natural subject.
+const HAND_WORDS: &[&str] =
+    &["union", "alliance", "allies", "cooperation", "pact", "treaty", "treaties", "friendship", "agreement", "partnership", "solidarity"];
+
+/// Which icon of a set may show hands: the first whose focus names an alliance, a union, a pact or the like, and no
+/// other. A set of twenty drew clasped hands three times (a union, a cooperation and a welfare home, 2026-11-09).
+pub fn hands_plan(icons: &[&SetIcon]) -> Vec<bool> {
+    let mut given = false;
+    icons
+        .iter()
+        .map(|icon| {
+            let names = icon.names.join(" ").to_lowercase();
+            let may = !given && HAND_WORDS.iter().any(|w| has_word(&names, w));
+            given |= may;
+            may
+        })
+        .collect()
+}
+
+/// The brief sentence for an icon that may not show hands.
+pub const NO_HANDS: &str = " Show no hands: no handshake and no clasped, open or cupped hands (at most one icon of the set shows hands).";
+
 /// The brief sentence of a key focus's icon.
 pub fn standout_sentence(frame: &str, why: &str) -> String {
     let what = STANDOUT_FRAMES.iter().find(|(k, _, _)| *k == frame).map_or("a sunburst of bronze rays behind the disc", |f| f.2);
@@ -1162,6 +1184,16 @@ mod tests {
             standout_sentence("anchor", "the start of the tree").contains("great anchor")
                 && standout_sentence("anchor", "x").contains("do not copy a frame")
         );
+    }
+
+    #[test]
+    fn hands_go_to_one_icon_at_most() {
+        let names = ["The People's Home", "Nordic Defence Union", "Social Welfare", "Nordic Cooperation", "Trade Pact"];
+        let icons: Vec<SetIcon> = names.iter().map(|n| icon_named(n)).collect();
+        let refs: Vec<&SetIcon> = icons.iter().collect();
+        assert_eq!(hands_plan(&refs), [false, true, false, false, false]);
+        let none: Vec<SetIcon> = ["Navy", "Industry"].iter().map(|n| icon_named(n)).collect();
+        assert!(hands_plan(&none.iter().collect::<Vec<_>>()).iter().all(|h| !h));
     }
 
     #[test]

@@ -70,16 +70,21 @@ impl Engine {
         let frames = set::frame_plan(&chosen);
         // the tree's key focuses (its start, branch hubs, choices, ends) stand out with a frame of their own design
         let standouts = set::standout_plan(&chosen);
+        // hands (a handshake, clasped hands) on one icon at most: the first alliance, union or pact
+        let hands = set::hands_plan(&chosen);
         let own_anchors = p.references.as_ref().is_some_and(|r| !r.is_empty());
         let mut hues: Vec<(String, String)> = Vec::new();
-        for ((((icon, colour), national), frame), standout) in
-            chosen.iter().zip(colours.iter()).zip(national.iter().copied()).zip(frames.iter()).zip(standouts.iter().copied())
+        for (n, ((((icon, colour), national), frame), standout)) in
+            chosen.iter().zip(colours.iter()).zip(national.iter().copied()).zip(frames.iter()).zip(standouts.iter().copied()).enumerate()
         {
             let mut brief = set::icon_brief_coloured(icon, chosen.len(), colour, national, tree.nation.as_deref());
             match (own_anchors, standout, icon.key.as_deref()) {
                 (true, _, _) => {}
                 (false, Some(s), Some(why)) => brief.push_str(&set::standout_sentence(s, why)),
                 _ => brief.push_str(&set::frame_sentence(frame.0, frame.1)),
+            }
+            if !hands.get(n).copied().unwrap_or(false) {
+                brief.push_str(set::NO_HANDS);
             }
             let mut req = json!({
                 "family": "focus",
@@ -101,6 +106,7 @@ impl Engine {
                 "planned_colour": colour,
                 "planned_frame": (!own_anchors).then_some(standout.unwrap_or(frame.0)),
                 "key_focus": icon.key,
+                "may_show_hands": hands.get(n).copied().unwrap_or(false),
                 "national_element": national,
                 "sprite": icon.sprite,
                 "asset": icon.asset,
