@@ -15,6 +15,12 @@ use crate::api::{GenerateParams, SetParams};
 
 use super::{EResult, Engine, EngineError};
 
+/// Vanilla national focus icons that every icon of a set sends as style anchors when the caller names none and no
+/// style pack applies, so the whole set shares one frame family (a round dark plaque ringed by a gold laurel wreath) and
+/// one finish instead of each icon copying a different automatic pick. A file the game folder lacks is skipped.
+const SET_STYLE_ANCHORS: &[&str] =
+    &["focus_AST_its_fight_work_or_perish", "focus_FIN_motti_tactics", "focus_JAP_uplift_ainu_revolution_theory", "focus_mex_privatisation"];
+
 /// The feature slug of a set when the caller names none: the tree file's stem as snake_case.
 fn slug_of(file: &str) -> String {
     let stem = file.rsplit('/').next().unwrap_or(file);
@@ -52,12 +58,28 @@ impl Engine {
             ));
         }
         let profile = self.family_profile(Family::Focus)?.clone();
+        // one frame family for the whole set: the caller's anchors, else a pack's, else a few vanilla national focus icons
+        let anchors: Value = match &p.references {
+            Some(r) if !r.is_empty() => json!(r),
+            _ if self.choose_pack(p.style_pack.as_deref())?.is_some() => json!([]),
+            _ => {
+                let game = self.game_dir();
+                let found: Vec<Value> = SET_STYLE_ANCHORS
+                    .iter()
+                    .filter_map(|n| game.as_ref().map(|g| g.join("gfx/interface/goals").join(format!("{n}.dds"))))
+                    .filter(|path| path.is_file())
+                    .map(|path| json!({"path": path.to_string_lossy(), "role": "style_anchor"}))
+                    .collect();
+                json!(found)
+            }
+        };
         let mut icons = Vec::new();
         let (mut total_usd, mut made, mut failed) = (0f64, 0usize, 0usize);
         // the dominant colour of each icon follows its subject, never the country, so the set has contrast
         let colours = set::colour_plan(&chosen);
         // the directly national focuses (a third of the set at most) may carry one national element
         let national = set::national_plan(&chosen);
+        let national_plan = national.clone();
         let mut hues: Vec<(String, String)> = Vec::new();
         for ((icon, colour), national) in chosen.iter().zip(colours.iter()).zip(national.iter().copied()) {
             let mut req = json!({
@@ -65,7 +87,7 @@ impl Engine {
                 "feature_slug": feature_slug,
                 "asset": icon.asset,
                 "brief": set::icon_brief_coloured(icon, chosen.len(), colour, national),
-                "references": p.references.clone().unwrap_or_default(),
+                "references": anchors,
             });
             for (k, v) in [("provider", &p.provider), ("model", &p.model), ("quality", &p.quality), ("style_pack", &p.style_pack)] {
                 if let Some(v) = v {
@@ -139,7 +161,8 @@ impl Engine {
             "dynamic": tree.dynamic,
             "shared_sprites": shared.iter().map(|i| json!({"sprite": i.sprite, "focuses": i.focuses})).collect::<Vec<_>>(),
             "estimate_usd": (total_usd * 10000.0).round() / 10000.0,
-            "style": {"style_pack": p.style_pack, "references": p.references, "provider": p.provider, "model": p.model, "quality": p.quality},
+            "style": {"style_pack": p.style_pack, "references": anchors, "provider": p.provider, "model": p.model, "quality": p.quality},
+            "national_repeats": set::national_repeats(&national_plan),
             "variety": if generate { json!(set::judge_variety(&hues)) } else { Value::Null },
             "icons": icons,
             "next": if generate {
