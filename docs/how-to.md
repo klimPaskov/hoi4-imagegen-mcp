@@ -212,7 +212,7 @@ A style pack gives every family the mod restyles its own references, look line, 
 
    `focus:3=a2` puts alternate 2 in place of pick 3. `focus:3=gfx/interface/goals/GER/x.dds` takes a file by its path in the mod. `--drop` leaves a pick out. `--families focus,decision` derives only those families and keeps the rest of the pack. `--picks 12` takes more references per family (at most 16). Agents pass `swap`, `drop`, `families`, `picks` and `replace` to `pack_derive`.
 
-4. **Read the look lines.** Each family's `look` is a draft from the measurements, for example `saturated colour led by red and azure, a cut-out subject on a transparent background, square 170x150 shape`. It names colour, brightness, coverage, texture and shape, but not the subject matter. Add what the sheet shows in `pack.toml`, for TFR's focus icons "cut-out modern news photo collage with flags, red and electric blue glow".
+4. **Read the look lines.** Each family's `look` is a draft from the measurements, for example `saturated colour led by red and azure, a cut-out subject on a transparent background, square 170x150 shape`. It names colour, brightness, coverage, texture and shape, and since 0.4.0 the finish: a soft glow or a dark drop shadow around a cut-out, a thin white or black frame, and a dark vignette with its colour. It does not name the subject matter or the medium. Add what the sheet shows in `pack.toml`, for TFR's focus icons "cut-out modern news photo collage with flags".
 
 5. **Check and use it.** `hoi4-imagegen pack validate tfr` checks the hashes and switches and how well each family's references agree. Then name the pack in a plan (`"style_pack": "tfr"`, or `--style-pack tfr`), or make it the project default:
 

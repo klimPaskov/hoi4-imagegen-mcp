@@ -371,6 +371,7 @@ pub fn sample<T: Clone>(items: &[T], n: usize) -> Vec<T> {
 
 /// Simple measured figures of an image. Saturation and value are over opaque pixels (alpha over 128).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Stats {
     /// Mean saturation.
     pub saturation: f64,
@@ -386,6 +387,105 @@ pub struct Stats {
     pub flat_share: f64,
     /// Saturation-weighted hue histogram in 12 bins of 30 degrees, summing to 1 (0 for grey art).
     pub hue: [f64; 12],
+    /// The finish around a subject and at a picture's edge, see [`Finish`].
+    pub finish: Finish,
+}
+
+/// The finish of an image that the palette figures cannot see: what lies around a cut-out subject (a drop shadow or a
+/// glow is a band of partly transparent pixels, dark or light) and what lies at the edge of a filled picture (a thin
+/// frame is a one-pixel ring of one even tone that differs from the picture inside it, a vignette is corners darker
+/// than the centre). Measured on the image itself, sampled to at most about 40,000 pixels for the soft band.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Finish {
+    /// Share of the canvas whose alpha is partly transparent (16 to 230).
+    pub soft: f64,
+    /// Share of those soft pixels that are dark (value under 0.3): a drop shadow.
+    pub soft_dark: f64,
+    /// Share of those soft pixels that are light (value over 0.7): a glow.
+    pub soft_light: f64,
+    /// Mean value of the outermost one-pixel ring (opaque pixels only).
+    pub border_value: f64,
+    /// Spread of the value on that ring.
+    pub border_std: f64,
+    /// Mean value of the ring three to five pixels in.
+    pub inner_value: f64,
+    /// Mean value of the four corner patches (an eighth of each side) over the mean value of the centre (the middle
+    /// two fifths), opaque pixels only. Under 1 when the corners are darker.
+    pub corner_ratio: f64,
+    /// Mean colour of the corner patches, 0 to 1.
+    pub corner_rgb: [f64; 3],
+}
+
+/// Measure the [`Finish`] of an image.
+pub fn finish(img: &Rgba) -> Finish {
+    let (w, h) = (img.width as usize, img.height as usize);
+    if w == 0 || h == 0 {
+        return Finish::default();
+    }
+    let px = |x: usize, y: usize| {
+        let i = (y * w + x) * 4;
+        [img.data[i], img.data[i + 1], img.data[i + 2], img.data[i + 3]]
+    };
+    let val = |p: [u8; 4]| f64::from(p[0].max(p[1]).max(p[2])) / 255.0;
+    let mut f = Finish::default();
+    // the soft band
+    let step = ((w * h) / 40_000).max(1);
+    let (mut all, mut soft, mut dark, mut light) = (0usize, 0usize, 0usize, 0usize);
+    for p in img.data.chunks_exact(4).step_by(step) {
+        all += 1;
+        if (16..=230).contains(&p[3]) {
+            soft += 1;
+            let v = val([p[0], p[1], p[2], p[3]]);
+            if v < 0.3 {
+                dark += 1;
+            } else if v > 0.7 {
+                light += 1;
+            }
+        }
+    }
+    f.soft = soft as f64 / all.max(1) as f64;
+    if soft > 0 {
+        f.soft_dark = dark as f64 / soft as f64;
+        f.soft_light = light as f64 / soft as f64;
+    }
+    // the rings and the corners, opaque pixels only
+    let (mut ring, mut inner, mut corner, mut centre) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut rgb = [0f64; 3];
+    let (cw, ch) = ((w / 8).max(1), (h / 8).max(1));
+    for y in 0..h {
+        for x in 0..w {
+            let p = px(x, y);
+            if p[3] <= 200 {
+                continue;
+            }
+            let v = val(p);
+            let d = x.min(y).min(w - 1 - x).min(h - 1 - y);
+            if d == 0 {
+                ring.push(v);
+            } else if (3..=5).contains(&d) {
+                inner.push(v);
+            }
+            if (x < cw || x >= w - cw) && (y < ch || y >= h - ch) {
+                corner.push(v);
+                for (k, slot) in rgb.iter_mut().enumerate() {
+                    *slot += f64::from(p[k]) / 255.0;
+                }
+            } else if (w * 3 / 10..w * 7 / 10).contains(&x) && (h * 3 / 10..h * 7 / 10).contains(&y) {
+                centre.push(v);
+            }
+        }
+    }
+    let (rm, rs) = mean_std(&ring);
+    f.border_value = rm;
+    f.border_std = rs;
+    f.inner_value = mean_std(&inner).0;
+    let (cm, mm) = (mean_std(&corner).0, mean_std(&centre).0);
+    f.corner_ratio = if centre.is_empty() || corner.is_empty() || mm <= 1e-6 { 1.0 } else { cm / mm };
+    if !corner.is_empty() {
+        f.corner_rgb = rgb.map(|c| c / corner.len() as f64);
+    }
+    f
 }
 
 /// One measured image.
@@ -530,7 +630,7 @@ pub fn measure(img: &Rgba) -> Option<(u64, Vec<f32>, Stats)> {
     let mut counts: Vec<u32> = colours.into_values().collect();
     counts.sort_unstable_by(|a, b| b.cmp(a));
     let flat_share = if seen > 0 { f64::from(counts.iter().take(6).sum::<u32>()) / f64::from(seen) } else { 0.0 };
-    let stats = Stats { saturation: s_mean, value: v_mean, grey_share, opaque: opaque_share, edges, flat_share, hue };
+    let stats = Stats { saturation: s_mean, value: v_mean, grey_share, opaque: opaque_share, edges, flat_share, hue, finish: finish(img) };
     debug_assert_eq!(style.len(), STYLE_DIMS);
     Some((dhash(img), style, stats))
 }
@@ -558,7 +658,7 @@ pub fn vanilla_like(copies: usize, measured: usize, palette_distinctness: Option
 
 /// Encode measured files for the cache (a small binary format, version 1).
 pub fn encode_cache(rows: &[Measured]) -> Vec<u8> {
-    let mut out = b"HDV1".to_vec();
+    let mut out = CACHE_MAGIC.to_vec();
     out.extend((rows.len() as u32).to_le_bytes());
     for m in rows {
         let rel = m.rel.as_bytes();
@@ -573,12 +673,22 @@ pub fn encode_cache(rows: &[Measured]) -> Vec<u8> {
             out.extend(x.to_le_bytes());
         }
         let st = &m.stats;
-        for x in [st.saturation, st.value, st.grey_share, st.opaque, st.edges, st.flat_share].iter().chain(st.hue.iter()) {
+        let fi = &st.finish;
+        let finish = [fi.soft, fi.soft_dark, fi.soft_light, fi.border_value, fi.border_std, fi.inner_value, fi.corner_ratio];
+        for x in [st.saturation, st.value, st.grey_share, st.opaque, st.edges, st.flat_share]
+            .iter()
+            .chain(st.hue.iter())
+            .chain(finish.iter())
+            .chain(fi.corner_rgb.iter())
+        {
             out.extend(x.to_le_bytes());
         }
     }
     out
 }
+
+/// The cache format: `HDV2` since the [`Finish`] figures (an `HDV1` cache is measured again).
+const CACHE_MAGIC: &[u8; 4] = b"HDV2";
 
 /// Decode [`encode_cache`]. `None` for anything malformed.
 pub fn decode_cache(bytes: &[u8]) -> Option<Vec<Measured>> {
@@ -588,7 +698,7 @@ pub fn decode_cache(bytes: &[u8]) -> Option<Vec<Measured>> {
         at += n;
         Some(s)
     };
-    if take(4)? != b"HDV1" {
+    if take(4)? != CACHE_MAGIC {
         return None;
     }
     let u32_of = |b: &[u8]| u32::from_le_bytes(b.try_into().unwrap_or([0; 4]));
@@ -607,13 +717,23 @@ pub fn decode_cache(bytes: &[u8]) -> Option<Vec<Measured>> {
                 style.push(f32::from_le_bytes(take(4)?.try_into().ok()?));
             }
         }
-        let mut f = [0f64; 18];
+        let mut f = [0f64; 28];
         for x in &mut f {
             *x = f64::from_le_bytes(take(8)?.try_into().ok()?);
         }
         let mut hue = [0f64; 12];
-        hue.copy_from_slice(&f[6..]);
-        let stats = Stats { saturation: f[0], value: f[1], grey_share: f[2], opaque: f[3], edges: f[4], flat_share: f[5], hue };
+        hue.copy_from_slice(&f[6..18]);
+        let finish = Finish {
+            soft: f[18],
+            soft_dark: f[19],
+            soft_light: f[20],
+            border_value: f[21],
+            border_std: f[22],
+            inner_value: f[23],
+            corner_ratio: f[24],
+            corner_rgb: [f[25], f[26], f[27]],
+        };
+        let stats = Stats { saturation: f[0], value: f[1], grey_share: f[2], opaque: f[3], edges: f[4], flat_share: f[5], hue, finish };
         out.push(Measured { rel, size, sha256, dhash, style, stats });
     }
     (at == bytes.len()).then_some(out)
@@ -917,6 +1037,7 @@ pub fn pick_diverse(measured: &[Measured], ranking: &Ranking, eligible: &[usize]
 
 /// Medians of the figures over a set.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Figures {
     /// Files measured.
     pub files: usize,
@@ -936,6 +1057,8 @@ pub struct Figures {
     pub hue: Option<(usize, f64)>,
     /// The second strongest hue bin that is not next to the first, and its share.
     pub hue2: Option<(usize, f64)>,
+    /// Medians of the [`Finish`] figures (the corner colour per channel).
+    pub finish: Finish,
 }
 
 fn round3(x: f64) -> f64 {
@@ -965,6 +1088,16 @@ pub fn figures(rows: &[&Stats]) -> Figures {
         flat_share: med(|s| s.flat_share),
         hue: top,
         hue2,
+        finish: Finish {
+            soft: med(|s| s.finish.soft),
+            soft_dark: med(|s| s.finish.soft_dark),
+            soft_light: med(|s| s.finish.soft_light),
+            border_value: med(|s| s.finish.border_value),
+            border_std: med(|s| s.finish.border_std),
+            inner_value: med(|s| s.finish.inner_value),
+            corner_ratio: med(|s| s.finish.corner_ratio),
+            corner_rgb: [med(|s| s.finish.corner_rgb[0]), med(|s| s.finish.corner_rgb[1]), med(|s| s.finish.corner_rgb[2])],
+        },
     }
 }
 
@@ -1081,8 +1214,10 @@ pub fn draft_look(m: &Figures, v: Option<&Figures>, canvas: Option<[u32; 2]>, va
     }
     if m.opaque >= 0.95 {
         parts.push("fills the whole canvas edge to edge".into());
+        parts.extend(edge_finish(&m.finish));
     } else if m.opaque <= 0.6 {
         parts.push("a cut-out subject on a transparent background".into());
+        parts.extend(cutout_finish(&m.finish));
     }
     if m.flat_share >= 0.8 {
         parts.push("flat colour areas with crisp edges and no painted shading".into());
@@ -1111,6 +1246,56 @@ pub fn draft_look(m: &Figures, v: Option<&Figures>, canvas: Option<[u32; 2]>, va
         }
     }
     parts.join(", ")
+}
+
+/// Most soft-band shares need this much of the canvas partly transparent before the band counts as a shadow or a glow.
+pub const SOFT_BAND_MIN: f64 = 0.03;
+/// Share of the soft band that must be dark (or light) for a drop shadow (or a glow).
+pub const SOFT_TONE_MIN: f64 = 0.35;
+/// Largest spread of value on the outer ring for a thin frame, and the least difference from the picture inside it.
+pub const FRAME_STD_MAX: f64 = 0.08;
+/// See [`FRAME_STD_MAX`].
+pub const FRAME_STEP_MIN: f64 = 0.15;
+/// Corner to centre value ratio at or below which the corners read as a vignette.
+pub const VIGNETTE_RATIO_MAX: f64 = 0.6;
+
+/// What lies around a cut-out subject: a dark drop shadow, a glow, or both.
+pub fn cutout_finish(f: &Finish) -> Vec<String> {
+    let mut out = Vec::new();
+    if f.soft >= SOFT_BAND_MIN {
+        if f.soft_light >= SOFT_TONE_MIN {
+            out.push("a soft glow".to_string());
+        }
+        if f.soft_dark >= SOFT_TONE_MIN {
+            out.push("a dark drop shadow".to_string());
+        }
+    }
+    out
+}
+
+/// What lies at the edge of a filled picture: a thin white or black frame, and a dark vignette, named by its colour
+/// when the corners are clearly tinted.
+pub fn edge_finish(f: &Finish) -> Vec<String> {
+    let mut out = Vec::new();
+    if f.border_std <= FRAME_STD_MAX {
+        if f.border_value >= 0.8 && f.border_value - f.inner_value >= FRAME_STEP_MIN {
+            out.push("a thin white frame".to_string());
+        } else if f.border_value <= 0.15 && f.inner_value - f.border_value >= FRAME_STEP_MIN {
+            out.push("a thin black frame".to_string());
+        }
+    }
+    if f.corner_ratio <= VIGNETTE_RATIO_MAX {
+        let [r, g, b] = f.corner_rgb;
+        let (mx, mn) = (r.max(g).max(b), r.min(g).min(b));
+        let tinted = mx > 0.12 && (mx - mn) / mx >= 0.25;
+        out.push(if tinted {
+            let (h, _, _) = hsv(r, g, b);
+            format!("a dark {} vignette", hue_name(((h * 12.0) as usize).min(11)))
+        } else {
+            "a dark vignette".to_string()
+        });
+    }
+    out
 }
 
 /// Draft form lines for a switch that needs one (the vanilla rules would still ask for vanilla's form).
@@ -1390,6 +1575,68 @@ mod tests {
         assert_ne!(a[1], a[2]);
     }
 
+    /// The finish the TFR pack's look lines had to name by hand: a cut-out with a glow and a drop shadow (its focus
+    /// icons), a photograph with a thin white frame (its decision category pictures) and a portrait on a coloured
+    /// vignette (its leader portraits). Synthetic images, so each figure is known.
+    #[test]
+    fn the_draft_names_shadows_glows_frames_and_vignettes() {
+        // a cut-out: an opaque square, a light halo above it and a dark shadow below
+        let mut cut = Rgba::new(100, 100);
+        for y in 0..100u32 {
+            for x in 0..100u32 {
+                let p = if (30..70).contains(&x) && (30..70).contains(&y) {
+                    [200, 60, 40, 255]
+                } else if (26..74).contains(&x) && (22..30).contains(&y) {
+                    [240, 240, 220, 120]
+                } else if (26..78).contains(&x) && (70..80).contains(&y) {
+                    [10, 10, 10, 140]
+                } else {
+                    [0, 0, 0, 0]
+                };
+                cut.set_px(x, y, p);
+            }
+        }
+        let f = finish(&cut);
+        assert!(f.soft >= SOFT_BAND_MIN && f.soft_dark >= SOFT_TONE_MIN && f.soft_light >= SOFT_TONE_MIN, "{f:?}");
+        assert_eq!(cutout_finish(&f), vec!["a soft glow", "a dark drop shadow"]);
+        // a photograph with a white one-pixel frame
+        let mut framed = Rgba::new(102, 101);
+        for y in 0..101u32 {
+            for x in 0..102u32 {
+                let edge = x == 0 || y == 0 || x == 101 || y == 100;
+                framed.set_px(x, y, if edge { [250, 250, 250, 255] } else { [90, 110, 130, 255] });
+            }
+        }
+        assert_eq!(edge_finish(&finish(&framed)), vec!["a thin white frame"]);
+        // a portrait lit in the middle with purple corners
+        let mut vig = Rgba::new(156, 210);
+        for y in 0..210u32 {
+            for x in 0..156u32 {
+                let d = ((f64::from(x) - 78.0) / 78.0).hypot((f64::from(y) - 105.0) / 105.0);
+                let k = (1.0 - 0.75 * d.min(1.2)).max(0.25);
+                vig.set_px(x, y, [(170.0 * k) as u8, (90.0 * k) as u8, (200.0 * k) as u8, 255]);
+            }
+        }
+        let fv = finish(&vig);
+        assert!(fv.corner_ratio <= VIGNETTE_RATIO_MAX, "{fv:?}");
+        assert_eq!(edge_finish(&fv), vec!["a dark violet vignette"]);
+        // a plain picture has none, and the draft carries what it finds
+        assert!(edge_finish(&finish(&Rgba::filled(80, 60, [120, 120, 120, 255]))).is_empty());
+        let m = Figures { saturation: 0.3, value: 0.5, opaque: 0.4, finish: f, ..Default::default() };
+        assert!(draft_look(&m, None, None, [100, 88]).contains("a cut-out subject on a transparent background, a soft glow, a dark drop shadow"));
+        // the cache keeps the finish
+        let rows = vec![Measured {
+            rel: "a.png".into(),
+            size: [100, 100],
+            sha256: "0".repeat(64),
+            dhash: 7,
+            style: Vec::new(),
+            stats: measure(&cut).unwrap().2,
+        }];
+        assert_eq!(decode_cache(&encode_cache(&rows)).unwrap(), rows);
+        assert_eq!(decode_cache(b"HDV1\0\0\0\0"), None, "an old cache is measured again");
+    }
+
     #[test]
     fn the_look_draft_reads_the_figures() {
         let m = Figures {
@@ -1402,8 +1649,20 @@ mod tests {
             flat_share: 0.4,
             hue: Some((6, 0.5)),
             hue2: None,
+            ..Default::default()
         };
-        let v = Figures { files: 20, saturation: 0.3, value: 0.5, grey_share: 0.2, opaque: 0.7, edges: 0.1, flat_share: 0.3, hue: None, hue2: None };
+        let v = Figures {
+            files: 20,
+            saturation: 0.3,
+            value: 0.5,
+            grey_share: 0.2,
+            opaque: 0.7,
+            edges: 0.1,
+            flat_share: 0.3,
+            hue: None,
+            hue2: None,
+            ..Default::default()
+        };
         let look = draft_look(&m, Some(&v), Some([500, 250]), [210, 176]);
         assert_eq!(look, "saturated colour led by teal, dark, fills the whole canvas edge to edge, busy, detailed photographic texture, wide 500x250 shape, more saturated than vanilla");
         let sheet = contact_sheet(
