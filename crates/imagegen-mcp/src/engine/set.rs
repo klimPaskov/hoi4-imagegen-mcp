@@ -52,18 +52,26 @@ impl Engine {
             ));
         }
         let profile = self.family_profile(Family::Focus)?.clone();
+        // the caller's anchors; otherwise each icon picks its own vanilla anchors, so frames and finish vary as in vanilla
+        let anchors: Value = match &p.references {
+            Some(r) if !r.is_empty() => json!(r),
+            _ => json!([]),
+        };
         let mut icons = Vec::new();
         let (mut total_usd, mut made, mut failed) = (0f64, 0usize, 0usize);
         // the dominant colour of each icon follows its subject, never the country, so the set has contrast
         let colours = set::colour_plan(&chosen);
+        // the directly national focuses (a third of the set at most) may carry one national element
+        let national = set::national_plan(&chosen);
+        let national_plan = national.clone();
         let mut hues: Vec<(String, String)> = Vec::new();
-        for (icon, colour) in chosen.iter().zip(colours.iter()) {
+        for ((icon, colour), national) in chosen.iter().zip(colours.iter()).zip(national.iter().copied()) {
             let mut req = json!({
                 "family": "focus",
                 "feature_slug": feature_slug,
                 "asset": icon.asset,
-                "brief": set::icon_brief_coloured(icon, chosen.len(), colour),
-                "references": p.references.clone().unwrap_or_default(),
+                "brief": set::icon_brief_coloured(icon, chosen.len(), colour, national),
+                "references": anchors,
             });
             for (k, v) in [("provider", &p.provider), ("model", &p.model), ("quality", &p.quality), ("style_pack", &p.style_pack)] {
                 if let Some(v) = v {
@@ -76,6 +84,7 @@ impl Engine {
                 .and_then(|(_, entries)| entries.first().map(|e| e.name.clone()));
             let mut row = json!({
                 "planned_colour": colour,
+                "national_element": national,
                 "sprite": icon.sprite,
                 "asset": icon.asset,
                 "focuses": icon.focuses,
@@ -136,7 +145,8 @@ impl Engine {
             "dynamic": tree.dynamic,
             "shared_sprites": shared.iter().map(|i| json!({"sprite": i.sprite, "focuses": i.focuses})).collect::<Vec<_>>(),
             "estimate_usd": (total_usd * 10000.0).round() / 10000.0,
-            "style": {"style_pack": p.style_pack, "references": p.references, "provider": p.provider, "model": p.model, "quality": p.quality},
+            "style": {"style_pack": p.style_pack, "references": anchors, "provider": p.provider, "model": p.model, "quality": p.quality},
+            "national_repeats": set::national_repeats(&national_plan),
             "variety": if generate { json!(set::judge_variety(&hues)) } else { Value::Null },
             "icons": icons,
             "next": if generate {

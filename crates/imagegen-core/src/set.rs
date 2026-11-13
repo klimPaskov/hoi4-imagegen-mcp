@@ -269,8 +269,9 @@ const SUBJECT_COLOURS: &[(&[&str], &str)] = &[
     (&["air", "aircraft", "fighter", "bomber", "pilot", "airfield", "airborne", "paratroop"], "pale sky blue and silver"),
     (
         &["army", "armies", "tank", "armour", "armor", "infantry", "conscript", "division", "garrison", "artillery", "military", "rearm"],
-        "steel grey and olive",
+        "steel grey and khaki",
     ),
+    (&["peat", "turf", "bog"], "earth brown and tan"),
     (
         &[
             "industry",
@@ -300,11 +301,11 @@ const SUBJECT_COLOURS: &[(&[&str], &str)] = &[
         &["revolt", "revolution", "rebel", "rebellion", "protest", "strike", "unrest", "uprising", "communis", "workers", "terror"],
         "dark red and black",
     ),
-    (&["spy", "spies", "intelligence", "espionage", "secret", "police", "surveillance", "sabotage", "propaganda"], "dark charcoal and cold blue"),
-    (&["trade", "economy", "economic", "bank", "money", "finance", "tax", "debt", "loan", "invest"], "gold and deep blue"),
+    (&["spy", "spies", "intelligence", "espionage", "secret", "police", "surveillance", "sabotage", "propaganda"], "plum and cream"),
+    (&["trade", "economy", "economic", "bank", "money", "finance", "tax", "debt", "loan", "invest"], "gold and dark teal"),
     (
         &["diplomacy", "diplomatic", "treaty", "treaties", "alliance", "negotiation", "union", "peace", "neutral", "neutrality", "embassy"],
-        "warm tan and teal",
+        "cream and soft grey",
     ),
 ];
 /// Colours handed to icons no subject word places, in turn, so neighbours differ.
@@ -318,6 +319,129 @@ const SPARE_COLOURS: &[&str] = &[
     "warm cream and charcoal",
     "burnt orange and dark brown",
 ];
+
+/// Colours whose main hue is green. A set may have at most one or two such icons (a sixth of it, at least one), and
+/// only where the subject is green itself.
+const GREEN_COLOURS: &[&str] = &["green and golden wheat"];
+/// Palettes that are dark overall: two neighbouring icons never both take one.
+const DARK_COLOURS: &[&str] = &["dark red and black", "burnt orange and dark brown", "dark violet and plum"];
+/// Colour families: two neighbouring icons never both take the same family (navy next to air, industry next to peat).
+const COLOUR_FAMILIES: &[&[&str]] = &[
+    &["navy and sea blue", "pale sky blue and silver", "pale blue and white", "slate blue and silver", "gold and dark teal", "deep teal and white"],
+    &["brass, amber and smoke grey", "earth brown and tan", "burnt orange and dark brown", "ochre and sand", "brick red and rust"],
+    &["steel grey and khaki", "olive and khaki", "warm cream and charcoal"],
+];
+
+/// Words that make a focus directly national: politics, the army and the nation's own identity. Only such icons
+/// may carry the country's emblem or colours, and at most a third of a set does.
+const NATIONAL_WORDS: &[&str] = &[
+    "flag",
+    "anthem",
+    "identity",
+    "independence",
+    "sovereignty",
+    "republic",
+    "constitution",
+    "unification",
+    "reunification",
+    "nationalism",
+    "patriot",
+    "patriotic",
+    "homeland",
+    "nation",
+    "national",
+    "army",
+    "armies",
+    "military",
+    "defence",
+    "defense",
+    "conscript",
+    "neutrality",
+    "political",
+    "politics",
+    "government",
+    "party",
+    "election",
+    "parliament",
+    "monarchy",
+    "crown",
+    "culture",
+    "cultural",
+    "heritage",
+    "language",
+    "tradition",
+];
+/// What to draw for a subject that models tend to get wrong, by a word in the focus name (the first match counts).
+const SUBJECT_HINTS: &[(&[&str], &str)] = &[
+    (
+        &["peat", "turf", "bog"],
+        "Show peat cutting as a bog with neat stacks of cut turf, not coal and not a mine, and no spade or other tool.",
+    ),
+    (
+        &["spy", "spies", "intelligence", "espionage"],
+        "Show a closed folder with a lock and a key, or one eye in a keyhole. Not a detective, not a man in a hat or coat, no magnifying glass, not a wallet.",
+    ),
+    (
+        &["army", "armies", "military", "infantry", "conscript", "soldier", "soldiers"],
+        "Paint it in the stylised painted look of Hearts of Iron IV icons, an illustration and not a realistic photo-like picture: a helmet and rifle, or one bold soldier figure, never a realistic crowd of soldiers.",
+    ),
+    (
+        &["air", "aircraft", "fighter", "pilot", "airfield", "airborne"],
+        "Show the aircraft as an emblem sitting inside its frame like the other icons of the set, not a loose cut-out floating on the background.",
+    ),
+    (&["neutrality", "neutral", "peace"], "Show a dove with an olive branch, scales or a closed gate, not a handshake."),
+    (&["trade", "economy", "bank", "finance"], "Show crates, scales or a cargo ship, not a handshake."),
+    (&["unrest", "protest", "strike", "revolt", "rebel", "uprising", "riot"], "Show raised fists, a burning barricade or a torn banner, not a prison gate."),
+];
+
+/// True when the focus is directly national (by its name): politics, the army, culture or the nation's own identity.
+pub fn is_national_focus(icon: &SetIcon) -> bool {
+    let names = icon.names.join(" ").to_lowercase();
+    NATIONAL_WORDS.iter().any(|w| has_word(&names, w))
+}
+
+/// The kinds of national element an icon may carry, in the order they are handed out so that no two national icons of a
+/// set use the same one (the country's flag in the scene, its emblem worked into the subject, its traditional cross or
+/// knotwork, a landmark or landscape, and last its colours as a ribbon or sash, so a set shows its flag colours once). Each is part of the scene, never a logo.
+pub const NATIONAL_ELEMENTS: &[(&str, &str)] = &[
+    ("flag", "the country's flag flying as part of the scene (behind the subject, on a mast or on a pole)"),
+    ("emblem", "the country's national emblem or instrument worked into the subject itself (carved, embroidered or painted on it)"),
+    ("knotwork", "the country's traditional cross or knotwork worked into the frame or the subject"),
+    ("landmark", "a recognisable landmark, building or landscape of the country in the background of the scene"),
+    ("sash", "the country's flag colours as a ribbon, sash or banner worked into the wreath or the frame"),
+];
+
+/// Which icons of a set may carry one national element, and which kind: the directly national focuses, at most a third
+/// of the set (rounded up), each a different kind. Where more qualify, the earlier ones in the file win. More national
+/// icons than kinds would repeat a kind, which [`national_repeats`] reports.
+pub fn national_plan(icons: &[&SetIcon]) -> Vec<Option<&'static str>> {
+    let cap = icons.len().div_ceil(3);
+    let mut given = 0usize;
+    icons
+        .iter()
+        .map(|i| {
+            if given < cap && is_national_focus(i) {
+                let kind = NATIONAL_ELEMENTS[given % NATIONAL_ELEMENTS.len()].0;
+                given += 1;
+                Some(kind)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// The kinds a plan hands out more than once (only when a set has more national icons than there are kinds).
+pub fn national_repeats(plan: &[Option<&'static str>]) -> Vec<&'static str> {
+    let mut seen = BTreeSet::new();
+    let mut repeats = BTreeSet::new();
+    for k in plan.iter().flatten() {
+        if !seen.insert(*k) {
+            repeats.insert(*k);
+        }
+    }
+    repeats.into_iter().collect()
+}
 
 /// True when a word of the text is `word` or a simple inflection of it (`navy`, `navies`, `industrial` for
 /// `industry` is a word of its own in the table, so it is listed there).
@@ -334,7 +458,10 @@ fn has_word(text: &str, word: &str) -> bool {
 /// spare colour. Icons no word places take the spare colours in turn.
 pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
     let cap = icons.len().div_ceil(4).max(2);
+    let green_cap = (icons.len() / 6).max(1);
     let mut used: BTreeMap<&'static str, usize> = BTreeMap::new();
+    let mut greens = 0usize;
+    let mut previous: Option<&'static str> = None;
     let mut spare = 0usize;
     let mut out = Vec::with_capacity(icons.len());
     for icon in icons {
@@ -342,38 +469,61 @@ pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
         let names = icon.names.join(" ").to_lowercase();
         let descriptions = icon.descriptions.join(" ").to_lowercase();
         let place = |text: &str| SUBJECT_COLOURS.iter().find(|(words, _)| words.iter().any(|w| has_word(text, w))).map(|(_, c)| *c);
-        let by_subject = place(&names).or_else(|| place(&descriptions)).filter(|c| used.get(c).copied().unwrap_or(0) < cap);
+        let allowed = |c: &&'static str| {
+            used.get(c).copied().unwrap_or(0) < cap
+                && (!GREEN_COLOURS.contains(c) || greens < green_cap)
+                && !(previous.is_some_and(|p| DARK_COLOURS.contains(&p)) && DARK_COLOURS.contains(c))
+                && !previous.is_some_and(|p| COLOUR_FAMILIES.iter().any(|f| f.contains(&p) && f.contains(c)))
+        };
+        let by_subject = place(&names).or_else(|| place(&descriptions)).filter(|c| allowed(c));
         let colour = by_subject.unwrap_or_else(|| {
-            // the next spare colour that is still under the cap
+            // the next spare colour that is still allowed
             for _ in 0..SPARE_COLOURS.len() {
                 let c = SPARE_COLOURS[spare % SPARE_COLOURS.len()];
                 spare += 1;
-                if used.get(c).copied().unwrap_or(0) < cap {
+                if allowed(&c) {
                     return c;
                 }
             }
             SPARE_COLOURS[spare % SPARE_COLOURS.len()]
         });
         *used.entry(colour).or_insert(0) += 1;
+        if GREEN_COLOURS.contains(&colour) {
+            greens += 1;
+        }
+        previous = Some(colour);
         out.push(colour);
     }
     out
 }
 
-/// The brief of one icon in a set, with the colour planned for it: the dominant colour follows the subject, and the
-/// country's own colours and symbols stay a small accent.
-pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str) -> String {
+/// The brief of one icon in a set: the one frame the whole set shares (the vanilla national focus form), the colour
+/// planned for it (it follows the subject, and green is never the main colour unless the plan says so), and the national
+/// element only where the focus is directly national (`national` names its kind), none elsewhere.
+pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str, national: Option<&str>) -> String {
     let mut brief = icon_brief(icon, set_size);
-    brief.push_str(&format!(
-        " Colour: this icon is mainly {colour}, as its subject calls for. The country's own colours and symbols are at most a small accent (a ribbon, a flag, one emblem), never the colour of the whole icon."
-    ));
+    brief.push_str(&format!(" Colour: this icon is mainly {colour}, as its subject calls for."));
+    if !GREEN_COLOURS.contains(&colour) {
+        brief.push_str(" Green is not a main colour of this icon (a national element may use its own colours).");
+    }
+    match national.and_then(|k| NATIONAL_ELEMENTS.iter().find(|(name, _)| *name == k)) {
+        Some((_, what)) => brief.push_str(&format!(
+            " This focus is directly national, so it carries exactly one national element, part of the scene and never a logo, badge or emblem stuck onto an object: {what}. Use this kind of element only, not a flag or harp on top of it."
+        )),
+        None => brief.push_str(" No flags, tricolour ribbons, harps, roundels, shamrocks, Celtic knotwork or national colours as trim: this icon is coloured by its subject."),
+    }
+    let names = icon.names.join(" ").to_lowercase();
+    if let Some((_, hint)) = SUBJECT_HINTS.iter().find(|(words, _)| words.iter().any(|w| has_word(&names, w))) {
+        brief.push(' ');
+        brief.push_str(hint);
+    }
     brief
 }
 
 /// How alike the dominant colours of a generated set are.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Variety {
-    /// `ok`, `too_alike` (over 45 percent of the icons share one bucket, or the set spans fewer than three) or `too_few` (fewer than five icons to judge).
+    /// `ok`, `too_alike` (over 45 percent of the icons share one coloured bucket, over 70 percent have no colour beyond metal, or the set spans fewer than three), `too_green` (more green icons than a sixth of the set, at least one) or `too_few` (fewer than five icons to judge).
     pub verdict: &'static str,
     /// Icons measured.
     pub icons: usize,
@@ -383,7 +533,11 @@ pub struct Variety {
     pub largest_share: f64,
     /// Icons per hue bucket, `metal` for those with no colour beyond metal.
     pub buckets: BTreeMap<String, Vec<String>>,
-    /// What to do, when the verdict is `too_alike`.
+    /// Icons whose dominant hue is green (bucket `h3` to `h5`), and the most a set of this size may have.
+    pub green_icons: Vec<String>,
+    /// The most green icons a set of this size may have: a sixth of it, at least one.
+    pub green_cap: usize,
+    /// What to do, when the verdict is not `ok`.
     pub advice: Option<String>,
 }
 
@@ -429,7 +583,8 @@ pub fn dominant_hue(img: &crate::pixels::Rgba) -> String {
 }
 
 /// Judge a set from `(icon name, dominant hue bucket)` pairs. Five or more icons are judged: the set is `too_alike`
-/// when over 45 percent of them share one bucket (`metal` counts as one), or when the set spans fewer than three.
+/// when over 45 percent of them share one coloured bucket, when over 70 percent have no colour beyond metal (muted
+/// brown, grey and brass icons are fine in a minority, but not as the whole set), or when the set spans fewer than three.
 pub fn judge_variety(items: &[(String, String)]) -> Variety {
     let mut buckets: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (name, bucket) in items {
@@ -437,19 +592,26 @@ pub fn judge_variety(items: &[(String, String)]) -> Variety {
     }
     let n = items.len();
     let distinct_hues = buckets.keys().filter(|k| k.as_str() != "metal").count();
-    let largest = buckets.values().map(Vec::len).max().unwrap_or(0);
+    let largest = buckets.iter().filter(|(k, _)| k.as_str() != "metal").map(|(_, v)| v.len()).max().unwrap_or(0);
+    let metal_share = if n == 0 { 0.0 } else { buckets.get("metal").map_or(0, Vec::len) as f64 / n as f64 };
     let largest_share = if n == 0 { 0.0 } else { (largest as f64 / n as f64 * 1000.0).round() / 1000.0 };
+    let green_icons: Vec<String> = ["h3", "h4", "h5"].iter().filter_map(|k| buckets.get(*k)).flatten().cloned().collect();
+    let green_cap = (n / 6).max(1);
     let verdict = if n < 5 {
         "too_few"
-    } else if largest_share > 0.45 || buckets.len() < 3 {
+    } else if largest_share > 0.45 || metal_share > 0.7 || buckets.len() < 3 {
         "too_alike"
+    } else if green_icons.len() > green_cap {
+        "too_green"
     } else {
         "ok"
     };
-    let advice = (verdict == "too_alike").then(|| {
-        "Too many icons share one dominant colour. Make the ones in the largest bucket again with a different planned colour (set icons carry one in their brief), or choose references with more varied colours.".to_string()
-    });
-    Variety { verdict, icons: n, distinct_hues, largest_share, buckets, advice }
+    let advice = match verdict {
+        "too_alike" => Some("Too many icons share one dominant colour. Make the ones in the largest bucket again with a different planned colour (set icons carry one in their brief), or choose references with more varied colours.".to_string()),
+        "too_green" => Some(format!("Too many icons are mainly green ({} of {n}, at most {green_cap}). Make the green ones again unless their subject is green itself (fields, forests).", green_icons.len())),
+        _ => None,
+    };
+    Variety { verdict, icons: n, distinct_hues, largest_share, buckets, green_icons, green_cap, advice }
 }
 
 #[cfg(test)]
@@ -511,13 +673,24 @@ mod tests {
         let refs: Vec<&SetIcon> = icons.iter().collect();
         let plan = colour_plan(&refs);
         assert_eq!(plan[0], "navy and sea blue");
-        assert_eq!(plan[1], "steel grey and olive");
+        assert_eq!(plan[1], "steel grey and khaki");
         assert_eq!(plan[2], "pale sky blue and silver");
         assert_eq!(plan[3], "brass, amber and smoke grey");
         assert_eq!(plan[4], "green and golden wheat");
         assert_eq!(plan[5], "pale blue and white");
-        let b = icon_brief_coloured(&icons[1], 6, plan[1]);
-        assert!(b.contains("mainly steel grey and olive") && b.contains("never the colour of the whole icon"), "{b}");
+        let b = icon_brief_coloured(&icons[1], 6, plan[1], None);
+        assert!(
+            b.contains("mainly steel grey and khaki") && b.contains("Green is not a main colour") && b.contains("No flags, tricolour ribbons"),
+            "{b}"
+        );
+        let flag = SetIcon { names: vec!["The Flag of the Republic".into()], ..icon_named("flag") };
+        assert!(
+            is_national_focus(&flag)
+                && icon_brief_coloured(&flag, 6, "cream and gold with deep red", Some("flag")).contains("exactly one national element")
+        );
+        assert!(!is_national_focus(&icons[0]));
+        let peat = SetIcon { names: vec!["Peat and Coal for Power".into()], ..icon_named("peat") };
+        assert!(icon_brief_coloured(&peat, 6, "earth brown and tan", None).contains("not coal and not a mine"));
     }
 
     #[test]
@@ -560,5 +733,74 @@ mod tests {
             .collect();
         assert_eq!(judge_variety(&mixed).verdict, "ok");
         assert_eq!(judge_variety(&mixed[..3]).verdict, "too_few");
+    }
+
+    #[test]
+    fn green_is_budgeted_and_dark_palettes_never_neighbour() {
+        // twelve farming focuses: only two may be mainly green
+        let icons: Vec<SetIcon> = (0..12).map(|i| icon_named(&format!("Farm {i}"))).collect();
+        let refs: Vec<&SetIcon> = icons.iter().collect();
+        let plan = colour_plan(&refs);
+        assert_eq!(plan.iter().filter(|c| GREEN_COLOURS.contains(c)).count(), 2, "{plan:?}");
+        // unrest then a second dark subject: the second takes a lighter colour
+        let pair = [icon_named("Border Unrest"), icon_named("Terror Cells")];
+        let refs: Vec<&SetIcon> = pair.iter().collect();
+        let plan = colour_plan(&refs);
+        assert_eq!(plan[0], "dark red and black");
+        assert!(!DARK_COLOURS.contains(&plan[1]), "{plan:?}");
+        // a set with four green icons of twelve is too green
+        let greens: Vec<(String, String)> =
+            (0..12).map(|i| (format!("i{i}"), ["h4", "h4", "h4", "h4", "h0", "h1", "h6", "h7", "h8", "h9", "h10", "metal"][i].to_string())).collect();
+        let v = judge_variety(&greens);
+        assert_eq!((v.verdict, v.green_icons.len(), v.green_cap), ("too_green", 4, 2), "{v:?}");
+    }
+
+    #[test]
+    fn national_symbols_go_to_the_national_focuses_and_at_most_a_third() {
+        let names = [
+            "Irish Neutrality",
+            "Expand the Irish Army",
+            "Build the Irish Navy",
+            "Irish Air Corps",
+            "Heavy Industry",
+            "Peat and Coal",
+            "Reform Agriculture",
+            "Gaelic Cultural Revival",
+            "Research",
+            "Border Unrest",
+            "Intelligence Service",
+            "Atlantic Trade",
+        ];
+        let icons: Vec<SetIcon> = names.iter().map(|n| icon_named(n)).collect();
+        let refs: Vec<&SetIcon> = icons.iter().collect();
+        let plan = national_plan(&refs);
+        let chosen: Vec<&str> = names.iter().zip(&plan).filter(|(_, y)| y.is_some()).map(|(n, _)| *n).collect();
+        let kinds: Vec<&str> = plan.iter().flatten().copied().collect();
+        assert_eq!(kinds, ["flag", "emblem", "knotwork"], "each national icon gets a different kind");
+        assert!(national_repeats(&plan).is_empty());
+        assert_eq!(chosen, ["Irish Neutrality", "Expand the Irish Army", "Gaelic Cultural Revival"]);
+        // twelve armies: only a third carry the emblem
+        let armies: Vec<SetIcon> = (0..12).map(|i| icon_named(&format!("Army {i}"))).collect();
+        let refs: Vec<&SetIcon> = armies.iter().collect();
+        let plan = national_plan(&refs);
+        assert_eq!(plan.iter().flatten().count(), 4);
+        assert!(national_repeats(&plan).is_empty(), "four kinds, none repeated");
+        // hints keep the subjects apart: one handshake only
+        let neutral = icon_brief_coloured(&icons[0], 12, "cream and soft grey", Some("flag"));
+        let trade = icon_brief_coloured(&icons[11], 12, "gold and dark teal", None);
+        assert!(neutral.contains("not a handshake") && trade.contains("not a handshake"));
+    }
+
+    #[test]
+    fn neighbours_never_share_a_colour_family() {
+        let names = ["Navy", "Air Force", "Industry", "Peat Cutting"];
+        let icons: Vec<SetIcon> = names.iter().map(|n| icon_named(n)).collect();
+        let refs: Vec<&SetIcon> = icons.iter().collect();
+        let plan = colour_plan(&refs);
+        for w in plan.windows(2) {
+            assert!(!COLOUR_FAMILIES.iter().any(|f| f.contains(&w[0]) && f.contains(&w[1])), "{plan:?}");
+        }
+        assert_eq!(plan[0], "navy and sea blue");
+        assert_ne!(plan[1], "pale sky blue and silver", "air after navy takes another colour: {plan:?}");
     }
 }
