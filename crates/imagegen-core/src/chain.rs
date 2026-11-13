@@ -1069,8 +1069,12 @@ mod tests {
         let report = crate::validate::validate_image(&card, &p, &checks, &Default::default());
         assert!(report.findings.is_empty(), "{:?}", report.findings);
         assert_eq!(plan_finishing(&p, p.canvas, &card, true, false, &sha).unwrap().ops, vec![Op::Conform { width: 210, height: 176 }]);
-        assert!(audit(&record(&p, &plan.ops, &[], &[], ""), &p).is_empty());
-        assert!(!audit(&record(&p, &plan.ops[..1], &[], &[], ""), &p).is_empty());
+        // the 59x58 phase icon is a derived companion: the record must carry it
+        assert_eq!(plan.finishers, vec![Finisher::DerivedCompanions]);
+        let derive: &[&str] = &["derived_companions"];
+        assert!(audit(&record(&p, &plan.ops, derive, &["small"], ""), &p).is_empty());
+        assert!(!audit(&record(&p, &plan.ops, &[], &[], ""), &p).is_empty(), "without the phase icon");
+        assert!(!audit(&record(&p, &plan.ops[..1], derive, &["small"], ""), &p).is_empty());
     }
 
     #[test]
