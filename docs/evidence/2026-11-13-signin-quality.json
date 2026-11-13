@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-13",
+  "what": "Image tool reports of the ChatGPT sign-in route: the quality and image model the backend chose",
+  "route": "chatgpt_login, outer model gpt-6-luna; every request asked the image_generation tool for quality high",
+  "source_runs": "gallery regeneration of 2026-11-09 (TFR, TNO and vanilla result folders), 178 images with an image tool report in their candidate notes",
+  "image_tool_model": {
+    "gpt-image-2-codex": 178
+  },
+  "by_family": {
+    "achievement": {
+      "medium/transparent": 6
+    },
+    "commander_trait": {
+      "medium/transparent": 5
+    },
+    "counter_large": {
+      "medium/transparent": 8
+    },
+    "decision": {
+      "medium/transparent": 13
+    },
+    "focus": {
+      "medium/transparent": 33
+    },
+    "idea_spirit": {
+      "medium/transparent": 21
+    },
+    "gui_texture": {
+      "medium/transparent": 6,
+      "low/opaque": 6,
+      "medium/opaque": 2
+    },
+    "decision_category_picture": {
+      "low/opaque": 6
+    },
+    "leader_portrait": {
+      "low/opaque": 13,
+      "medium/opaque": 2
+    },
+    "operation_picture": {
+      "low/opaque": 9,
+      "medium/opaque": 3
+    },
+    "report_event": {
+      "low/opaque": 15,
+      "medium/opaque": 8
+    },
+    "super_event": {
+      "medium/opaque": 8,
+      "low/opaque": 5,
+      "high/opaque": 1
+    },
+    "technology": {
+      "medium/opaque": 1,
+      "low/opaque": 7
+    }
+  },
+  "totals": {
+    "transparent": {
+      "medium": 92
+    },
+    "opaque": {
+      "low": 61,
+      "medium": 24,
+      "high": 1
+    }
+  },
+  "instruction_probe": {
+    "date": "2026-11-13",
+    "change": "the outer model's instructions also asked: Call the image_generation tool with quality \"high\" and size \"224x304\"",
+    "family": "leader_portrait",
+    "reported": "gpt-image-2-codex, 1077x1460, quality low, background opaque",
+    "result": "no effect, the change was not shipped"
+  },
+  "limitations": "Counts come from candidate notes, not from raw responses. The instruction probe is one image: a second probe was cut short when the server revoked the sign-in at 2026-11-13T18:46:45Z."
+}

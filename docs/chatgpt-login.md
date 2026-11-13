@@ -122,3 +122,12 @@ The first signed-in probe was on Windows on 2026-11-01. Its fixture is `crates/p
 - The backend replaces the tool settings we send with `quality = auto` and `size = auto`. The probe image came back at quality `medium`, 1337x1176, with a transparent background.
 
 So the route forces and verifies the outer model and effort, but it cannot choose the image tool's model, quality or size. The ledger records what the backend reported for every image.
+
+**What the backend chooses, measured (2026-11-13).** The gallery runs of 2026-11-09 recorded the image tool's report for 178 images. Every report named `gpt-image-2-codex` as the image model. The request asked for quality `high` each time. The backend chose by background, not by what was asked:
+
+| Background | Images | Quality the backend chose |
+|---|---|---|
+| Transparent (icons, emblems, counters) | 92 | `medium` every time |
+| Opaque (portraits, events, technology, operation and decision pictures) | 86 | `low` 61, `medium` 24, `high` 1 |
+
+On 2026-11-13 one more probe also asked for quality `high` in the outer model's instructions. A leader portrait still came back at `low`, 1077x1460. The sign-in route therefore has no way to raise quality, and the model routing of decision W5-10 (Flare for icons, Sunburst for detail) applies only to the OpenAI API route. The counts are in `docs/evidence/2026-11-13-signin-quality.json`. For a detailed picture that must look its best, the OpenAI API route with `gpt-image-2.6-sunburst` at quality `high` is the choice. It is a paid route, so it asks before spending.
