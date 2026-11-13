@@ -274,7 +274,7 @@ const OPERATION_PICTURE_NEGATIVE: &[&str] = &[
 const MIO_POLICY_RULES: &[&str] = &[
     "The Hearts of Iron IV military industrial organisation policy icon form: one object, or two that belong together, as a painted interface icon (crossed rifles, a ship, a light bulb in a hand, a signed contract, a spirit level, a chart with shells), seen from the front or three quarters.",
     "Painted semi-realistic metal, wood and paper in muted colours with a few saturated accents, a thin dark outline and a soft dark shadow. No perspective depth and nothing that recedes into the distance. Readable at {w}x{h} pixels.",
-    "The colours belong to the object, so policies differ from one another: steel grey and olive for weapons, navy grey for ships, blue or green paper for plans and contracts, red for a warning, brass for tools. Not every icon brown or orange.",
+    "The colours belong to the object, so policies differ from one another: steel grey and olive for arms and vehicles, navy grey for ships, blue or green paper for plans and contracts, red for a warning, brass for tools. Not every icon brown or orange.",
     "Real transparent background: no room, no factory hall, no landscape and no backdrop.",
     "Leave a small empty margin around the icon.",
 ];
