@@ -19,12 +19,14 @@ An agent or a setup tool can start the same sign-in with the MCP tool `hoi4.imag
 
 1. **The risk note.** It is printed in the terminal (or returned by `hoi4.image_login`), and the page the browser lands on after the sign-in sums it up. Signing in is the acceptance, so there is no question to answer (a maintainer decision of 2026-11-05 that replaced the typed `yes`). The acceptance is recorded once per user, in your own data folder, never in a project. `--accept-risk` is still accepted and does nothing.
 2. **The browser.** It opens OpenAI's sign-in page, and the address is also printed. This is an OAuth 2.0 authorization-code flow with PKCE against `auth.openai.com`, using the public client id of the official Codex CLI and a loopback redirect on `127.0.0.1:1455`. Your password is typed only into OpenAI's page.
-3. **The tokens.** They go to your operating system's credential store:
+3. **The tokens.** They go to a store only your user account can read:
    - Windows: Credential Manager, service `hoi4-imagegen.chatgpt-login`, split across numbered entries because of Windows' size limit
-   - macOS: the login Keychain
+   - macOS: a private file (mode 0600, in a 0700 folder), `~/Library/Application Support/hoi4-imagegen/chatgpt-login/auth.json`, since 0.4.0
    - Linux: the Secret Service
 
-   Only Linux without a running keyring falls back to a private file (mode 0600) in `~/.local/share/hoi4-imagegen/chatgpt-login/`. A version 0.1 credential file is moved into the store on first use and deleted.
+   Linux without a running keyring falls back to a private file (mode 0600) in `~/.local/share/hoi4-imagegen/chatgpt-login/`. A version 0.1 credential file is moved into the store on first use and deleted.
+
+   **Why not the macOS Keychain.** A Keychain item trusts only the program that created it. The sign-in is made by `hoi4-imagegen` and read by `hoi4-imagegen-mcp`, so macOS asked for the Keychain password on every start of the MCP server and again after every release. An agent cannot answer that dialog. The private file is as safe as the Codex CLI's own sign-in file. To keep the Keychain anyway, set `HOI4_IMAGEGEN_CHATGPT_STORE=keychain` for both programs and answer the dialog. After updating from 0.3.x on a Mac, run `hoi4-imagegen login` once: the old Keychain sign-in is not read, and `login` or `logout` removes it.
 
 Other commands:
 - `hoi4-imagegen login-status` shows the account and plan.

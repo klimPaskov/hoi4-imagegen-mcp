@@ -59,7 +59,9 @@ pub fn run_with(action: &str, env: &dyn EnvSource, clock: &dyn Clock) -> Result<
                 open_browser(url);
             })?;
             consent::record(env, &clock.now_rfc3339())?;
-            Ok(text)
+            // macOS: the Keychain item of a 0.3.x sign-in is removed here, by the program that created it (issue #2)
+            let note = if store.forget_old_keychain() { "\nremoved the Keychain item of an older sign-in" } else { "" };
+            Ok(format!("{text}{note}"))
         }
         other => Err(format!("unknown action '{other}': use login, status, status-check or logout")),
     }
