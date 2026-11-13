@@ -396,23 +396,25 @@ pub const MODEL_TRANSPARENT_BACKDROP_RULE: &str = "Real transparent background (
 /// A model reference is the input picture of an image-to-3D tool (Tripo, Meshy): the whole subject, nothing cropped,
 /// facing the camera in a pose the tool can rebuild, believable rather than cartoony or glossy CG, true to the
 /// subject's own reference, on a plain backdrop the tool can separate, with no grain or noise that would end up in
-/// the model's texture. The rules stay general: nothing here names a kind of subject.
+/// the model's texture. The rules stay general and lean: they say what any image-to-3D input needs and name no kind of
+/// subject or body part. What a particular subject needs (a humanoid's A-pose, a creature's own skull, the size of
+/// wings or a weapon) goes into the brief, and the review checks it: the `interface_model_v4` questions and the
+/// skill's model reference checklist.
 const MODEL_RULES: &[&str] = &[
-    "One subject, shown whole from head to foot (or end to end), with an empty margin of about a twentieth of the frame on every side, the tips of anything held, worn or trailing included, and nothing cropped, composed for a {w}x{h} frame.",
-    "Seen straight from the front at eye level, in a neutral pose ready to be built as a 3D model: arms held out from the sides in a slight A-pose with backdrop showing under each arm and between each hand and the hip, the legs a little apart, any wings or tail clear of the body and limbs, and anything held gripped in a closed hand and kept clear of the body. Even, soft studio lighting, so every part of the form reads.",
-    "Believable anatomy and materials, as a real, physical subject would have: neither a cartoon or toy, nor a smooth, too-clean, uncanny CG render. A subject that is not human keeps its own anatomy, proportions and face, not a human body given its traits.",
-    "Defining features (held equipment, wings, horns and the like) keep the size and proportion the subject's reference shows, never shrunk and never comically oversized. Without a reference, size them against the body as the brief describes.",
-    "When a reference picture shows the subject, keep every detail it shows (shapes, markings, colours, equipment) and invent nothing it does not show. Leave out effects, scenery and anything loose (sparks, smoke, debris, separate animals) that is not part of the model.",
+    "One subject, shown whole from end to end, with an empty margin of about a twentieth of the frame on every side, the tips of anything held, worn or trailing included, and nothing cropped, composed for a {w}x{h} frame.",
+    "Seen straight from the front at eye level, in a neutral pose ready to be built as a 3D model: every part that sticks out (limbs, held items, appendages) is held apart from the body, with backdrop showing between them. Even, soft studio lighting, so every part of the form reads.",
+    "Believable form and materials, as a real, physical subject would have: neither a cartoon or toy, nor a smooth, too-clean, uncanny CG render.",
+    "When a reference picture shows the subject, keep every detail it shows (shapes, proportions, markings, colours, equipment) and invent nothing it does not show. Leave out effects, scenery and anything loose that is not part of the model.",
     MODEL_GREY_BACKDROP_RULE,
     "Clean, sharp detail with no film grain, noise, blur or painterly texture: the picture becomes the model's texture.",
 ];
 const MODEL_NEGATIVE: &[&str] = &[
     "a three-quarter, side or back view",
-    "limbs or held items pressed against the body",
+    "parts pressed against the body",
     "a cartoon, toy or chibi look",
     "a glossy, plastic, too-clean CG look",
     "a figurine, statue or action-figure sheen",
-    "shrunken or oversized held equipment, wings or horns",
+    "shrunken or oversized defining features",
     "details the subject's reference does not show",
     "magic effects, sparks, smoke or debris",
     "a landscape, room or other setting",
