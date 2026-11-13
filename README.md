@@ -99,7 +99,7 @@ See many more in the [gallery](docs/gallery/big/README.md): every family beside 
 
 5. **Ask for an image**, for example "make a 156x210 portrait for the Atlantis focus". The tools are named `hoi4.image_*`. The [how-to](docs/how-to.md) walks through one asset from the plan to the install, and the [recipes](examples/recipes.md) cover sets, flags, report pictures and buildings with a ruined frame.
 
-The binaries are unsigned, so Windows SmartScreen and macOS Gatekeeper may warn. Check a download with `SHA256SUMS` and `gh attestation verify`, as the [reference](docs/reference.md#install) describes.
+The binaries are unsigned, so Windows SmartScreen and macOS Gatekeeper may warn. Check a download with `SHA256SUMS` and `gh attestation verify`, as the [reference](docs/reference.md#install) describes. On macOS, clear the browser's quarantine mark afterwards (`xattr -d com.apple.quarantine hoi4-imagegen hoi4-imagegen-mcp`), or Gatekeeper stops both programs with `killed`.
 
 ## Tools
 
