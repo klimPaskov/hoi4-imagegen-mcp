@@ -215,17 +215,22 @@ const MIO_TRAIT_NEGATIVE: &[&str] = &[
 /// warmer, busy rooms full of small objects. Its 0.3.4 to 0.3.7 replacement, "pale and muted, never saturated", came out
 /// as a flat grey-green haze (saturation 0.11, luminance standard deviation 0.16, no accent at all). The vignette
 /// recipe brings any subject into vanilla's mean palette and edge and stretches a flat picture, and the rules ask for
-/// the clear colour and the real darks and highlights it cannot make up.
+/// the clear colour and the real darks and highlights it cannot make up. The 0.3.8 rules asked for a cool scene and a
+/// steel-blue or slate background, and every upgrade came out steel blue (mean CIE b* -1.2 to 4.9), while vanilla's
+/// are warm-neutral like a sepia-toned print (b* 1.2 to 15.6, median 8.0) on one soft plain backdrop whose tint
+/// changes from icon to icon: dusty mauve, khaki, olive, sage, chalkboard green, warm grey, now and then a pale
+/// grey-blue. The rules now ask for that, and the recipe warms a cool disc to at least b* 6.5.
 const AGENCY_UPGRADE_RULES: &[&str] = &[
     "The Hearts of Iron IV intelligence agency upgrade form: a round painted vignette, a disc whose whole face is one simple close-up (one person at work, hands, one device, documents or one piece of equipment), seen at eye level or slightly from above.",
-    "Rich but sober colour, like a hand-painted 1940s illustration: strong contrast between deep shadow and bright clean highlights (cream, white, pale gold) with dusty mid-tones, and one or two clear accent colours on the subject, such as brass or gold, steel blue, brick red or leaf green, against a softer dusty grey-green, steel-blue or slate background. Keep the scene cool or neutral overall (slate, steel, olive grey, with only a small brass or red accent): not a warm lamp-lit or sepia scene. Never a flat grey haze, never neon or garish, and no overall orange or sepia cast.",
-    "One subject large in the disc on a plain, softly painted background: a few large shapes, no crowded room, no shelves or desks full of objects and no fine detail that disappears at {w}x{h} pixels.",
+    "Sober colour, like a hand-painted 1940s illustration printed in a warm-neutral tone: strong contrast between deep shadow and bright clean highlights (cream, white, pale gold) with dusty mid-tones, warm skin, paper, wood and brass, and one or two clear accent colours on the subject, such as brass or gold, brick red, leaf green or steel blue. Never a flat grey haze, never neon or garish, never a cold blue scene, and no strong orange cast.",
+    "One subject large in the disc in front of one plain, softly painted backdrop in a single muted tint that suits the subject, such as dusty mauve or rose, khaki, olive, sage, chalkboard green or warm grey, and only now and then a pale grey-blue. The backdrop is a wall or a soft blur, not a sky, a window view or a landscape.",
+    "A few large shapes: no crowded room, no shelves or desks full of objects and no fine detail that disappears at {w}x{h} pixels.",
     "The scene runs to the edge of the disc, which is softly darkened. There is no ring, rim, frame or border around the disc.",
     "Real transparent background outside the disc.",
     "Leave a small empty margin around the disc.",
 ];
 /// Agency upgrade negatives: the loose object and the ring the old rules produced, the dark, warm, busy painting of
-/// 0.3.2 and the flat grey haze of 0.3.4 to 0.3.7.
+/// 0.3.2, the flat grey haze of 0.3.4 to 0.3.7 and the steel-blue scenes with skies and windows of 0.3.8.
 const AGENCY_UPGRADE_NEGATIVE: &[&str] = &[
     "text",
     "letters or numbers",
@@ -237,7 +242,8 @@ const AGENCY_UPGRADE_NEGATIVE: &[&str] = &[
     "a black and white or sepia photograph",
     "a flat grey or grey-green haze with no real darks, highlights or accent colour",
     "neon, garish or candy colours, or an overall warm brown and orange cast",
-    "a warm lamp-lit sepia scene",
+    "a cold steel-blue or slate scene",
+    "a sky, window view or landscape behind the subject",
     "a busy scene with many small objects",
 ];
 const OPERATION_ICON_RULES: &[&str] = &[
@@ -1450,7 +1456,13 @@ mod tests {
             (
                 Family::AgencyUpgrade,
                 "intelligence agency upgrade form: a round painted vignette",
-                &["no ring, rim, frame or border around the disc", "Rich but sober colour", "no overall orange or sepia cast", "no crowded room"],
+                &[
+                    "no ring, rim, frame or border around the disc",
+                    "Sober colour",
+                    "never a cold blue scene",
+                    "plain, softly painted backdrop",
+                    "no crowded room",
+                ],
             ),
             (
                 Family::Building,

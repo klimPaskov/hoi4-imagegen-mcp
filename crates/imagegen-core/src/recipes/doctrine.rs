@@ -34,7 +34,8 @@ use crate::pixels::{over, Rgba};
 
 /// Version of the doctrine recipe (bump when an output could change). 2: the subject is fitted 3 px inside the margin, not 2.
 /// 3: blue and teal units keep a vanilla-toned colour instead of turning black.
-pub const RECIPE_VERSION: u32 = 3;
+/// 4: warm accents get vanilla's yellow-to-red fall from top to bottom instead of one flat orange.
+pub const RECIPE_VERSION: u32 = 4;
 
 /// The unit fill: vanilla's median luminance inside a dark shape.
 pub const FILL: u8 = 0;
@@ -99,6 +100,16 @@ pub fn is_cool(p: [u8; 4]) -> bool {
     (170.0..=260.0).contains(&h) && s >= 0.3 && v >= 0.3
 }
 
+/// Hue of a warm accent at the top and at the bottom of the accents' box. Vanilla's accents fall from yellow-orange to
+/// red-orange: the median hue is 38 degrees in the top third of the box and 19 in the bottom third (78 icons with an
+/// accent, HOI4 1.19.4.1, [`warm_fall`]). The 0.3.8 gallery's accents were one flat orange, 26 degrees top and bottom.
+pub const WARM_HUE: (f64, f64) = (44.0, 15.5);
+/// Vanilla's warm saturation range (median 0.72; the 0.3.8 gallery's accents were 0.95).
+pub const WARM_SAT: (f64, f64) = (0.62, 0.82);
+/// Value of a warm accent at the top of its box and the drop to the bottom (vanilla 0.89 and 0.81 in the top and bottom
+/// thirds).
+pub const WARM_VALUE: (f64, f64) = (0.92, 0.13);
+
 /// Vanilla's cool hue range, the saturation range and the fall of value (0.82 at the top of the colour's box, 0.29 less at
 /// the bottom, measured as 0.77 and 0.58 in the top and bottom thirds).
 pub const COOL_HUE: (f64, f64) = (185.0, 225.0);
@@ -133,6 +144,70 @@ fn cool_tone(p: [u8; 4], t: f64, mean_v: f64) -> [u8; 4] {
     [c[0], c[1], c[2], p[3]]
 }
 
+/// A warm accent pixel in vanilla's tone: the hue on vanilla's fall from yellow-orange at the top (`t` 0) to red-orange
+/// at the bottom (`t` 1) of the accents' box, the saturation in vanilla's range and the value on its fall, with a third
+/// of the drawing's own light and shade kept.
+fn warm_tone(p: [u8; 4], t: f64, mean_v: f64) -> [u8; 4] {
+    let (_, s, v) = hsv(p);
+    let hue = WARM_HUE.0 + (WARM_HUE.1 - WARM_HUE.0) * t;
+    let value = (WARM_VALUE.0 - WARM_VALUE.1 * t + 0.35 * (v - mean_v)).clamp(0.5, 1.0);
+    let c = hsv_to_rgb(hue, s.clamp(WARM_SAT.0, WARM_SAT.1), value);
+    [c[0], c[1], c[2], p[3]]
+}
+
+/// The box (top and bottom row) and mean value of the pixels a mask marks, or `None` when there are none.
+fn mask_box(img: &Rgba, mask: &[bool]) -> Option<(i64, f64, f64)> {
+    let w = i64::from(img.width);
+    let (mut y0, mut y1, mut vs, mut vn) = (i64::MAX, 0i64, 0.0, 0usize);
+    for i in (0..mask.len()).filter(|i| mask[*i]) {
+        let y = i as i64 / w;
+        y0 = y0.min(y);
+        y1 = y1.max(y);
+        let p = &img.data[i * 4..i * 4 + 4];
+        vs += hsv([p[0], p[1], p[2], 255]).2;
+        vn += 1;
+    }
+    (vn > 0).then(|| (y0, (y1 - y0).max(1) as f64, vs / vn as f64))
+}
+
+/// Median hue and value of the warm accent pixels ([`is_accent`] with the hue widened to 5 to 65 degrees) in the top
+/// and the bottom third of their box, over the icons with 20 or more of them: `[hue top, hue bottom, value top, value
+/// bottom]`, all zero when no icon has enough.
+pub fn warm_fall(imgs: &[&Rgba]) -> [f64; 4] {
+    let mut rows: Vec<[f64; 4]> = Vec::new();
+    for img in imgs {
+        let w = img.width as usize;
+        let warm: Vec<(usize, f64, f64)> = img
+            .data
+            .chunks_exact(4)
+            .enumerate()
+            .filter(|(_, p)| p[3] >= 200)
+            .filter_map(|(i, p)| {
+                let (h, s, v) = hsv([p[0], p[1], p[2], 255]);
+                ((5.0..=65.0).contains(&h) && s >= 0.45 && v >= 0.35).then_some((i / w, h, v))
+            })
+            .collect();
+        if warm.len() < 20 {
+            continue;
+        }
+        let y0 = warm.iter().map(|t| t.0).min().unwrap_or(0) as f64;
+        let y1 = warm.iter().map(|t| t.0).max().unwrap_or(0) as f64;
+        let span = (y1 - y0).max(1.0);
+        let top: Vec<&(usize, f64, f64)> = warm.iter().filter(|t| t.0 as f64 <= y0 + span / 3.0).collect();
+        let bottom: Vec<&(usize, f64, f64)> = warm.iter().filter(|t| t.0 as f64 >= y1 - span / 3.0).collect();
+        rows.push([
+            median(top.iter().map(|t| t.1).collect()),
+            median(bottom.iter().map(|t| t.1).collect()),
+            median(top.iter().map(|t| t.2).collect()),
+            median(bottom.iter().map(|t| t.2).collect()),
+        ]);
+    }
+    if rows.is_empty() {
+        return [0.0; 4];
+    }
+    [0, 1, 2, 3].map(|k| median(rows.iter().map(|r| r[k]).collect()))
+}
+
 /// Linear between the measured rings (distance 1, 2 ...), fading to nothing one pixel past the last.
 fn ring(table: &[(f64, f64)], d: f64) -> (f64, f64) {
     if d <= 1.0 {
@@ -163,6 +238,7 @@ pub fn doctrine_look(img: &Rgba) -> Result<Rgba> {
     }
     let cool_mean_v = if vn > 0 { vs / vn as f64 } else { 0.6 };
     let span = (y1 - y0).max(1) as f64;
+    let (wy0, wspan, warm_mean_v) = mask_box(img, &accent).unwrap_or((0, 1.0, 0.9));
     if !(0..h).any(|y| (0..w).any(|x| solid(x, y))) {
         return Err(Error::Image("the doctrine icon has no solid shape".into()));
     }
@@ -200,7 +276,7 @@ pub fn doctrine_look(img: &Rgba) -> Result<Rgba> {
             let own = if p[3] == 0 {
                 [0, 0, 0, 0]
             } else if accent[i] {
-                p
+                warm_tone(p, ((i as i64 / w - wy0) as f64 / wspan).clamp(0.0, 1.0), warm_mean_v)
             } else if cool[i] {
                 cool_tone(p, ((i as i64 / w - y0) as f64 / span).clamp(0.0, 1.0), cool_mean_v)
             } else {
@@ -397,7 +473,7 @@ mod tests {
         assert_eq!(&out.px(48, 36)[..3], &[0, 0, 0], "the unit is black");
         assert_eq!(out.px(20, 30)[3], 255);
         assert_eq!(&out.px(8, 30)[..3], &[FILL_EDGE; 3], "its edge is a little lighter");
-        assert_eq!(out.px(50, 25), [240, 140, 40, 255], "the warm accent keeps its colour");
+        assert!(is_accent(out.px(50, 25)), "the warm accent stays warm: {:?}", out.px(50, 25));
         let pale = out.px(7, 30);
         assert_eq!((pale[0], pale[3]), (180, 136), "pale outline one pixel out: {pale:?}");
         assert_eq!(out.px(6, 30)[3], 37, "the glow two pixels out");
@@ -444,6 +520,28 @@ mod tests {
         let shadow = out.px(16, 7);
         assert_eq!((shadow[0], shadow[3]), (62, 140), "the dark shadow of a coloured shape: {shadow:?}");
         assert_eq!(out.px(0, 0), [0, 0, 0, 0]);
+    }
+
+    /// One flat, fully saturated orange arrow (as the 0.3.8 gallery's accents were) comes out on vanilla's fall from
+    /// yellow-orange at the top to red-orange at the bottom, in vanilla's saturation.
+    #[test]
+    fn a_flat_orange_accent_gets_vanillas_yellow_to_red_fall() {
+        let mut img = Rgba::new(64, 64);
+        for y in 8..56u32 {
+            for x in 20..44u32 {
+                img.set_px(x, y, [250, 110, 10, 255]);
+            }
+        }
+        let before = warm_fall(&[&img]);
+        let out = doctrine_look(&img).unwrap();
+        let after = warm_fall(&[&out]);
+        eprintln!("flat accent: before {before:.2?}, after {after:.2?}");
+        assert!((before[0] - before[1]).abs() < 1.0, "flat before");
+        assert!((after[0] - 38.0).abs() <= 4.0 && (after[1] - 19.0).abs() <= 4.0, "hue top and bottom {after:?}");
+        assert!(after[2] > after[3] + 0.03, "value falls: {after:?}");
+        let (_, s, _) = hsv(out.px(30, 30));
+        assert!((WARM_SAT.0 - 0.02..=WARM_SAT.1 + 0.02).contains(&s), "saturation {s}");
+        assert!(is_accent(out.px(30, 10)) && is_accent(out.px(30, 30)), "still an accent where the hue is 15 or more");
     }
 
     #[test]
@@ -533,6 +631,13 @@ mod tests {
         assert!((COOL_HUE.0 - 1.0..=COOL_HUE.1 + 1.0).contains(&ours.cool_tone[0]), "hue {:?}", ours.cool_tone);
         assert!((ours.cool_tone[1] - van.cool_tone[1]).abs() <= 0.08, "saturation {:?} vs {:?}", ours.cool_tone, van.cool_tone);
         assert!(ours.cool_fall[0] > ours.cool_fall[1] + 0.1, "value falls from top to bottom: {:?}", ours.cool_fall);
+        // the warm accents fall from yellow-orange to red-orange as vanilla's do (vanilla: hue 38 and 19, value 0.89 and
+        // 0.81 in the top and bottom thirds)
+        let (wv, wo) = (warm_fall(&files.iter().collect::<Vec<_>>()), warm_fall(&made.iter().collect::<Vec<_>>()));
+        eprintln!("warm fall: vanilla {wv:.2?}, ours {wo:.2?}");
+        assert!((wv[0] - 38.0).abs() <= 2.0 && (wv[1] - 19.0).abs() <= 2.0, "vanilla's hue fall {wv:?}");
+        assert!((wo[0] - wv[0]).abs() <= 5.0 && (wo[1] - wv[1]).abs() <= 5.0, "hue fall {wo:?} vs {wv:?}");
+        assert!((wo[2] - wv[2]).abs() <= 0.08 && (wo[3] - wv[3]).abs() <= 0.08, "value fall {wo:?} vs {wv:?}");
         assert!(
             (ours.cool_fall[0] - van.cool_fall[0]).abs() <= 0.12 && (ours.cool_fall[1] - van.cool_fall[1]).abs() <= 0.12,
             "{:?} vs {:?}",
