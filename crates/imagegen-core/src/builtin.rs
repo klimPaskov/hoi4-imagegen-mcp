@@ -221,7 +221,7 @@ const MIO_TRAIT_NEGATIVE: &[&str] = &[
 /// changes from icon to icon: dusty mauve, khaki, olive, sage, chalkboard green, warm grey, now and then a pale
 /// grey-blue. The rules now ask for that, and the recipe warms a cool disc to at least b* 6.5.
 const AGENCY_UPGRADE_RULES: &[&str] = &[
-    "The Hearts of Iron IV intelligence agency upgrade form: a round painted vignette, a disc whose whole face is one simple close-up (one person at work, hands, one device, documents or one piece of equipment), seen at eye level or slightly from above.",
+    "The Hearts of Iron IV intelligence agency upgrade form: a round painted vignette, a disc whose whole face is one simple close-up of the one thing the brief names (a device, a document or a piece of equipment, or a person at work when the brief names one), large and clearly lit, seen at eye level or slightly from above. Hands appear only when the brief asks for them, and no second prop competes with the subject.",
     "Sober colour, like a hand-painted 1940s illustration printed in a warm-neutral tone: strong contrast between deep shadow and bright clean highlights (cream, white, pale gold) with dusty mid-tones, warm skin, paper, wood and brass, and one or two clear accent colours on the subject, such as brass or gold, brick red, leaf green or steel blue. Never a flat grey haze, never neon or garish, never a cold blue scene, and no strong orange cast.",
     "One subject large in the disc in front of one plain, softly painted backdrop in a single muted tint that suits the subject, such as dusty mauve or rose, khaki, olive, sage, chalkboard green or warm grey, and only now and then a pale grey-blue. The backdrop is a wall or a soft blur, not a sky, a window view or a landscape.",
     "A few large shapes: no crowded room, no shelves or desks full of objects and no fine detail that disappears at {w}x{h} pixels.",
@@ -245,6 +245,7 @@ const AGENCY_UPGRADE_NEGATIVE: &[&str] = &[
     "a cold steel-blue or slate scene",
     "a sky, window view or landscape behind the subject",
     "a busy scene with many small objects",
+    "hands or props that crowd or hide the subject",
 ];
 const OPERATION_ICON_RULES: &[&str] = &[
     "The Hearts of Iron IV operation icon form: one square picture, a painted or photographic close-up of the operation's act, such as hands on a document, a bundle of dynamite, a handshake, soldiers in a line, a podium with guards or a tool on a table, filling the whole frame and composed for a {w}x{h} crop.",
