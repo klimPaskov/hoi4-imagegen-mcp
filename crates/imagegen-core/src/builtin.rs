@@ -351,7 +351,7 @@ const DOCTRINE_RULES: &[&str] = &[
 const TECHNOLOGY_RULES: &[&str] = &[
     "The Hearts of Iron IV technology picture form: ONE piece of equipment (a vehicle, an artillery piece, an aircraft or a ship) seen exactly from the side, a flat side profile with no three-quarter view, no front view and no perspective, facing right: its front, nose, barrel or bow points to the right edge.",
     "The equipment is long and low and fills most of the width, readable at {w}x{h} pixels, painted in the slightly aged style of Hearts of Iron IV interface art.",
-    "The equipment wears its own period paint, which differs from picture to picture: field grey, olive drab or dark green for army vehicles and guns, sand for desert equipment, naval grey for ships, silver, grey-blue or green camouflage for aircraft. Not every picture brown, rust or orange.",
+    "The equipment wears its own period paint, which differs from picture to picture: field grey, olive drab or dark green for army vehicles and artillery, sand for desert equipment, naval grey for ships, silver, grey-blue or green camouflage for aircraft. Not every picture brown, rust or orange.",
     "Real transparent background: no backdrop, no ground, no frame, no border, no plate.",
     "No numerals or text on the picture: the tool stamps a tier numeral itself when one is asked for.",
     "Leave a small empty margin around the equipment.",
