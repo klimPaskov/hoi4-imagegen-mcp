@@ -23,7 +23,7 @@ hoi4-imagegen login
 
 1. The risk note is printed. It says the route uses your own ChatGPT plan through a backend OpenAI does not document for other tools, that it can stop working without notice, and that heavy use counts against your plan. There is nothing to type: signing in accepts it.
 2. Your browser opens OpenAI's sign-in page. If it does not, open the address that is printed. Your password goes only into OpenAI's page.
-3. The tokens are saved in your operating system's credential store: Windows Credential Manager, the macOS login Keychain, or the Linux Secret Service. A Linux machine without a keyring uses a private file in `~/.local/share/hoi4-imagegen/chatgpt-login/`.
+3. The tokens are saved where only your user account can read them: Windows Credential Manager, a private file in `~/Library/Application Support/hoi4-imagegen/chatgpt-login/` on macOS, or the Linux Secret Service. A Linux machine without a keyring uses a private file in `~/.local/share/hoi4-imagegen/chatgpt-login/`. On a Mac that signed in with 0.3.x, sign in once more after updating.
 
 Other commands:
 
@@ -156,6 +156,7 @@ The family's rules already describe vanilla's form, so the brief only names the 
 * A path with `..`, a drive letter, a UNC share, a stream (`:`), a device name such as `CON`, or a symlink out of the project is refused. Use project-relative paths.
 * The tokens are split over several Credential Manager entries named `hoi4-imagegen.chatgpt-login` because of Windows' size limit. `logout` removes them all.
 * On Linux without a running keyring, the tool uses a private file instead. Install a Secret Service (GNOME Keyring or KWallet) if you want the keychain.
+* On macOS the sign-in is a private file, so the MCP server never asks for the Keychain password. `HOI4_IMAGEGEN_CHATGPT_STORE=keychain` brings the Keychain back, with its password dialog on each start of `hoi4-imagegen-mcp`.
 * Sign-in uses port 1455 on `127.0.0.1`. If another program holds that port, close it and try again.
 * The browser does not open on a remote or headless machine. Open the printed address on a machine that can reach it, or use an API key.
 * macOS and Windows may warn that the binary is unsigned. Verify it with `SHA256SUMS` and `gh attestation verify`, then allow it.

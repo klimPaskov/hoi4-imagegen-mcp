@@ -1,8 +1,16 @@
 //! Where the sign-in tokens live: the operating system's credential store.
 //!
-//! Windows keeps them in Credential Manager and macOS in the login Keychain. Linux uses the Secret Service
-//! (GNOME Keyring, KWallet) when one is running. Only on a Linux machine without a keyring does the store fall
-//! back to a private file (mode 0600) in the per-user data folder.
+//! Windows keeps them in Credential Manager. Linux uses the Secret Service (GNOME Keyring, KWallet) when one is
+//! running, and a private file (mode 0600) in the per-user data folder when none is.
+//!
+//! macOS keeps them in a private file (mode 0600, folder 0700) in `~/Library/Application Support` since 0.4.0. The
+//! login Keychain trusts only the program that created an item, and the tool is two programs: `hoi4-imagegen login`
+//! created the item, and `hoi4-imagegen-mcp` then got a Keychain password dialog on every start, and again after every
+//! release, because both binaries are ad-hoc signed. An agent's MCP server cannot answer that dialog, so the sign-in
+//! was unusable through MCP. The file gives the same protection as the Codex CLI's own `~/.codex/auth.json`: only the
+//! user's account can read it. [`STORE_ENV`] set to `keychain` keeps the Keychain for a user who wants it and answers
+//! the dialog. A Keychain item left by 0.3.x is not read by default (reading it is what asks for the password): sign in
+//! once more, and `login` or `logout` from the CLI, which created the item, removes it.
 //!
 //! Upstream resolved a token from an environment variable, then its own file, then the Codex CLI's
 //! `~/.codex/auth.json`, and wrote refreshed tokens back into whichever file they came from. That rotates another
@@ -21,6 +29,9 @@ use serde::{Deserialize, Serialize};
 
 /// Environment variable that forces the file store at a path (tests, portable installs).
 pub const PATH_ENV: &str = "HOI4_IMAGEGEN_CHATGPT_AUTH";
+/// Environment variable that picks the store on macOS: `keychain` for the login Keychain, anything else or unset for
+/// the private file.
+pub const STORE_ENV: &str = "HOI4_IMAGEGEN_CHATGPT_STORE";
 /// Keychain service name.
 pub const SERVICE: &str = "hoi4-imagegen.chatgpt-login";
 /// Characters per keychain entry. Windows stores UTF-16, so 1,000 characters fit its 2,560-byte limit.
@@ -53,6 +64,15 @@ enum Backend {
 #[derive(Debug, Clone)]
 pub struct CredentialStore {
     backend: Backend,
+    /// The file store on macOS, where a 0.3.x Keychain item may be left over: [`CredentialStore::delete`] and
+    /// [`CredentialStore::forget_old_keychain`] remove it.
+    old_keychain: bool,
+}
+
+/// True when the store is the private file on this platform by default (macOS, unless [`STORE_ENV`] asks for the
+/// Keychain).
+pub fn file_by_default(env: &dyn EnvSource) -> bool {
+    cfg!(target_os = "macos") && !env.get(STORE_ENV).is_some_and(|v| v.trim().eq_ignore_ascii_case("keychain"))
 }
 
 /// Per-user data folder of this tool, or `None` when the environment names no home.
@@ -79,8 +99,12 @@ impl CredentialStore {
         if let Some(p) = env.get(PATH_ENV) {
             return Ok(Self::at(p));
         }
+        if file_by_default(env) {
+            let path = file_path(env).ok_or("HOME is not set, so there is nowhere private to keep the sign-in")?;
+            return Ok(CredentialStore { backend: Backend::File(path), old_keychain: true });
+        }
         if keychain_usable() {
-            return Ok(CredentialStore { backend: Backend::Keychain { legacy_file: file_path(env) } });
+            return Ok(CredentialStore { backend: Backend::Keychain { legacy_file: file_path(env) }, old_keychain: false });
         }
         if cfg!(any(windows, target_os = "macos")) {
             return Err("the operating system credential store is not reachable".into());
@@ -92,7 +116,13 @@ impl CredentialStore {
 
     /// A file store at a path (tests, the Linux fallback).
     pub fn at(path: impl Into<PathBuf>) -> Self {
-        CredentialStore { backend: Backend::File(path.into()) }
+        CredentialStore { backend: Backend::File(path.into()), old_keychain: false }
+    }
+
+    /// Remove a Keychain item a 0.3.x sign-in left on macOS, best effort. Call it only from the CLI, the program that
+    /// created the item, so macOS does not ask for the Keychain password. Returns whether one existed.
+    pub fn forget_old_keychain(&self) -> bool {
+        self.old_keychain && keychain_delete().unwrap_or(false)
     }
 
     /// Where the credentials live, for messages.
@@ -156,7 +186,7 @@ impl CredentialStore {
     /// Delete the credentials. Returns whether any existed.
     pub fn delete(&self) -> Result<bool, String> {
         match &self.backend {
-            Backend::File(p) => delete_file(p),
+            Backend::File(p) => Ok(delete_file(p)? | self.forget_old_keychain()),
             Backend::Keychain { legacy_file } => {
                 let mut existed = keychain_delete()?;
                 if let Some(old) = legacy_file {
@@ -179,6 +209,11 @@ fn load_file(path: &Path) -> Result<Option<Credentials>, String> {
 fn save_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("cannot create {}: {e}", parent.display()))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).map_err(|e| format!("cannot make {} private: {e}", parent.display()))?;
+        }
     }
     let tmp = path.with_extension("json.tmp");
     {
@@ -323,6 +358,23 @@ mod tests {
         assert!(!text.contains(".codex"), "must never touch the Codex CLI's credentials: {text}");
     }
 
+    /// On macOS the sign-in is a private file by default, so the MCP server never reads a Keychain item the CLI
+    /// created (issue #2); `HOI4_IMAGEGEN_CHATGPT_STORE=keychain` keeps the Keychain. Elsewhere nothing changes.
+    #[test]
+    fn macos_keeps_the_sign_in_in_a_private_file_unless_the_keychain_is_asked_for() {
+        let env = MapEnv::from_pairs(&[("HOME", "/Users/x")]);
+        assert_eq!(file_by_default(&env), cfg!(target_os = "macos"));
+        let keychain = MapEnv::from_pairs(&[("HOME", "/Users/x"), (STORE_ENV, "Keychain")]);
+        assert!(!file_by_default(&keychain));
+        if cfg!(target_os = "macos") {
+            let store = CredentialStore::for_environment(&env).unwrap();
+            assert_eq!(store.path().unwrap(), Path::new("/Users/x/Library/Application Support/hoi4-imagegen/chatgpt-login/auth.json"));
+            assert!(store.old_keychain, "a 0.3.x Keychain item is cleaned up by login and logout");
+            assert!(CredentialStore::for_environment(&MapEnv::from_pairs(&[])).is_err(), "no HOME, no store");
+        }
+        assert!(!CredentialStore::at("x/auth.json").forget_old_keychain(), "a plain file store never touches the Keychain");
+    }
+
     #[test]
     fn no_home_means_no_file_path_never_the_current_directory() {
         assert_eq!(file_path(&MapEnv::from_pairs(&[])), None);
@@ -336,6 +388,7 @@ mod tests {
         let store = CredentialStore::at(dir.path().join("auth.json"));
         store.save(&creds()).unwrap();
         assert_eq!(fs::metadata(store.path().unwrap()).unwrap().permissions().mode() & 0o777, 0o600);
+        assert_eq!(fs::metadata(dir.path()).unwrap().permissions().mode() & 0o777, 0o700, "and its folder");
     }
 
     #[test]
