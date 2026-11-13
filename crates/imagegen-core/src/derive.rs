@@ -395,7 +395,7 @@ pub struct Stats {
 /// glow is a band of partly transparent pixels, dark or light) and what lies at the edge of a filled picture (a thin
 /// frame is a one-pixel ring of one even tone that differs from the picture inside it, a vignette is corners darker
 /// than the centre). Measured on the image itself, sampled to at most about 40,000 pixels for the soft band.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Finish {
     /// Share of the canvas whose alpha is partly transparent (16 to 230).
@@ -415,6 +415,22 @@ pub struct Finish {
     pub corner_ratio: f64,
     /// Mean colour of the corner patches, 0 to 1.
     pub corner_rgb: [f64; 3],
+}
+
+/// An unmeasured finish: no soft band, no frame (a spread of 1) and corners as light as the centre.
+impl Default for Finish {
+    fn default() -> Self {
+        Finish {
+            soft: 0.0,
+            soft_dark: 0.0,
+            soft_light: 0.0,
+            border_value: 0.0,
+            border_std: 1.0,
+            inner_value: 0.0,
+            corner_ratio: 1.0,
+            corner_rgb: [0.0; 3],
+        }
+    }
 }
 
 /// Measure the [`Finish`] of an image.
@@ -1622,6 +1638,7 @@ mod tests {
         assert_eq!(edge_finish(&fv), vec!["a dark violet vignette"]);
         // a plain picture has none, and the draft carries what it finds
         assert!(edge_finish(&finish(&Rgba::filled(80, 60, [120, 120, 120, 255]))).is_empty());
+        assert!(edge_finish(&Finish::default()).is_empty() && cutout_finish(&Finish::default()).is_empty(), "unmeasured: nothing");
         let m = Figures { saturation: 0.3, value: 0.5, opaque: 0.4, finish: f, ..Default::default() };
         assert!(draft_look(&m, None, None, [100, 88]).contains("a cut-out subject on a transparent background, a soft glow, a dark drop shadow"));
         // the cache keeps the finish
