@@ -96,22 +96,17 @@ fn import_with(h: &common::Harness, name: &str, img: &Rgba, backdrop: &str) -> R
 }
 
 #[test]
-fn the_prompt_asks_for_a_front_facing_believable_faithful_subject_without_naming_a_kind_of_subject() {
+fn the_prompt_asks_for_a_front_facing_believable_faithful_subject_without_naming_a_kind_of_subject_or_body() {
     let h = openai_harness();
     let plan = h.engine.plan(request(json!({"canvas": [1024, 1536]}))).unwrap();
     let text = plan.prompt.text.to_lowercase();
     for want in [
         "straight from the front",
-        "slight a-pose",
-        "backdrop showing under each arm",
-        "the legs a little apart",
+        "held apart from the body, with backdrop showing between them",
         "the tips of anything held, worn or trailing included",
-        "gripped in a closed hand",
-        "believable anatomy",
+        "believable form and materials",
         "neither a cartoon or toy",
         "uncanny cg",
-        "not a human body given its traits",
-        "never shrunk and never comically oversized",
         "invent nothing",
         "leave out effects, scenery",
     ] {
@@ -120,8 +115,14 @@ fn the_prompt_asks_for_a_front_facing_believable_faithful_subject_without_naming
     assert!(!text.contains("a three-quarter front view with"), "the old three-quarter rule is gone: {text}");
     // general: no creature or subject kinds in the family's own rules
     let rules = imagegen_core::builtin::profiles().into_iter().find(|p| p.family == imagegen_core::Family::ModelReference).unwrap();
-    for word in ["dragon", "knight", "soldier", "horse", "tank", "demon", "angel"] {
-        assert!(!rules.imagegen.prompt.rules.join(" ").to_lowercase().contains(word), "{word}");
+    // lean: no body plan either (a humanoid's A-pose, wings, horns): those go into the brief and the review
+    let joined = rules.imagegen.prompt.rules.join(" ").to_lowercase();
+    let words: Vec<&str> = joined.split(|c: char| !c.is_alphanumeric() && c != '-').collect();
+    for word in [
+        "dragon", "knight", "soldier", "horse", "tank", "demon", "angel", "a-pose", "arm", "arms", "leg", "legs", "wing", "wings", "horn", "horns",
+        "tail", "hand", "hands", "human",
+    ] {
+        assert!(!words.contains(&word), "{word}");
     }
 }
 
