@@ -429,7 +429,14 @@ mod tests {
                     ("GFX_operations_night_drop_map", "gfx/interface/operations/iron_pact/map/night_drop_map.dds", 1),
                 ],
             ),
-            OperationPicture => ("night_drop", None, one("GFX_phase_night_drop", "gfx/interface/operations/iron_pact/pictures/phase_night_drop.dds")),
+            OperationPicture => (
+                "night_drop",
+                None,
+                vec![
+                    ("GFX_phase_night_drop", "gfx/interface/operations/iron_pact/pictures/phase_night_drop.dds", 1),
+                    ("GFX_phase_night_drop_small", "gfx/interface/operations/iron_pact/phases_small/phase_night_drop_small.dds", 1),
+                ],
+            ),
             CommanderTrait => ("stubborn", None, one("GFX_trait_stubborn", "gfx/interface/traits/iron_pact/trait_stubborn.dds")),
             PersonalTrait => ("gambler", None, one("GFX_trait_gambler", "gfx/interface/traits/iron_pact/personal/trait_gambler.dds")),
             Doctrine => ("deep_battle", None, one("GFX_doctrine_deep_battle", "gfx/interface/doctrines/iron_pact/doctrine_deep_battle.dds")),

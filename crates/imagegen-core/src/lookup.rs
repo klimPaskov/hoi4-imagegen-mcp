@@ -291,6 +291,16 @@ pub fn derived_companions(family: Family, canvas: [u32; 2]) -> Vec<DerivedCompan
             "{asset}_map",
             "GFX_operations_{asset}_map",
         )],
+        Family::OperationPicture => vec![c(
+            "small",
+            DeriveKind::PhaseSmall,
+            [59, 58],
+            1,
+            0,
+            Some("gfx/interface/operations/{feature_slug}/phases_small"),
+            "{prefix}{asset}_small",
+            "GFX_phase_{asset}_small",
+        )],
         _ => Vec::new(),
     }
 }

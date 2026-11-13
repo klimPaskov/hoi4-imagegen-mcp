@@ -9,6 +9,7 @@
 //! | [`DeriveKind::TextIcon`] | on-map counter | `gfx/texticons/unit_*_icon_small.dds`: the on-map strip, frame 1 tinted green, frame 2 (the NATO box) unchanged in 22 of 34 pairs | frame 1 RGB multiplied by the least-squares tint (0.573, 0.735, 0.573), frame 2 copied |
 //! | [`DeriveKind::Miniature`] | faction logo | `*_miniature` 32x32: frame 1's emblem fitted edge to edge (median bounding box 32 px) | frame 1's subject fitted to 32x32 |
 //! | [`DeriveKind::MapMedallion`] | operation card | `map/<name>_map.dds` 48x48: the picture's centre at 0.6 scale in a round, bevelled gold ring | the central 64 px of the card in the ring of [`crate::recipes::operation_card`] |
+//! | [`DeriveKind::PhaseSmall`] | operation phase picture | `phases_small/<name>_small.dds` 59x58 (71 files): the phase photograph's central square (cropped by hand, 0.85 of its height in the median) in a disc of radius 22.9 centred at (30, 29), its edge darkened to 0.50, 0.69 and 0.92 of the inner value over the outer three pixels, a little lighter (1.03 to 1.10) three to eight pixels in | the central square of the processed phase card in that disc, with that edge ([`phase_small`]) |
 //! | [`DeriveKind::HalfSize`] | medal (`_large` to the small strip) | medals: the small strip is the large one downscaled (median MAE 2.6 against Lanczos) | Lanczos3 to half size, frame by frame |
 //! | [`DeriveKind::LandmarkSmall`] | landmark (large to `_small`) | `buildings/*_icon_small` 64x32: a flat orange pictogram, yellow-orange at the top to deep orange at the bottom, with a brown edge and a faint black rim, in a box of 26x19 inside 3 px at the sides, 6 at the top and 7 at the bottom | both frames cropped together, fitted into that box, then recoloured on vanilla's orange ramp ([`LANDMARK_SMALL`]) |
 
@@ -45,6 +46,8 @@ pub enum DeriveKind {
     LandmarkSmall,
     /// The 48x48 map medallion of an operation card: the card's centre in a gold ring.
     MapMedallion,
+    /// The 59x58 round phase icon of an operation phase picture.
+    PhaseSmall,
 }
 
 impl DeriveKind {
@@ -57,6 +60,7 @@ impl DeriveKind {
             DeriveKind::HalfSize => "half_size",
             DeriveKind::LandmarkSmall => "landmark_small",
             DeriveKind::MapMedallion => "map_medallion",
+            DeriveKind::PhaseSmall => "phase_small",
         }
     }
 }
@@ -70,6 +74,7 @@ pub fn derive(kind: DeriveKind, main: &Rgba, frames: u32) -> Result<Rgba> {
         DeriveKind::HalfSize => half_size(main, frames),
         DeriveKind::LandmarkSmall => landmark_small(main, frames),
         DeriveKind::MapMedallion => crate::recipes::operation_card::map_medallion(main),
+        DeriveKind::PhaseSmall => phase_small(main),
     }
 }
 
@@ -212,6 +217,138 @@ pub fn miniature(strip: &Rgba, frames: u32) -> Result<Rgba> {
     fit_centred(&first, MINIATURE, MINIATURE, None)
 }
 
+/// Canvas of an operation phase icon (`icon = GFX_phase_<x>_small`).
+pub const PHASE_SMALL: [u32; 2] = [59, 58];
+/// Centre of its disc in pixels (vanilla's medians over the 71 files: 29.95 and 29.0).
+pub const PHASE_SMALL_CENTRE: [f64; 2] = [30.0, 29.0];
+/// Radius of its disc (median 22.88, 21.87 to 22.99).
+pub const PHASE_SMALL_RADIUS: f64 = 22.9;
+/// Side of the picture's central square shown in the disc, as a share of the picture's shorter side. Vanilla crops
+/// each icon by hand (the best crop per pair runs from 0.3 to 1.0, median 0.85). Of the fixed crops the whole shorter
+/// side matches best (the grey of the inner disc correlates 0.32 with vanilla's in the median, 0.28 at 0.9, 0.24 at
+/// 0.85), but on a finished phase card it shows the card's light paper border at the top and bottom, so 0.9 it is.
+pub const PHASE_SMALL_CROP: f64 = 0.9;
+/// The edge: (depth inside the edge in pixels, value relative to the inner 60 percent of the radius), the medians of
+/// vanilla's one-pixel rings.
+pub const PHASE_SMALL_EDGE: [(f64, f64); 9] =
+    [(0.5, 0.504), (1.5, 0.691), (2.5, 0.918), (3.5, 1.034), (4.5, 1.076), (5.5, 1.095), (6.5, 1.1), (7.5, 1.077), (9.5, 1.0)];
+
+fn phase_edge_at(depth: f64) -> f64 {
+    let e = &PHASE_SMALL_EDGE;
+    if depth <= e[0].0 {
+        return e[0].1;
+    }
+    for k in 0..e.len() - 1 {
+        if depth <= e[k + 1].0 {
+            let t = (depth - e[k].0) / (e[k + 1].0 - e[k].0);
+            return e[k].1 + (e[k + 1].1 - e[k].1) * t;
+        }
+    }
+    1.0
+}
+
+/// The 59x58 phase icon: the central square of the phase picture (the processed card) in vanilla's disc,
+/// anti-aliased by 4x4 supersampling, then each one-pixel ring scaled to vanilla's darkened edge and the lighter band
+/// inside it, relative to this picture's own inner disc. The picture keeps its
+/// own colours: the phase card already gave it vanilla's sepia.
+pub fn phase_small(picture: &Rgba) -> Result<Rgba> {
+    let short = picture.width.min(picture.height);
+    let side = ((f64::from(short) * PHASE_SMALL_CROP).round() as u32).clamp(1, short);
+    if side < 8 {
+        return Err(Error::Image("the phase picture is too small for a phase icon".into()));
+    }
+    let centre = picture.crop((picture.width - side) / 2, (picture.height - side) / 2, side, side)?;
+    let disc = (PHASE_SMALL_RADIUS * 2.0).ceil() as u32 + 2;
+    let pic = resize_lanczos3(&centre, disc, disc)?;
+    let [cx, cy] = PHASE_SMALL_CENTRE;
+    let r = PHASE_SMALL_RADIUS;
+    let half = f64::from(disc) / 2.0;
+    let mut out = Rgba::new(PHASE_SMALL[0], PHASE_SMALL[1]);
+    const SS: u32 = 4;
+    for y in 0..PHASE_SMALL[1] {
+        for x in 0..PHASE_SMALL[0] {
+            let (mut acc, mut aa) = ([0f64; 3], 0f64);
+            for sy in 0..SS {
+                for sx in 0..SS {
+                    let px = f64::from(x) + (f64::from(sx) + 0.5) / f64::from(SS) - cx;
+                    let py = f64::from(y) + (f64::from(sy) + 0.5) / f64::from(SS) - cy;
+                    let d = px.hypot(py);
+                    if d > r {
+                        continue;
+                    }
+                    let (ix, iy) =
+                        ((px + half).floor().clamp(0.0, f64::from(disc - 1)) as u32, (py + half).floor().clamp(0.0, f64::from(disc - 1)) as u32);
+                    let p = pic.px(ix, iy);
+                    // a clear pixel of the card (its tilted corners) shows as the card's paper, not as a hole
+                    let a = f64::from(p[3]) / 255.0;
+                    for (c, slot) in acc.iter_mut().enumerate() {
+                        *slot += f64::from(p[c]) * a + 200.0 * (1.0 - a);
+                    }
+                    aa += 1.0;
+                }
+            }
+            if aa > 0.0 {
+                let c = acc.map(|v| (v / aa).round().clamp(0.0, 255.0) as u8);
+                out.set_px(x, y, [c[0], c[1], c[2], (aa / f64::from(SS * SS) * 255.0).round() as u8]);
+            }
+        }
+    }
+    // the edge: each one-pixel ring is scaled to vanilla's value relative to the inner 60 percent of the radius,
+    // measured on this picture, so a picture that is already dark or light at its rim ends up like vanilla's
+    let depth = |x: u32, y: u32| r - (f64::from(x) + 0.5 - cx).hypot(f64::from(y) + 0.5 - cy);
+    let value = |p: [u8; 4]| f64::from(p[0].max(p[1]).max(p[2])) / 255.0;
+    let rings = PHASE_SMALL_EDGE.len();
+    let (mut inner, mut sums) = ((0.0f64, 0.0f64), vec![(0.0f64, 0.0f64); rings]);
+    for y in 0..PHASE_SMALL[1] {
+        for x in 0..PHASE_SMALL[0] {
+            let p = out.px(x, y);
+            if p[3] == 0 {
+                continue;
+            }
+            let t = depth(x, y);
+            if t >= 0.4 * r {
+                inner.0 += value(p);
+                inner.1 += 1.0;
+            }
+            if t >= 0.0 && (t.floor() as usize) < rings {
+                let b = t.floor() as usize;
+                sums[b].0 += value(p);
+                sums[b].1 += 1.0;
+            }
+        }
+    }
+    let inner_mean = if inner.1 > 0.0 { inner.0 / inner.1 } else { 0.0 };
+    if inner_mean > 1e-3 {
+        // the factor of each ring: vanilla's ratio over this picture's
+        let factors: Vec<f64> = (0..rings)
+            .map(|b| {
+                let (sum, n) = sums[b];
+                if n <= 0.0 || sum <= 1e-6 {
+                    return 1.0;
+                }
+                (phase_edge_at(b as f64 + 0.5) * inner_mean / (sum / n)).clamp(0.2, 1.6)
+            })
+            .collect();
+        for y in 0..PHASE_SMALL[1] {
+            for x in 0..PHASE_SMALL[0] {
+                let p = out.px(x, y);
+                if p[3] == 0 {
+                    continue;
+                }
+                let t = depth(x, y).max(0.0);
+                let b = t.floor() as usize;
+                if b >= rings {
+                    continue;
+                }
+                let k = factors[b];
+                let c = [0, 1, 2].map(|i| (f64::from(p[i]) * k).round().clamp(0.0, 255.0) as u8);
+                out.set_px(x, y, [c[0], c[1], c[2], p[3]]);
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Every frame at half size (Lanczos3).
 pub fn half_size(strip: &Rgba, frames: u32) -> Result<Rgba> {
     let parts = strip.split_frames(frames.max(1))?;
@@ -228,6 +365,125 @@ pub fn half_size(strip: &Rgba, frames: u32) -> Result<Rgba> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The disc of a phase icon: centre and radius from the alpha, and the value of the outer three one-pixel rings
+    /// relative to the inner 60 percent of the radius.
+    fn phase_disc(img: &Rgba) -> ([f64; 3], [f64; 3]) {
+        let (mut cx, mut cy, mut a) = (0.0, 0.0, 0.0);
+        for y in 0..img.height {
+            for x in 0..img.width {
+                let al = f64::from(img.alpha(x, y)) / 255.0;
+                cx += (f64::from(x) + 0.5) * al;
+                cy += (f64::from(y) + 0.5) * al;
+                a += al;
+            }
+        }
+        let (cx, cy, r) = (cx / a, cy / a, (a / std::f64::consts::PI).sqrt());
+        let (mut inner, mut rings) = ((0.0, 0.0), [(0.0, 0.0); 3]);
+        for y in 0..img.height {
+            for x in 0..img.width {
+                let p = img.px(x, y);
+                if p[3] < 204 {
+                    continue;
+                }
+                let v = f64::from(p[0].max(p[1]).max(p[2])) / 255.0;
+                let d = (f64::from(x) + 0.5 - cx).hypot(f64::from(y) + 0.5 - cy);
+                if d < 0.6 * r {
+                    inner.0 += v;
+                    inner.1 += 1.0;
+                }
+                let k = (r - d).floor();
+                if (0.0..3.0).contains(&k) {
+                    rings[k as usize].0 += v;
+                    rings[k as usize].1 += 1.0;
+                }
+            }
+        }
+        let im = inner.0 / inner.1;
+        ([cx, cy, r], rings.map(|(s, n)| if n > 0.0 { s / n / im } else { 0.0 }))
+    }
+
+    /// A flat mid-grey picture becomes vanilla's disc: 59x58, centred at (30, 29), radius 22.9, clear outside, with
+    /// the darkened edge. Deterministic, and a picture too small for it is refused.
+    #[test]
+    fn a_phase_picture_becomes_vanillas_round_phase_icon() {
+        let pic = Rgba::filled(210, 176, [140, 120, 100, 255]);
+        let out = phase_small(&pic).unwrap();
+        assert_eq!((out.width, out.height), (59, 58));
+        let (disc, rings) = phase_disc(&out);
+        assert!((disc[0] - 30.0).abs() < 0.2 && (disc[1] - 29.0).abs() < 0.2 && (disc[2] - 22.9).abs() < 0.3, "{disc:?}");
+        assert!(rings[0] < 0.6 && rings[1] < 0.8 && rings[2] > 0.85, "{rings:?}");
+        assert_eq!(out.alpha(0, 0), 0);
+        assert_eq!(out.alpha(30, 29), 255);
+        assert_eq!(out, phase_small(&pic).unwrap());
+        assert!(phase_small(&Rgba::filled(6, 6, [9, 9, 9, 255])).is_err());
+        assert_eq!(derive(DeriveKind::PhaseSmall, &pic, 1).unwrap(), out);
+    }
+
+    /// Made from vanilla's own 210x176 phase pictures, the icons match vanilla's 59x58 ones in disc and edge, and
+    /// show the same picture (the grey of the disc's middle correlates with vanilla's).
+    #[test]
+    fn phase_icons_from_vanillas_pictures_match_vanillas_phase_icons() {
+        let g = std::env::var("HOI4_GAME_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| "C:/Program Files (x86)/Steam/steamapps/common/Hearts of Iron IV".into());
+        let dir = g.join("gfx/interface/operations");
+        let Ok(rd) = std::fs::read_dir(dir.join("phases_small")) else {
+            eprintln!("SKIPPED phase icons vs vanilla: Hearts of Iron IV not found (set HOI4_GAME_DIR); UNAVAILABLE in this run");
+            return;
+        };
+        let mut names: Vec<String> = rd.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        let (mut corr, mut n) = (Vec::new(), 0usize);
+        let (mut rings_v, mut rings_o): (Vec<[f64; 3]>, Vec<[f64; 3]>) = (Vec::new(), Vec::new());
+        for f in &names {
+            let Some(stem) = f.strip_suffix("_small.dds") else { continue };
+            let (Ok(sb), Ok(bb)) = (std::fs::read(dir.join("phases_small").join(f)), std::fs::read(dir.join("images").join(format!("{stem}.dds"))))
+            else {
+                continue;
+            };
+            let (Ok(small), Ok(big)) = (crate::dds::decode(&sb), crate::dds::decode(&bb)) else { continue };
+            let ours = phase_small(&big).unwrap();
+            let ((d0, r0), (d1, r1)) = (phase_disc(&small), phase_disc(&ours));
+            assert!((d0[2] - d1[2]).abs() < 1.2 && (d0[0] - d1[0]).abs() < 1.2 && (d0[1] - d1[1]).abs() < 1.2, "{f}: {d0:?} vs {d1:?}");
+            rings_v.push(r0);
+            rings_o.push(r1);
+            // the grey of the inner disc
+            let grey = |i: &Rgba| -> Vec<f64> {
+                let mut v = Vec::new();
+                for y in 17..41 {
+                    for x in 18..42 {
+                        let p = i.px(x, y);
+                        v.push(0.299 * f64::from(p[0]) + 0.587 * f64::from(p[1]) + 0.114 * f64::from(p[2]));
+                    }
+                }
+                v
+            };
+            let (a, b) = (grey(&small), grey(&ours));
+            let (ma, mb) = (a.iter().sum::<f64>() / a.len() as f64, b.iter().sum::<f64>() / b.len() as f64);
+            let num: f64 = a.iter().zip(&b).map(|(x, y)| (x - ma) * (y - mb)).sum();
+            let den = (a.iter().map(|x| (x - ma).powi(2)).sum::<f64>() * b.iter().map(|y| (y - mb).powi(2)).sum::<f64>()).sqrt();
+            corr.push(if den > 0.0 { num / den } else { 0.0 });
+            n += 1;
+        }
+        corr.sort_by(f64::total_cmp);
+        let median = corr.get(corr.len() / 2).copied().unwrap_or(0.0);
+        eprintln!("phase icons: {n} pairs, median correlation of the inner disc {median:.2}");
+        assert!(n >= 60, "{n} pairs");
+        // vanilla's edge varies from file to file (one even has a light rim), so the medians are compared
+        let med = |v: &[[f64; 3]], k: usize| {
+            let mut x: Vec<f64> = v.iter().map(|r| r[k]).collect();
+            x.sort_by(f64::total_cmp);
+            x[x.len() / 2]
+        };
+        for k in 0..3 {
+            let (a, b) = (med(&rings_v, k), med(&rings_o, k));
+            eprintln!("ring {k}: vanilla median {a:.3}, ours {b:.3}");
+            assert!((a - b).abs() < 0.08, "ring {k}: {a} vs {b}");
+        }
+        // vanilla crops each icon by hand, so a fixed crop matches only moderately (see PHASE_SMALL_CROP)
+        assert!(median > 0.22, "the icons show the same picture: {median}");
+    }
 
     fn disc(w: u32, h: u32, cx: f64, cy: f64, r: f64, rgb: [u8; 3]) -> Rgba {
         let mut img = Rgba::new(w, h);

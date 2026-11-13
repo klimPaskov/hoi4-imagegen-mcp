@@ -634,14 +634,14 @@ events/*.txt: 830 of 833 picture values are full GFX_ names (interface/eventpict
 
 <img src="gallery/operation_picture.webp" alt="Example operation_picture asset made by hoi4-imagegen" width="210">
 
-**Vanilla form (since 0.3.2).** This family is the 210x176 operation phase picture, and only that. All 71 vanilla ones (`operations/images/phase_bruneval_attack`, `phase_capture_cyphers_raid`) are period photographs in sepia or warm black and white, never paintings and never colour. In vanilla they sit on the same tilted, worn photo card as the report event pictures, with transparent corners (86 percent of the canvas covered). The prompt asks for the photograph and says it is not the round phase icon. The example above is a painted illustration and predates this rule.
+**Vanilla form (since 0.3.2, phase icon since 0.4.0).** This family is the 210x176 operation phase picture. Its phase also names a 59x58 icon, `icon = GFX_phase_<name>_small` in `operations/phases_small/` (71 files): a round crop of the same photograph (vanilla crops each by hand, the tool takes the central square of 0.9 of the height, inside the card's paper border) in a disc of radius 22.9 with a darkened edge and no ring. The tool derives that icon from the finished phase card, so the two always show the same picture. All 71 vanilla ones (`operations/images/phase_bruneval_attack`, `phase_capture_cyphers_raid`) are period photographs in sepia or warm black and white, never paintings and never colour. In vanilla they sit on the same tilted, worn photo card as the report event pictures, with transparent corners (86 percent of the canvas covered). The prompt asks for the photograph and says it is not the round phase icon. The example above is a painted illustration and predates this rule.
 
 | | |
 |---|---|
 | Group and tool | picture, `hoi4.image_picture` |
-| Canvas and frames | 210x176, 1 frame; DDS |
-| Names the game looks up | the script names the sprite in full, so the name is free. The example installs `GFX_phase_night_infiltration`. |
-| Script | operation phase: picture = GFX_phase_night_infiltration |
+| Canvas and frames | 210x176, 1 frame; DDS. Since 0.4.0 the 59x58 phase icon is written beside it |
+| Names the game looks up | the script names the sprite in full, so the name is free. The example installs `GFX_phase_night_infiltration` and `GFX_phase_night_infiltration_small`. |
+| Script | operation phase: picture = GFX_phase_night_infiltration, icon = GFX_phase_night_infiltration_small |
 | Installed files (example) | `gfx/interface/operations/gallery/pictures/phase_night_infiltration.dds` |
 | Processing | recipe `picture` v1: flatten on black, cover-resize, grayscale for news. Ran: `flatten_on` (background [0, 0, 0]) → `cover_resize` (height 176, width 210) |
 | Checks | `size`, `checker`, `opaque`, `style`, `dds` |
