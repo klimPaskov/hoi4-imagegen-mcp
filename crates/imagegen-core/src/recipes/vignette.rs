@@ -30,7 +30,8 @@ use crate::error::{Error, Result};
 use crate::pixels::Rgba;
 
 /// Version of the vignette recipe (bump when an output could change). 2: a dull or flat source is brought up to vanilla's saturation and contrast, not only down.
-pub const RECIPE_VERSION: u32 = 2;
+pub const RECIPE_VERSION: u32 = 3;
+// 3: a cool disc gets a warm white-balance shift up to vanilla's print tone (`yellow_min`).
 
 /// Vanilla's edge darkening: (depth inside the edge as a share of the radius, value relative to the inner 60 percent
 /// of the radius). The depths are the centres of the measured one-pixel rings on vanilla's 26.1 px radius.
@@ -61,6 +62,9 @@ pub struct VignetteStyle {
     pub value_range: (f64, f64),
     /// Highest share of gold and bronze tones; above it their saturation is lowered further.
     pub warm_max: f64,
+    /// Lowest mean CIE b* (yellow above 0, blue below) of the finished disc. A cooler disc gets a warm white-balance
+    /// shift up to it, see [`warm_cast`].
+    pub yellow_min: f64,
 }
 
 /// Vanilla's agency upgrades: mean saturation at most vanilla's median 0.249, mean value from the median 0.423 to the
@@ -74,7 +78,100 @@ pub const AGENCY_UPGRADE: VignetteStyle = VignetteStyle {
     contrast_max: 1.9,
     value_range: (0.423, 0.466),
     warm_max: 0.218,
+    yellow_min: YELLOW_MIN,
 };
+
+/// Lowest mean CIE b* of a finished agency upgrade: between vanilla's 25th percentile and median. Vanilla's discs are
+/// warm-neutral, like a sepia-toned print (mean b* 1.2 to 15.6, quartiles 4.2 and 13.0, median 8.0, measured by
+/// [`mean_yellow`] on the 15 files), and none is blue. The 0.3.8 gallery's eight upgrades measured -1.2 to 4.9 and
+/// read as steel blue next to them.
+pub const YELLOW_MIN: f64 = 6.5;
+
+fn lin(c: u8) -> f64 {
+    let c = f64::from(c) / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn unlin(c: f64) -> u8 {
+    let c = c.clamp(0.0, 1.0);
+    let s = if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 };
+    (s * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+/// CIE b* (D65) of an sRGB colour.
+fn yellow_of(p: [f64; 3]) -> f64 {
+    let y = 0.212_672_9 * p[0] + 0.715_152_2 * p[1] + 0.072_175_0 * p[2];
+    let z = 0.019_333_9 * p[0] + 0.119_192_0 * p[1] + 0.950_304_1 * p[2];
+    let f = |t: f64| if t > 0.008_856 { t.cbrt() } else { 7.787 * t + 16.0 / 116.0 };
+    200.0 * (f(y) - f(z / 1.088_83))
+}
+
+/// Mean CIE b* of the pixels with an alpha of 200 or more (0 when there are none).
+pub fn mean_yellow(img: &Rgba) -> f64 {
+    let (mut s, mut n) = (0.0, 0.0);
+    for p in img.data.chunks_exact(4).filter(|p| p[3] >= 200) {
+        s += yellow_of([lin(p[0]), lin(p[1]), lin(p[2])]);
+        n += 1.0;
+    }
+    if n > 0.0 {
+        s / n
+    } else {
+        0.0
+    }
+}
+
+/// Channel gains of a warm white-balance shift of strength `t`: red up, blue down, green a little up, scaled so a
+/// grey keeps its luminance.
+fn warm_gains(t: f64) -> [f64; 3] {
+    let g = [1.0 + 0.6 * t, 1.0 + 0.15 * t, 1.0 - t];
+    let y = 0.212_672_9 * g[0] + 0.715_152_2 * g[1] + 0.072_175_0 * g[2];
+    g.map(|c| c / y)
+}
+
+/// The gains of the weakest warm white-balance shift that brings the mean CIE b* of `px` (linear RGB) up to `min`, or
+/// `None` when it is already there.
+fn warm_gains_for(px: &[[f64; 3]], min: f64) -> Option<[f64; 3]> {
+    if px.is_empty() {
+        return None;
+    }
+    let mean = |t: f64| {
+        let g = warm_gains(t);
+        px.iter().map(|p| yellow_of([0, 1, 2].map(|k| (p[k] * g[k]).min(1.0)))).sum::<f64>() / px.len() as f64
+    };
+    if mean(0.0) >= min {
+        return None;
+    }
+    let (mut lo, mut hi) = (0.0, 0.6);
+    if mean(hi) < min {
+        return Some(warm_gains(hi));
+    }
+    for _ in 0..30 {
+        let mid = (lo + hi) / 2.0;
+        if mean(mid) < min {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    Some(warm_gains(hi))
+}
+
+/// A warm white-balance shift of the opaque pixels, just strong enough to bring the mean CIE b* up to `min`. A disc
+/// that is already warm enough is left as it is. Pure and deterministic.
+pub fn warm_cast(img: &mut Rgba, min: f64) {
+    let px: Vec<[f64; 3]> = img.data.chunks_exact(4).filter(|p| p[3] >= 200).map(|p| [lin(p[0]), lin(p[1]), lin(p[2])]).collect();
+    if let Some(g) = warm_gains_for(&px, min) {
+        for p in img.data.chunks_exact_mut(4).filter(|p| p[3] > 0) {
+            for k in 0..3 {
+                p[k] = unlin(lin(p[k]) * g[k]);
+            }
+        }
+    }
+}
 
 fn to_hsv(p: [u8; 4]) -> (f64, f64, f64) {
     crate::styledesc::hsv(p[0], p[1], p[2])
@@ -188,7 +285,7 @@ pub fn round_vignette_with(img: &Rgba, style: &VignetteStyle) -> Result<Rgba> {
     let n = (side * side) as usize;
     // the disc: coverage of each pixel, and the source laid over the backdrop
     let mut cover = vec![0f64; n];
-    let mut disc: Vec<DiscPx> = Vec::new();
+    let mut src: Vec<(usize, f64, [u8; 3])> = Vec::new();
     for y in 0..side {
         for x in 0..side {
             let i = (y * side + x) as usize;
@@ -201,9 +298,20 @@ pub fn round_vignette_with(img: &Rgba, style: &VignetteStyle) -> Result<Rgba> {
             let p = sq.px(x, y);
             let a = f64::from(p[3]) / 255.0;
             let px = [0, 1, 2].map(|k| (f64::from(p[k]) * a + f64::from(style.backdrop[k]) * (1.0 - a)).round() as u8);
-            let (h, s, v) = to_hsv([px[0], px[1], px[2], 255]);
-            disc.push(DiscPx { i, depth: ((r - d) / r).max(0.0), h, s, v });
+            src.push((i, ((r - d) / r).max(0.0), px));
         }
+    }
+    // a cool, steel-blue source first gets vanilla's warm-neutral print tone, so the steps below work on the warm colours
+    let linear: Vec<[f64; 3]> = src.iter().map(|(_, _, p)| p.map(lin)).collect();
+    let gains = warm_gains_for(&linear, style.yellow_min);
+    let mut disc: Vec<DiscPx> = Vec::with_capacity(src.len());
+    for ((i, depth, p), l) in src.iter().zip(&linear) {
+        let px = match gains {
+            Some(g) => [0, 1, 2].map(|k| unlin(l[k] * g[k])),
+            None => *p,
+        };
+        let (h, s, v) = to_hsv([px[0], px[1], px[2], 255]);
+        disc.push(DiscPx { i: *i, depth: *depth, h, s, v });
     }
     // saturation into the style's range: down to its upper end, up (by at most the gain) to its lower end
     let mean_s = disc.iter().map(|p| p.s).sum::<f64>() / disc.len() as f64;
@@ -284,6 +392,8 @@ pub fn round_vignette_with(img: &Rgba, style: &VignetteStyle) -> Result<Rgba> {
         let y = p.i as u32 / side;
         out.set_px(x, y, [c[0], c[1], c[2], (cover[p.i] * 255.0).round() as u8]);
     }
+    // the steps above can cool the disc again a little: top it up
+    warm_cast(&mut out, style.yellow_min);
     Ok(out)
 }
 
@@ -511,5 +621,42 @@ mod tests {
         let f = |name: &str| median(files.iter().map(|i| feature(i, name)).collect());
         assert!((f("saturation_mean") - AGENCY_UPGRADE.saturation_range.0).abs() < 0.002, "{}", f("saturation_mean"));
         assert!((f("value_mean") - AGENCY_UPGRADE.value_range.0).abs() < 0.002, "{}", f("value_mean"));
+        let mut yellow: Vec<f64> = files.iter().map(mean_yellow).collect();
+        yellow.sort_by(f64::total_cmp);
+        eprintln!("vanilla agency b*: {yellow:.1?}");
+        let (q1, med) = ((yellow[3] + yellow[4]) / 2.0, yellow[7]);
+        assert!(yellow[0] > 0.0, "no vanilla upgrade is blue: {yellow:?}");
+        assert!(q1 <= YELLOW_MIN && YELLOW_MIN <= med, "yellow_min between the 25th percentile {q1} and the median {med}");
+    }
+
+    /// A cool steel-blue scene like the 0.3.8 gallery's upgrades comes out warm-neutral like vanilla, still in vanilla's
+    /// saturation, value and gold-tone ranges. A disc that is already warm keeps its colour.
+    #[test]
+    fn a_steel_blue_scene_gets_vanillas_warm_print_tone() {
+        let side = 400;
+        let mut src = Rgba::new(side, side);
+        for y in 0..side {
+            for x in 0..side {
+                let band = ((f64::from(x) / 40.0).sin() * 0.5 + 0.5) * 0.4;
+                let rgb = from_hsv(212.0, 0.38, 0.25 + band + 0.2 * f64::from(y) / f64::from(side));
+                src.set_px(x, y, [rgb[0], rgb[1], rgb[2], 255]);
+            }
+        }
+        let before = {
+            let t = apply(&src, &Op::TrimToSubject { min_alpha: 16 }).unwrap();
+            apply(&t, &Op::FitSubject { width: 68, height: 68, margin: 8, min_alpha: 16 }).unwrap()
+        };
+        let out = finish(&src);
+        let (b0, b1) = (mean_yellow(&before), mean_yellow(&out));
+        let (s1, v1, w1) = (feature(&out, "saturation_mean"), feature(&out, "value_mean"), feature(&out, "warm_metal_share"));
+        eprintln!("steel blue: b* {b0:.1} -> {b1:.1}, saturation {s1:.3}, value {v1:.3}, gold {w1:.3}");
+        assert!(b0 < 0.0, "the source is blue: {b0}");
+        assert!(b1 >= YELLOW_MIN - 1.0, "warm-neutral: {b1}");
+        assert!(s1 <= 0.32 + 0.03 && (0.423 - 0.03..=0.466 + 0.03).contains(&v1) && w1 <= 0.218 + 0.03, "{s1} {v1} {w1}");
+        // a warm disc is left alone by the shift
+        let mut warm = Rgba::filled(60, 60, [150, 120, 90, 255]);
+        let copy = warm.clone();
+        warm_cast(&mut warm, YELLOW_MIN);
+        assert_eq!(warm, copy);
     }
 }
