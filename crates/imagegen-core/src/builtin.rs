@@ -126,6 +126,7 @@ const CONCERN_RULES: &[&str] = &[
     "The Hearts of Iron IV industrial concern form: a company badge or logo emblem, such as a shield, roundel or winged badge with the company's symbol.",
     "The symbol is large: it fills most of the badge's face, never a small mark inside a wide empty badge.",
     "Clean painted enamel and metal, readable at {w}x{h} pixels.",
+    "The badge's colours come from the company's field, so concerns differ from one another: navy and sea blue for shipyards, sky blue and silver for aircraft, olive and steel grey for tanks and arms, red and black for chemicals and explosives, gold and brown for mining and industry, green only for farming and forestry.",
     "Real transparent background outside the badge.",
     "Leave a small empty margin around the badge.",
 ];
@@ -280,6 +281,7 @@ const OPERATION_PICTURE_NEGATIVE: &[&str] = &[
 const MIO_POLICY_RULES: &[&str] = &[
     "The Hearts of Iron IV military industrial organisation policy icon form: one object, or two that belong together, as a painted interface icon (crossed rifles, a ship, a light bulb in a hand, a signed contract, a spirit level, a chart with shells), seen from the front or three quarters.",
     "Painted semi-realistic metal, wood and paper in muted colours with a few saturated accents, a thin dark outline and a soft dark shadow. No perspective depth and nothing that recedes into the distance. Readable at {w}x{h} pixels.",
+    "The colours belong to the object, so policies differ from one another: steel grey and olive for arms and vehicles, navy grey for ships, blue or green paper for plans and contracts, red for a warning, brass for tools. Not every icon brown or orange.",
     "Real transparent background: no room, no factory hall, no landscape and no backdrop.",
     "Leave a small empty margin around the icon.",
 ];
@@ -313,7 +315,7 @@ const BOP_SIDE_NEGATIVE: &[&str] = &[
 ];
 const STATE_MODIFIER_RULES: &[&str] = &[
     "The Hearts of Iron IV state modifier icon form: one bold, simple object or symbol (a factory, a raised fist, a flag, a flame, crossed tools, a helmet, a crown), at most two elements, drawn large with chunky shapes.",
-    "High contrast: a strong dark outline, light shading and one or two saturated accents (red, orange, gold or green). It must read at {w}x{h} pixels, so no small details, no thin lines and no scene.",
+    "High contrast: a strong dark outline, light shading and one or two saturated accents chosen by the subject (red for unrest, orange or gold for industry and fire, green for farming, blue for water, the sea and science). It must read at {w}x{h} pixels, so no small details, no thin lines and no scene.",
     "Real transparent background: no landscape, no ground and no backdrop.",
     "Leave a one-pixel empty margin around the icon.",
 ];
@@ -356,6 +358,7 @@ const DOCTRINE_RULES: &[&str] = &[
 const TECHNOLOGY_RULES: &[&str] = &[
     "The Hearts of Iron IV technology picture form: ONE piece of equipment (a vehicle, an artillery piece, an aircraft or a ship) seen exactly from the side, a flat side profile with no three-quarter view, no front view and no perspective, facing right: its front, nose, barrel or bow points to the right edge.",
     "The equipment is long and low and fills most of the width, readable at {w}x{h} pixels, painted in the slightly aged style of Hearts of Iron IV interface art.",
+    "The equipment wears its own period paint, which differs from picture to picture: field grey, olive drab or dark green for army vehicles and artillery, sand for desert equipment, naval grey for ships, silver, grey-blue or green camouflage for aircraft. Not every picture brown, rust or orange.",
     "Real transparent background: no backdrop, no ground, no frame, no border, no plate.",
     "No numerals or text on the picture: the tool stamps a tier numeral itself when one is asked for.",
     "Leave a small empty margin around the equipment.",

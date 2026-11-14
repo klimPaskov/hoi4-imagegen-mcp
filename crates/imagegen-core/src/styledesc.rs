@@ -77,6 +77,31 @@ pub struct Analysis {
     pub palette: Vec<(u16, u32, [u64; 3])>,
     /// Pixel count behind the palette.
     pub palette_pixels: u32,
+    /// The image's main hue in degrees: the saturation-weighted circular mean of the hues of its visible pixels with
+    /// a value of 0.15 or more. `None` for a grey image (a weighted mean saturation under [`TINTED_MIN`]).
+    pub main_hue: Option<f64>,
+}
+
+/// Lowest strength of an image's main hue (the length of the saturation-weighted mean hue vector over its pixels)
+/// for it to count as tinted. A grey or black-and-white image has no main hue.
+pub const TINTED_MIN: f64 = 0.03;
+
+/// Hue spread from which a set counts as varied: its images do not share one colour, so a style paragraph does not
+/// name one. Measured on HOI4 1.19.4.1 with [`hue_spread`] over up to 150 files a folder, every nth file in name
+/// order: generic focus icons 0.05 (nearly all warm), national spirits 0.25, unit leader traits 0.47 and technology
+/// pictures 0.58. On a random sample of 150: achievements 0.07, decisions 0.16, state modifiers 0.20 and MIO policies
+/// 0.64.
+pub const VARIED_HUE_SPREAD: f64 = 0.25;
+
+/// The spread of the main hues of a set: 1 minus the length of the mean unit vector of the tinted images' main
+/// hues. 0 when every tinted image has the same hue, near 1 when their hues are spread around the colour wheel, 0
+/// when fewer than two images are tinted.
+pub fn hue_spread(hues: &[f64]) -> f64 {
+    if hues.len() < 2 {
+        return 0.0;
+    }
+    let (sx, sy) = hues.iter().fold((0.0, 0.0), |(x, y), h| (x + h.to_radians().cos(), y + h.to_radians().sin()));
+    1.0 - sx.hypot(sy) / hues.len() as f64
 }
 
 fn srgb_lut() -> [f64; 256] {
@@ -139,6 +164,7 @@ pub fn analyse(src: &Rgba) -> Option<Analysis> {
     let (mut sq_l, mut sq_a, mut sq_b) = (0f64, 0f64, 0f64);
     let (mut sum_s, mut sq_s, mut sum_v, mut sq_v) = (0f64, 0f64, 0f64, 0f64);
     let mut hue = [0u64; 6];
+    let (mut hue_x, mut hue_y, mut hue_n) = (0f64, 0f64, 0u64);
     let mut buckets: BTreeMap<u16, (u32, [u64; 3])> = BTreeMap::new();
     let mut palette_pixels = 0u32;
     let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0usize, 0usize);
@@ -170,6 +196,11 @@ pub fn analyse(src: &Rgba) -> Option<Analysis> {
             sq_v += v * v;
             if s >= 0.15 && v >= 0.12 {
                 hue[(((hd + 30.0) / 60.0).floor() as usize) % 6] += 1;
+            }
+            if p[3] >= 200 && v >= 0.15 {
+                hue_x += hd.to_radians().cos() * s;
+                hue_y += hd.to_radians().sin() * s;
+                hue_n += 1;
             }
             if p[3] >= 128 {
                 let key = (u16::from(p[0] >> 5) << 6) | (u16::from(p[1] >> 5) << 3) | u16::from(p[2] >> 5);
@@ -262,6 +293,7 @@ pub fn analyse(src: &Rgba) -> Option<Analysis> {
         span,
         palette: buckets.into_iter().map(|(k, (n, s))| (k, n, s)).collect(),
         palette_pixels,
+        main_hue: (hue_n > 0 && hue_x.hypot(hue_y) / hue_n as f64 >= TINTED_MIN).then(|| hue_y.atan2(hue_x).to_degrees().rem_euclid(360.0)),
     })
 }
 
@@ -455,6 +487,9 @@ pub struct StyleStats {
     pub margin_px: f64,
     /// Mean share of the frame the visible box spans (larger side).
     pub subject_span: f64,
+    /// [`hue_spread`] of the images' main hues: from [`VARIED_HUE_SPREAD`] on, the images do not share one colour.
+    #[serde(default)]
+    pub hue_spread: f64,
 }
 
 /// Plain-word name of a colour.
@@ -552,6 +587,7 @@ pub fn aggregate(items: &[&Analysis]) -> StyleStats {
         alpha_coverage: round3(mean(&|a| a.v[8])),
         margin_px: round3(mean(&|a| a.margin_px)),
         subject_span: round3(mean(&|a| a.span)),
+        hue_spread: round3(hue_spread(&items.iter().filter_map(|a| a.main_hue).collect::<Vec<_>>())),
     }
 }
 
@@ -617,11 +653,21 @@ pub fn style_paragraph_for(subject: &str, s: &StyleStats, family: Option<Family>
             break;
         }
     }
-    let dominated = match names.len() {
+    let listed = match names.len() {
         0 => String::new(),
-        1 => format!(" dominated by {}", names[0]),
-        2 => format!(" dominated by {} and {}", names[0], names[1]),
-        _ => format!(" dominated by {}, {} and {}", names[0], names[1], names[2]),
+        1 => names[0].clone(),
+        2 => format!("{} and {}", names[0], names[1]),
+        _ => format!("{}, {} and {}", names[0], names[1], names[2]),
+    };
+    // a varied set has no one colour: naming its averaged colours as "dominant" pulls every new image to them
+    let dominated = if listed.is_empty() {
+        String::new()
+    } else if s.hue_spread >= VARIED_HUE_SPREAD {
+        format!(
+            " whose main colour changes from image to image with the subject (the most common colours are {listed}, but no one colour is the rule)"
+        )
+    } else {
+        format!(" dominated by {listed}")
     };
     let mut parts = vec![format!("{sat}, {tone} palette{dominated}")];
     if s.alpha_coverage < 0.98 {
@@ -825,5 +871,63 @@ mod tests {
         let pg = style_paragraph("the mod's focus art", &grey);
         assert!(pr.contains("vivid") && pr.contains("red") && pr.contains("strong dark outline"), "{pr}");
         assert!(pg.contains("muted") && pg.contains("grey") && pg.contains("little or no dark outline"), "{pg}");
+    }
+    /// A set whose images each have their own colour gets a paragraph that says so instead of naming its averaged
+    /// colours as dominant, which pulled every new image of a varied family to one orange-brown. A one-colour set
+    /// keeps "dominated by".
+    #[test]
+    fn a_varied_set_is_not_told_one_dominant_colour() {
+        let colours = [[200, 60, 40], [40, 90, 200], [60, 160, 70], [210, 180, 40], [120, 60, 160], [40, 170, 170]];
+        let varied: Vec<Analysis> = colours.iter().map(|c| analyse(&icon(*c, true)).unwrap()).collect();
+        let same: Vec<Analysis> = [[200, 110, 40], [190, 100, 50], [210, 120, 45]].iter().map(|c| analyse(&icon(*c, true)).unwrap()).collect();
+        let v = aggregate(&varied.iter().collect::<Vec<_>>());
+        let s = aggregate(&same.iter().collect::<Vec<_>>());
+        assert!(v.hue_spread >= VARIED_HUE_SPREAD, "{}", v.hue_spread);
+        assert!(s.hue_spread < 0.05, "{}", s.hue_spread);
+        let pv = style_paragraph("x", &v);
+        let ps = style_paragraph("x", &s);
+        assert!(pv.contains("changes from image to image") && !pv.contains("dominated by"), "{pv}");
+        assert!(ps.contains("dominated by") && !ps.contains("changes from image to image"), "{ps}");
+        // a grey image has no main hue and does not count
+        assert_eq!(analyse(&icon([120, 120, 120], false)).unwrap().main_hue, None);
+        assert_eq!(hue_spread(&[30.0]), 0.0);
+        assert!((hue_spread(&[0.0, 180.0]) - 1.0).abs() < 1e-9);
+    }
+
+    /// [`VARIED_HUE_SPREAD`] splits vanilla's families where the docs say: generic focus icons and achievements
+    /// share one warm colour, technology pictures and unit leader traits do not. Measured on up to
+    /// 150 files a family, every 20th file of the folder in name order.
+    #[test]
+    fn vanillas_varied_and_one_colour_families_fall_on_either_side_of_the_line() {
+        let game = std::env::var("HOI4_GAME_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| "C:/Program Files (x86)/Steam/steamapps/common/Hearts of Iron IV".into());
+        let spread_of = |dir: &str, prefix: &str| -> Option<(usize, f64)> {
+            let mut files: Vec<_> = std::fs::read_dir(game.join(dir))
+                .ok()?
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.extension().is_some_and(|x| x == "dds") && p.file_name().unwrap().to_string_lossy().starts_with(prefix))
+                .collect();
+            files.sort();
+            let step = (files.len() / 150).max(1);
+            let hues: Vec<f64> = files
+                .iter()
+                .step_by(step)
+                .filter_map(|p| crate::dds::decode(&std::fs::read(p).ok()?).ok())
+                .filter_map(|i| analyse(&i)?.main_hue)
+                .collect();
+            (hues.len() >= 10).then(|| (hues.len(), hue_spread(&hues)))
+        };
+        let Some(goals) = spread_of("gfx/interface/goals", "goal_") else {
+            eprintln!("SKIPPED vanilla hue spread: Hearts of Iron IV not found (set HOI4_GAME_DIR); UNAVAILABLE in this run");
+            return;
+        };
+        let tech = spread_of("gfx/interface/technologies", "").unwrap();
+        let traits = spread_of("gfx/interface/traits", "").unwrap();
+        eprintln!("vanilla hue spread: generic focus {goals:?}, technology {tech:?}, traits {traits:?}");
+        assert!(goals.1 < VARIED_HUE_SPREAD, "generic focus icons share one colour: {goals:?}");
+        for (name, s) in [("technology", tech), ("traits", traits)] {
+            assert!(s.1 >= VARIED_HUE_SPREAD, "{name} vary: {s:?}");
+        }
     }
 }
