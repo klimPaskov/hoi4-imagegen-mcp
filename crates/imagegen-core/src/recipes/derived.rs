@@ -233,6 +233,57 @@ pub const PHASE_SMALL_CROP: f64 = 0.9;
 pub const PHASE_SMALL_EDGE: [(f64, f64); 9] =
     [(0.5, 0.504), (1.5, 0.691), (2.5, 0.918), (3.5, 1.034), (4.5, 1.076), (5.5, 1.095), (6.5, 1.1), (7.5, 1.077), (9.5, 1.0)];
 
+/// Accepted mean value (HSV) of a phase icon's opaque pixels: vanilla's 25th and 75th percentiles over the 71 files
+/// (median 0.452). A disc outside gets a gamma to the nearer end.
+pub const PHASE_SMALL_VALUE: (f64, f64) = (0.38, 0.531);
+/// Largest spread of value of a phase icon's opaque pixels: vanilla's 75th percentile (median 0.281). A harsher disc is
+/// compressed toward its mean.
+pub const PHASE_SMALL_SPREAD_MAX: f64 = 0.314;
+
+/// Bring the opaque pixels' value into vanilla's range: the spread down to [`PHASE_SMALL_SPREAD_MAX`] about the mean,
+/// then a gamma to the nearer end of [`PHASE_SMALL_VALUE`]. Hue and saturation are kept (each pixel's RGB is scaled).
+fn phase_tone(img: &mut Rgba) {
+    let vals: Vec<f64> = img.data.chunks_exact(4).filter(|p| p[3] > 204).map(|p| f64::from(p[0].max(p[1]).max(p[2])) / 255.0).collect();
+    if vals.is_empty() {
+        return;
+    }
+    let n = vals.len() as f64;
+    let mean = vals.iter().sum::<f64>() / n;
+    let spread = (vals.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n).sqrt();
+    let k = if spread > PHASE_SMALL_SPREAD_MAX { PHASE_SMALL_SPREAD_MAX / spread } else { 1.0 };
+    let squeezed = |v: f64| (mean + (v - mean) * k).clamp(0.0, 1.0);
+    let mean_at = |g: f64| vals.iter().map(|v| squeezed(*v).powf(g)).sum::<f64>() / n;
+    let now = mean_at(1.0);
+    let want = now.clamp(PHASE_SMALL_VALUE.0, PHASE_SMALL_VALUE.1);
+    let mut gamma = 1.0;
+    if (now - want).abs() > 1e-4 {
+        // the mean falls as gamma rises
+        let (mut lo, mut hi) = if now < want { (0.2, 1.0) } else { (1.0, 5.0) };
+        for _ in 0..40 {
+            let mid = (lo + hi) / 2.0;
+            if mean_at(mid) > want {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        gamma = (lo + hi) / 2.0;
+    }
+    if k >= 1.0 && (now - want).abs() <= 1e-4 {
+        return;
+    }
+    for p in img.data.chunks_exact_mut(4).filter(|p| p[3] > 0) {
+        let v = f64::from(p[0].max(p[1]).max(p[2])) / 255.0;
+        if v <= 1e-6 {
+            continue;
+        }
+        let scale = squeezed(v).powf(gamma) / v;
+        for c in p.iter_mut().take(3) {
+            *c = (f64::from(*c) * scale).round().clamp(0.0, 255.0) as u8;
+        }
+    }
+}
+
 fn phase_edge_at(depth: f64) -> f64 {
     let e = &PHASE_SMALL_EDGE;
     if depth <= e[0].0 {
@@ -293,6 +344,8 @@ pub fn phase_small(picture: &Rgba) -> Result<Rgba> {
             }
         }
     }
+    // the tone: vanilla's value range and contrast, before the edge is measured against the inner disc
+    phase_tone(&mut out);
     // the edge: each one-pixel ring is scaled to vanilla's value relative to the inner 60 percent of the radius,
     // measured on this picture, so a picture that is already dark or light at its rim ends up like vanilla's
     let depth = |x: u32, y: u32| r - (f64::from(x) + 0.5 - cx).hypot(f64::from(y) + 0.5 - cy);
@@ -418,6 +471,32 @@ mod tests {
         assert_eq!(out, phase_small(&pic).unwrap());
         assert!(phase_small(&Rgba::filled(6, 6, [9, 9, 9, 255])).is_err());
         assert_eq!(derive(DeriveKind::PhaseSmall, &pic, 1).unwrap(), out);
+    }
+
+    /// A bright, washed-out picture (a light paper close-up) and a harsh black-and-white one come out in vanilla's
+    /// value range and contrast: mean value 0.38 to 0.531, spread at most 0.314, each within what the edge rings add.
+    #[test]
+    fn a_bright_or_harsh_picture_gets_vanillas_tone() {
+        let stats = |img: &Rgba| {
+            let v: Vec<f64> = img.data.chunks_exact(4).filter(|p| p[3] > 204).map(|p| f64::from(p[0].max(p[1]).max(p[2])) / 255.0).collect();
+            let m = v.iter().sum::<f64>() / v.len() as f64;
+            (m, (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len() as f64).sqrt())
+        };
+        let mut bright = Rgba::new(210, 176);
+        let mut harsh = Rgba::new(210, 176);
+        for y in 0..176u32 {
+            for x in 0..210u32 {
+                let t = ((x / 12 + y / 12) % 2) as u8;
+                bright.set_px(x, y, [235 - t * 30, 225 - t * 30, 205 - t * 30, 255]);
+                harsh.set_px(x, y, if t == 1 { [250, 248, 240, 255] } else { [12, 10, 8, 255] });
+            }
+        }
+        for (name, pic) in [("bright", bright), ("harsh", harsh)] {
+            let (m0, s0) = stats(&phase_small(&pic).unwrap());
+            eprintln!("{name}: mean value {m0:.3}, spread {s0:.3}");
+            assert!((PHASE_SMALL_VALUE.0 - 0.05..=PHASE_SMALL_VALUE.1 + 0.05).contains(&m0), "{name} mean {m0}");
+            assert!(s0 <= PHASE_SMALL_SPREAD_MAX + 0.06, "{name} spread {s0}");
+        }
     }
 
     /// Made from vanilla's own 210x176 phase pictures, the icons match vanilla's 59x58 ones in disc and edge, and
