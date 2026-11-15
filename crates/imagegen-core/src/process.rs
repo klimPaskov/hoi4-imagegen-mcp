@@ -203,7 +203,7 @@ pub enum Op {
     ScrollFrames {
         /// Frames in the strip.
         frames: u32,
-        /// The way it flows; horizontal when absent (records made before 0.3.9).
+        /// The way it flows; horizontal when absent (records made before 0.4.0).
         #[serde(default, skip_serializing_if = "crate::animation::ScrollDirection::is_horizontal")]
         direction: crate::animation::ScrollDirection,
     },
