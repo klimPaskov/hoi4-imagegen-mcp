@@ -831,16 +831,15 @@ pub fn colour_plan(icons: &[&SetIcon]) -> Vec<&'static str> {
     out
 }
 
-/// The brief of one icon in a set: the one frame the whole set shares (the vanilla national focus form), the colour
-/// planned for it (it follows the subject, and green is never the main colour unless the plan says so), and the national
-/// element only where the focus is directly national (`national` names its kind), none elsewhere.
+/// The brief of one icon in a set: the colour planned for it (the icon is mainly that colour, as its subject calls for,
+/// and green is never the main colour unless the plan says so), and the national element only where the focus is
+/// directly national (`national` names its kind), none elsewhere. The frame and the finish are the model's to choose, so
+/// the icons differ from one another the way vanilla's do.
 pub fn icon_brief_coloured(icon: &SetIcon, set_size: usize, colour: &str, national: Option<&str>, nation: Option<&str>) -> String {
     let mut brief = icon_brief(icon, set_size);
-    brief.push_str(&format!(
-        " Colour: the enamel field behind the subject is a muted {colour}, as its subject calls for; the subject itself stays desaturated grey metal or sepia."
-    ));
+    brief.push_str(&format!(" Colour: this icon is mainly {colour}, as its subject calls for."));
     if !GREEN_COLOURS.contains(&colour) {
-        brief.push_str(" Green is not the colour of this icon's field (a national element may use its own colours).");
+        brief.push_str(" Green is not the main colour of this icon (a national element may use its own colours).");
     }
     // a national element only where the country is known: "the country's flag" alone got another country's colours
     match (national.and_then(|k| NATIONAL_ELEMENTS.iter().find(|(name, _)| *name == k)), nation) {
@@ -1020,7 +1019,7 @@ mod tests {
         assert_eq!(plan[5], "pale blue and white");
         let b = icon_brief_coloured(&icons[1], 6, plan[1], None, Some("Irish"));
         assert!(
-            b.contains("a muted steel grey and khaki") && b.contains("Green is not the colour") && b.contains("No national symbols or emblems"),
+            b.contains("mainly steel grey and khaki") && b.contains("Green is not the main colour") && b.contains("No national symbols or emblems"),
             "{b}"
         );
         let flag = SetIcon { names: vec!["The Flag of the Republic".into()], ..icon_named("flag") };
