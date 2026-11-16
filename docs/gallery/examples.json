@@ -81,7 +81,7 @@
  },
  "focus": {
   "asset": "embassy_flags_handshake_v033",
-  "build": "0.4.0",
+  "build": "0.4.1",
   "brief": "Diplomacy: two envoys shaking hands under two invented national flags."
  },
  "gui_texture": {
