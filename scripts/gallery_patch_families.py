@@ -12,7 +12,7 @@ examples and references), for a mod style whose examples are not made yet.
 A balance of power side is shown as its stage set: every emblem gives one row of four images (standard, improved, and the
 cracked pair), the way vanilla's own sides come in pairs.
 
-`--section tno` (or `tfr`) takes the families of a mod style section instead: point GALLERY_MOD and GALLERY_RES at that style's scratch mod
+`--section tno` (or `tfr`) takes the families of a mod style section instead (the tool's vanilla-match check does not gate those: a style pack is meant to differ from vanilla, so a failed check is recorded as `mod style` and validation gates them): point GALLERY_MOD and GALLERY_RES at that style's scratch mod
 and results. GALLERY_FILE_SUFFIX (for example `-r2`) is added to every published file name, so a regenerated image never
 reuses the name of the one it replaces and no cache can serve the old picture. GALLERY_BUILD_LABEL (`main@<commit>`) is
 recorded as the build of every image the run publishes, for images made by code that no release carries yet.
@@ -114,7 +114,11 @@ def main(argv):
                 print("skip", fam, asset, "not passed", flush=True)
                 continue
             vc = g.vanilla_check(m.MOD, rec["processed"], cache)
-            if vc["status"] not in ("pass", "unavailable"):
+            if section in ("tno", "tfr") and vc["status"] == "fail":
+                # a mod style pack is meant to differ from vanilla (opaque photographs, other proportions): the vanilla
+                # ranges do not gate it, validation does. The manifest records that the check does not apply.
+                vc = {"status": "mod style", "outside": vc.get("outside", [])}
+            if vc["status"] not in ("pass", "unavailable", "mod style"):
                 print("skip", fam, asset, "vanilla check", vc["status"], vc.get("outside"), flush=True)
                 continue
             proc = rec["process"]

@@ -1,192 +1,192 @@
 {
  "achievement": {
   "asset": "armoured_breakthrough_gap",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A column of tanks bursts through a smoky gap in a hill line, infantry cheering and following behind, dust and sunlight."
  },
  "advisor_card": {
-  "asset": "chief_of_staff_map",
-  "build": "0.3.1",
-  "brief": "A grey-haired chief of staff in a decorated general's uniform, standing over a large map table with a pointer, stern focused expression, dim war-room lamps behind him."
+  "asset": "bishop_in_vestments",
+  "build": "0.4.0",
+  "brief": "An elderly bishop in embroidered vestments and a tall mitre, kindly yet shrewd expression, hands clasped over a staff, candlelit stone cathedral nave behind him. An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
  },
  "agency_logo": {
   "asset": "all_seeing_eye_bureau",
-  "build": "0.3.1",
+  "build": "0.4.0",
   "brief": "A round emblem of a single open eye with a radiating gold iris inside a pyramid-free triangle, on a black disc with a thin gold rim."
  },
  "agency_upgrade": {
   "asset": "chemistry_bench_flasks",
-  "build": "0.3.8",
-  "brief": "A lab bench with glass flasks, a dropper and a vial of colourless liquid beside a sheet being warmed, secret writing chemistry. Slate and steel-blue tones."
+  "build": "0.4.0",
+  "brief": "A lab bench with glass flasks, a dropper and a vial of colourless liquid beside a sheet being warmed, secret writing chemistry. Plain chalkboard green backdrop."
  },
  "bop_side": {
   "asset": "anchor_and_rope_standard",
-  "build": "0.3.8",
+  "build": "0.4.0",
   "brief": "A tall standard bearing a large anchor wrapped in thick rope, the navy side in a rivalry between navy and army for budget. (standard stage)"
  },
  "building": {
-  "asset": "alpine_cable_car_station",
-  "build": "0.3.3",
-  "brief": "A timber-and-stone cable car station clinging to an Italian Alpine ridge, steel cables rising into clouds, snow-dusted fir trees and a festive mood."
+  "asset": "anatolian_hill_fortress",
+  "build": "0.4.0",
+  "brief": "A crenellated Turkish hilltop fortress with round towers and thick curtain walls above a rocky slope, dusty golden light, tense watchful mood."
  },
  "commander_portrait": {
-  "asset": "finnish_ski_colonel",
-  "build": "0.3.1",
-  "brief": "A Finnish colonel in a white winter camouflage smock and fur-flapped cap, frosted moustache, alert steady eyes, birch forest and falling snow behind him."
+  "asset": "american_pacific_general",
+  "build": "0.4.0",
+  "brief": "An American general in a khaki shirt and an officer's cap with a corncob pipe, squinting at the distance, palms and a landing-craft beach blurred behind him. An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
  },
  "commander_trait": {
   "asset": "crossed_skis_poles",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A pair of wooden skis crossed with two poles, a winter warfare specialist, bold simple shape."
  },
  "counter_large": {
   "asset": "anti_air_gun",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "Bold black silhouette of a quad-barrelled anti-aircraft gun pointing steeply skyward on a rotating pedestal with a small gunner seat."
  },
  "counter_small": {
   "asset": "anti_air_barrels",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "Four short black gun barrels fanned upward from a squat round mount, bold wide shapes with flat tops."
  },
  "decision": {
   "asset": "anvil_and_hammer",
-  "build": "0.3.1",
+  "build": "0.4.0",
   "brief": "A blacksmith's anvil with a heavy hammer resting across it, a few glowing sparks, one bold object. Bold two-colour carved print."
  },
  "decision_category_icon": {
-  "asset": "military_reform_manual",
-  "build": "0.3.1",
-  "brief": "A crossed rifle and sabre laid over an open field manual with a sharpened pencil, emblem of army reform."
+  "asset": "anchor_ship_wheel",
+  "build": "0.4.0",
+  "brief": "A heavy ship's anchor crossed with a wooden helm wheel, emblem of the naval programme."
  },
  "division_emblem": {
   "asset": "bear_standing",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A brown bear rearing on its hind legs with claws raised, set on a pale green wide shield with a dark border."
  },
  "doctrine": {
   "asset": "battleship_chevrons",
-  "build": "0.3.8",
+  "build": "0.4.0",
   "brief": "A large battleship in side view with two thick orange chevrons rising above it."
  },
  "faction_logo": {
-  "asset": "crossed_swords_laurel",
-  "build": "0.3.1",
-  "brief": "A round emblem of two crossed swords inside a laurel wreath, in steel grey and gold on a deep red disc, formal and martial."
+  "asset": "anchor_rope_naval_league",
+  "build": "0.4.0",
+  "brief": "A round emblem of a large anchor wrapped with rope on a navy blue disc, surrounded by a ring of white waves, calm maritime mood."
  },
  "flag": {
-  "asset": "KRA_communist",
-  "build": "0.3.1",
-  "brief": "A fictional flag with a plain crimson field, a large golden five-pointed star at the centre encircled by a ring of golden wheat ears, and a thin golden border."
+  "asset": "BAR_republican",
+  "build": "0.4.0",
+  "brief": "A fictional flag with a red field crossed by a broad white diagonal stripe from the lower hoist to the upper fly, and a blue triangle at the hoist."
  },
  "focus": {
   "asset": "embassy_flags_handshake_v033",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "Diplomacy: two envoys shaking hands under two invented national flags."
  },
  "gui_texture": {
-  "asset": "blueprint_grid",
-  "build": "0.3.3",
-  "brief": "Deep blue technical paper with a faint pale grid of fine lines and a thin white double border, no drawings."
+  "asset": "aged_leather",
+  "build": "0.4.0",
+  "brief": "Worn brown leather with a fine cracked grain, faint creases and darkened edges, framed by a thin stitched border line."
  },
  "idea_concern": {
-  "asset": "armour_plate_rolling",
-  "build": "0.3.1",
-  "brief": "A rolling mill where a glowing slab of armour plate is pulled between huge rollers, sparks scattering, steelworkers in the glare, Czech mood of power."
+  "asset": "aircraft_plant_fuselages",
+  "build": "0.4.0",
+  "brief": "An American aircraft plant with silver fuselages hanging in a long line from the ceiling, wings stacked below and morning light through high windows."
  },
  "idea_spirit": {
   "asset": "alpine_village_guard",
-  "build": "0.3.1",
+  "build": "0.4.0",
   "brief": "Swiss mountain villagers with rifles and a cowbell standing watch above a snowy pass, calm and watchful readiness."
  },
  "leader_portrait": {
-  "asset": "argentine_colonel_president",
-  "build": "0.3.3",
-  "brief": "A charismatic Argentine colonel-president in his forties, open-collared uniform tunic, slicked dark hair, confident grin, a cheering crowd on a plaza blurred behind him. An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
+  "asset": "french_woman_premier",
+  "build": "0.4.0",
+  "brief": "A French woman premier in her fifties, tailored dark suit, hat with a small veil, sharp intelligent gaze, Parisian zinc rooftops behind her, tense mood before a crisis. An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
  },
  "mio_department": {
   "asset": "armour_plate_mill",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A thick glowing steel armour plate emerging from heavy rolling mill rollers, sparks flying, Yugoslav steelworks in grim industrial mood."
  },
  "mio_policy": {
   "asset": "blueprints_exchanged",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "Two pairs of hands passing rolled blueprints to each other across a table in front of two different factory windows, patent sharing, friendly mood."
  },
  "mio_trait": {
   "asset": "field_radio_pack",
-  "build": "0.3.4",
+  "build": "0.4.0",
   "brief": "A portable field radio set with dials and a coiled cable and whip antenna, resting on a map case in a Chinese army camp."
  },
  "modifier_stat_icon": {
   "asset": "air_superiority_fighter",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A single-engined fighter plane seen from above with swept wings, and a bold arrow rising above it."
  },
  "news_event": {
-  "asset": "crowded_central_station",
-  "build": "0.3.1",
-  "brief": "A huge crowd of travellers with suitcases fills a station under an iron-and-glass roof, steam clouds drifting, porters pushing trolleys, a soldier embracing his sweetheart, tense bustle."
+  "asset": "aircraft_factory_visit",
+  "build": "0.4.0",
+  "brief": "Dignitaries in overcoats walk through a vast assembly hall lined with bare-metal aircraft fuselages, workers pausing to watch, proud and orderly."
  },
  "officer_corps_spirit": {
-  "asset": "braided_hussar",
-  "build": "0.3.1",
-  "brief": "A Hungarian hussar officer in a braided jacket and plumed shako on a prancing horse, festive and proud cavalry pageantry."
+  "asset": "alpine_ice_axe",
+  "build": "0.4.0",
+  "brief": "An Italian mountain officer with ice axe and rope on a high glacier, a line of troops behind him against bright peaks. Bold two-colour carved print."
  },
  "operation_icon": {
   "asset": "blueprint_unrolled",
-  "build": "0.3.8",
+  "build": "0.4.0",
   "brief": "Hands unrolling a large pale blueprint on a table, a pencil resting on it."
  },
  "operation_picture": {
   "asset": "attic_wall_microphone",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A technician in an attic drills into plaster to place a hidden microphone wire, tools laid neatly on a cloth, a single bare bulb overhead."
  },
  "operative_portrait": {
-  "asset": "attic_radio_operator",
-  "build": "0.3.4",
-  "brief": "A young woman radio operator with headphones around her neck, hair pinned back, alert and secretive expression."
+  "asset": "factory_worker_infiltrator",
+  "build": "0.4.0",
+  "brief": "A Soviet infiltrator in a worker's flat cap and oil-stained overalls, lunch tin under his arm, blank dutiful face, steaming machinery hall behind him. Grainy ink and sepia sketch. An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
  },
  "personal_trait": {
   "asset": "bulging_coin_purse",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A single fat coin purse tied at the neck with a few coins spilling out, a corrupt leader, soft flat gouache look."
  },
  "raid": {
   "asset": "ammunition_shells_stack",
-  "build": "0.3.2",
+  "build": "0.4.0",
   "brief": "A neat pyramid of artillery shells stacked behind sandbags with a thin trail of smoke curling from the top, grainy sepia ink sketch of an Italian depot."
  },
  "report_event": {
   "asset": "brazil_coffee_harvest",
-  "build": "0.3.1",
+  "build": "0.4.0",
   "brief": "Pickers in straw hats strip coffee cherries on a steep Brazilian hillside plantation, sacks piled beside mule carts, an overseer on horseback watching, warm hazy afternoon."
  },
  "scientist_portrait": {
   "asset": "aircraft_designer_drafting",
-  "build": "0.3.4",
-  "brief": "An Italian aircraft designer in his forties in a waistcoat and bow tie, pencil tucked behind his ear, confident look."
+  "build": "0.4.0",
+  "brief": "An Italian aircraft designer in his forties at a drafting table, pencil and set square in hand, a sleek wing model on the desk, warm afternoon light through a hangar door. An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure."
  },
  "special_project_icon": {
   "asset": "carrier_on_slipway",
-  "build": "0.3.2",
+  "build": "0.4.0",
   "brief": "A half-built aircraft carrier on a Japanese shipyard slipway wrapped in scaffolding and cranes, flat deck stretching into morning mist, tiny workers below, proud mood."
  },
  "state_modifier": {
   "asset": "coal_mine_headframe",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A coal mine headframe with a spinning winding wheel and a line of coal tubs on a rail, black slag heap behind."
  },
  "super_event": {
   "asset": "armistice_railway_carriage",
-  "build": "0.3.1",
+  "build": "0.4.0",
   "brief": "Two delegations face each other across a table inside a wood-panelled railway carriage in a forest clearing, rain streaking the windows, grim and formal, no flags."
  },
  "technology": {
   "asset": "sloped_armour_medium_tank",
-  "build": "0.3.3",
+  "build": "0.4.0",
   "brief": "A Soviet medium tank with sloped armour, wide tracks and a long gun, shown in side view, slightly mud-splashed, without markings."
  }
 }
