@@ -219,7 +219,7 @@
   },
   {
    "asset": "barricade_curfew",
-   "brief": "Soldiers behind a sandbag barricade and an armoured car in an empty Turkish city square at dusk, shuttered shops, grim mood of martial law.",
+   "brief": "Soldiers behind a sandbag barricade and an armoured car in an empty city square at dusk, shuttered shops, grim mood of martial law. No flags.",
    "style": null
   },
   {
@@ -299,7 +299,7 @@
   },
   {
    "asset": "rooftop_wardens",
-   "brief": "Dutch air-raid wardens with helmets and wooden rattles on a gabled rooftop scanning the night sky over canals, tense and vigilant.",
+   "brief": "Air-raid wardens with helmets and wooden rattles on a gabled rooftop scanning the night sky over canals, tense and vigilant. Plain clothing, no armbands, no flags, no emblems.",
    "style": null
   }
  ],
@@ -311,7 +311,7 @@
   },
   {
    "asset": "shipyard_gantry_hulls",
-   "brief": "A Scottish shipyard with a great gantry crane over two half-built hulls on slipways, riveters' scaffolding and grey river beyond.",
+   "brief": "A shipyard with a great gantry crane over two half-built hulls on slipways, riveters' scaffolding and grey river beyond. No flags, no emblems.",
    "style": null
   },
   {
@@ -326,7 +326,7 @@
   },
   {
    "asset": "optics_workshop_lenses",
-   "brief": "A Japanese optics workshop bench with binoculars, a rangefinder, polished lenses and brass tools under a single lamp, careful quiet craft. Grainy ink and sepia sketch look.",
+   "brief": "An optics workshop bench with binoculars, a rangefinder, polished lenses and brass tools under a single lamp, careful quiet craft. Grainy ink and sepia sketch look. No flags, no emblems.",
    "style": "ink"
   },
   {
@@ -341,12 +341,12 @@
   },
   {
    "asset": "locomotive_erecting_shop",
-   "brief": "A Hungarian locomotive works erecting shop with a steam engine boiler lifted by a crane above its wheels, steam drifting through iron rafters.",
+   "brief": "A locomotive works erecting shop with a steam engine boiler lifted by a crane above its wheels, steam drifting through iron rafters. No flags, no emblems.",
    "style": null
   },
   {
    "asset": "rifle_armoury_racks",
-   "brief": "A Belgian arms factory proof room with rows of bolt-action rifles in racks and a bench of gleaming machined parts and gauges.",
+   "brief": "An arms factory proof room with rows of bolt-action rifles in racks and a bench of gleaming machined parts and gauges. No flags, no emblems.",
    "style": null
   },
   {
@@ -366,7 +366,7 @@
   },
   {
    "asset": "shell_filling_hall",
-   "brief": "Women in headscarves lining up rows of artillery shells on long tables inside a bright Soviet munitions hall, orderly and busy.",
+   "brief": "Women in headscarves lining up rows of artillery shells on long tables inside a bright munitions hall, orderly and busy. No flags, no stars, no emblems.",
    "style": null
   },
   {
@@ -555,7 +555,7 @@
   },
   {
    "asset": "street_megaphone",
-   "brief": "A large conical tin megaphone pointing outward with curved sound lines radiating from it, one bold propaganda object.",
+   "brief": "A large conical tin megaphone pointing outward, dented and riveted, one bold propaganda object. No sound waves, no arcs or lines around it.",
    "style": null
   },
   {
@@ -799,7 +799,7 @@
  "raid": [
   {
    "asset": "dynamite_bundle",
-   "brief": "A bundle of dynamite sticks tied with rope and a short lit fuse sparking, set against a dark Greek hillside rail cutting.",
+   "brief": "A bundle of red dynamite sticks tied with rope and a short lit fuse sparking, bold and readable.",
    "style": null
   },
   {
@@ -809,7 +809,7 @@
   },
   {
    "asset": "commando_dinghy",
-   "brief": "A rubber dinghy packed with dark-clad commandos paddling toward a rocky Norwegian fjord shore under a pale northern sky, tense silent mood.",
+   "brief": "A rubber dinghy packed with dark-clad commandos paddling toward a rocky shore under a pale sky, tense silent mood, clear boat shape.",
    "style": null
   },
   {
@@ -834,7 +834,7 @@
   },
   {
    "asset": "twisted_rails",
-   "brief": "A section of railway track bent and twisted upward like ribbons, splintered sleepers scattered around, a cut line across the Russian steppe.",
+   "brief": "A section of railway track bent and twisted upward like ribbons, splintered sleepers scattered around, clearly rails and sleepers.",
    "style": null
   },
   {
@@ -854,7 +854,7 @@
   },
   {
    "asset": "coastal_gun_blown",
-   "brief": "A coastal artillery gun in its concrete emplacement blasted apart, barrel bent skyward amid smoke and flying debris, raid on a Dutch dune battery.",
+   "brief": "A coastal artillery gun in its concrete emplacement blasted apart, barrel bent skyward amid smoke and flying debris, clearly a gun barrel.",
    "style": null
   }
  ],
@@ -1331,7 +1331,7 @@
   },
   {
    "asset": "machete_leaf",
-   "brief": "A single broad-bladed machete lying across one large palm leaf, a jungle fighter at home in dense tropical country, bold simple outline.",
+   "brief": "A single broad-bladed machete with a clear handle lying across one large palm leaf, bold simple outline, clean shapes.",
    "style": null
   },
   {
@@ -1992,7 +1992,7 @@
   },
   {
    "asset": "handshake_over_globe",
-   "brief": "Two statesmen in dark suits shake hands over a table holding a large globe, a white dove perched on the chair back, calm light.",
+   "brief": "Two anonymous young diplomats in plain dark suits, generic faces, shake hands over a table holding a large globe, a white dove perched on the chair back, calm light. Invented faces, not resembling any real person.",
    "style": null
   },
   {
@@ -2983,7 +2983,7 @@
   },
   {
    "asset": "signal_pole",
-   "brief": "A bold white pole with two short crossbars and a drooping wire on each side, wide and minimal.",
+   "brief": "A bold thick white pole with two short crossbars and a drooping wire on each side, wide and minimal, high contrast.",
    "style": null
   },
   {

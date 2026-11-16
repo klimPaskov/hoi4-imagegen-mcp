@@ -20,7 +20,7 @@ import make_gallery_big as m  # noqa: E402
 
 TILE = (38, 39, 46)
 # hand picks for the README's six examples (varied focus frames, 0.3.3 technology side view)
-PICKS = {"focus": "embassy_flags_handshake_v033", "technology": "sloped_armour_medium_tank"}
+PICKS = {"focus": "embassy_flags_handshake_v033", "technology": "sloped_armour_medium_tank", "leader_portrait": "french_woman_premier"}
 HELD_NOTE = "An example follows when hoi4-imagegen 0.3.4 lands; the 0.2.x example was removed."
 
 

@@ -412,7 +412,7 @@ common/ideas/army_spirits.txt:4 bold_attack_spirit has no picture -> interface/o
 
 ### operation_icon
 
-<img src="gallery/operation_icon.webp" alt="Example operation_icon asset made by hoi4-imagegen" width="177">
+<img src="gallery/operation_icon.webp" alt="Example operation_icon asset made by hoi4-imagegen" width="170">
 
 **Vanilla form (since 0.3.8).** This family is the operation card: an operation's `icon = GFX_operations_<name>`, the 85x85 picture in `gfx/interface/operations/` (17 files, for example `steal_blueprints`, `fake_intel`, `capture_ciphers`). Each is a painted or photographic close-up of the operation's act, mostly hands and objects, in a warm muted palette (mean saturation 0.35, mean luminance 77), tilted one to four degrees with a one pixel near-black outline, a soft shadow below and clear corners. Its `map_icon = GFX_operations_<name>_map` is the 48x48 medallion in `operations/map/`: the middle of the same picture in a round bevelled gold ring. The tool makes the card from the model's close-up and derives the medallion from the finished card, so the two always show the same picture. An isolated object on a blank background, a round vignette and the 59x58 phase icons (another sprite, `GFX_phase_<name>_small`) are not this family.
 
