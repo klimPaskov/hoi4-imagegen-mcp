@@ -6,16 +6,16 @@
    "family": "focus",
    "asset": "armoured_column_parade",
    "brief": "A column of Brazilian light tanks rolling through a dusty avenue in the 1940s, hatches open, crowds waving from balconies, triumphant mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/armoured_column_parade.webp",
-   "enlarged": "vanilla/focus/armoured_column_parade@2x.webp",
+   "native": "vanilla/focus/armoured_column_parade-r2.webp",
+   "enlarged": "vanilla/focus/armoured_column_parade-r2@2x.webp",
    "scale": 2
   },
   {
@@ -23,16 +23,16 @@
    "family": "focus",
    "asset": "assembly_ballot_vote",
    "brief": "A Swedish voter in a wool coat dropping a folded ballot into a wooden box before a columned assembly hall, calm and quiet civic mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/assembly_ballot_vote.webp",
-   "enlarged": "vanilla/focus/assembly_ballot_vote@2x.webp",
+   "native": "vanilla/focus/assembly_ballot_vote-r2.webp",
+   "enlarged": "vanilla/focus/assembly_ballot_vote-r2@2x.webp",
    "scale": 2
   },
   {
@@ -40,16 +40,16 @@
    "family": "focus",
    "asset": "assembly_line_trucks_v033",
    "brief": "Industry: army trucks rolling off a long assembly line.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/assembly_line_trucks_v033.webp",
-   "enlarged": "vanilla/focus/assembly_line_trucks_v033@2x.webp",
+   "native": "vanilla/focus/assembly_line_trucks_v033-r2.webp",
+   "enlarged": "vanilla/focus/assembly_line_trucks_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -57,16 +57,16 @@
    "family": "focus",
    "asset": "atlantic_convoy",
    "brief": "An American merchant convoy crossing a grey Atlantic with escort destroyers on the flanks and smoke on the horizon, grim resolve.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/atlantic_convoy.webp",
-   "enlarged": "vanilla/focus/atlantic_convoy@2x.webp",
+   "native": "vanilla/focus/atlantic_convoy-r2.webp",
+   "enlarged": "vanilla/focus/atlantic_convoy-r2@2x.webp",
    "scale": 2
   },
   {
@@ -74,16 +74,16 @@
    "family": "focus",
    "asset": "battleship_broadside_v033",
    "brief": "Naval: a battleship firing a broadside at sea.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/battleship_broadside_v033.webp",
-   "enlarged": "vanilla/focus/battleship_broadside_v033@2x.webp",
+   "native": "vanilla/focus/battleship_broadside_v033-r2.webp",
+   "enlarged": "vanilla/focus/battleship_broadside_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -91,16 +91,16 @@
    "family": "focus",
    "asset": "blast_furnace_dawn",
    "brief": "A Finnish steelworks blast furnace glowing orange at dawn above snowy pines, small silhouettes of workers at the gate, hopeful mood of rebuilding after a hard winter.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/blast_furnace_dawn.webp",
-   "enlarged": "vanilla/focus/blast_furnace_dawn@2x.webp",
+   "native": "vanilla/focus/blast_furnace_dawn-r2.webp",
+   "enlarged": "vanilla/focus/blast_furnace_dawn-r2@2x.webp",
    "scale": 2
   },
   {
@@ -108,16 +108,16 @@
    "family": "focus",
    "asset": "bomber_formation_v033",
    "brief": "Air: a formation of twin-engine bombers over clouds.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/bomber_formation_v033.webp",
-   "enlarged": "vanilla/focus/bomber_formation_v033@2x.webp",
+   "native": "vanilla/focus/bomber_formation_v033-r2.webp",
+   "enlarged": "vanilla/focus/bomber_formation_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -125,16 +125,16 @@
    "family": "focus",
    "asset": "coastal_radar_mast",
    "brief": "A British coastal radar mast on white chalk cliffs scanning above a calm grey sea in 1940, tense watchful mood. Bold two-colour carved print.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/coastal_radar_mast.webp",
-   "enlarged": "vanilla/focus/coastal_radar_mast@2x.webp",
+   "native": "vanilla/focus/coastal_radar_mast-r2.webp",
+   "enlarged": "vanilla/focus/coastal_radar_mast-r2@2x.webp",
    "scale": 2
   },
   {
@@ -142,16 +142,16 @@
    "family": "focus",
    "asset": "cruiser_launch_slipway",
    "brief": "A new Italian light cruiser sliding down the slipway into a Genoa harbour, bunting overhead and dockworkers cheering, festive and proud.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/cruiser_launch_slipway.webp",
-   "enlarged": "vanilla/focus/cruiser_launch_slipway@2x.webp",
+   "native": "vanilla/focus/cruiser_launch_slipway-r2.webp",
+   "enlarged": "vanilla/focus/cruiser_launch_slipway-r2@2x.webp",
    "scale": 2
   },
   {
@@ -159,16 +159,16 @@
    "family": "focus",
    "asset": "cyclotron_laboratory",
    "brief": "A young researcher beside a brass-coiled cyclotron magnet in a university laboratory, dials and glass tubes glowing, hopeful 1940s scientific mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/cyclotron_laboratory.webp",
-   "enlarged": "vanilla/focus/cyclotron_laboratory@2x.webp",
+   "native": "vanilla/focus/cyclotron_laboratory-r2.webp",
+   "enlarged": "vanilla/focus/cyclotron_laboratory-r2@2x.webp",
    "scale": 2
   },
   {
@@ -176,16 +176,16 @@
    "family": "focus",
    "asset": "embassy_flags_handshake_v033",
    "brief": "Diplomacy: two envoys shaking hands under two invented national flags.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/embassy_flags_handshake_v033.webp",
-   "enlarged": "vanilla/focus/embassy_flags_handshake_v033@2x.webp",
+   "native": "vanilla/focus/embassy_flags_handshake_v033-r2.webp",
+   "enlarged": "vanilla/focus/embassy_flags_handshake_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -193,16 +193,33 @@
    "family": "focus",
    "asset": "fighter_dawn_scramble",
    "brief": "Polish single-seat fighters taking off from a grass airfield at first light, ground crew running clear, tense and determined mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/fighter_dawn_scramble.webp",
-   "enlarged": "vanilla/focus/fighter_dawn_scramble@2x.webp",
+   "native": "vanilla/focus/fighter_dawn_scramble-r2.webp",
+   "enlarged": "vanilla/focus/fighter_dawn_scramble-r2@2x.webp",
+   "scale": 2
+  },
+  {
+   "section": "vanilla",
+   "family": "focus",
+   "asset": "fortified_border_line_v033",
+   "brief": "Military: a line of concrete bunkers and dragon's teeth along a border.",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
+   "size": [
+    100,
+    88
+   ],
+   "vanilla_check": "pass",
+   "subfamily": null,
+   "native": "vanilla/focus/fortified_border_line_v033-r2.webp",
+   "enlarged": "vanilla/focus/fortified_border_line_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -210,16 +227,16 @@
    "family": "focus",
    "asset": "frontier_fortress_turret",
    "brief": "A French frontier fortress with an armoured gun turret rising from a green hillside, barbed wire in front, grim and steady mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/frontier_fortress_turret.webp",
-   "enlarged": "vanilla/focus/frontier_fortress_turret@2x.webp",
+   "native": "vanilla/focus/frontier_fortress_turret-r2.webp",
+   "enlarged": "vanilla/focus/frontier_fortress_turret-r2@2x.webp",
    "scale": 2
   },
   {
@@ -227,16 +244,16 @@
    "family": "focus",
    "asset": "highland_road_builders",
    "brief": "Ethiopian highland workers breaking rock with picks and hauling carts to build a mountain road, steep green valley behind them, 1930s hopeful effort.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/highland_road_builders.webp",
-   "enlarged": "vanilla/focus/highland_road_builders@2x.webp",
+   "native": "vanilla/focus/highland_road_builders-r2.webp",
+   "enlarged": "vanilla/focus/highland_road_builders-r2@2x.webp",
    "scale": 2
   },
   {
@@ -244,16 +261,33 @@
    "family": "focus",
    "asset": "howitzer_hillside",
    "brief": "A heavy Soviet howitzer on a snowy hillside with its crew in dark silhouette, barrel raised against a pale sky, grim determination.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/howitzer_hillside.webp",
-   "enlarged": "vanilla/focus/howitzer_hillside@2x.webp",
+   "native": "vanilla/focus/howitzer_hillside-r2.webp",
+   "enlarged": "vanilla/focus/howitzer_hillside-r2@2x.webp",
+   "scale": 2
+  },
+  {
+   "section": "vanilla",
+   "family": "focus",
+   "asset": "infantry_bayonet_charge_v033",
+   "brief": "Military: infantrymen charging with fixed bayonets across a muddy field.",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
+   "size": [
+    100,
+    88
+   ],
+   "vanilla_check": "pass",
+   "subfamily": null,
+   "native": "vanilla/focus/infantry_bayonet_charge_v033-r2.webp",
+   "enlarged": "vanilla/focus/infantry_bayonet_charge_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -261,16 +295,16 @@
    "family": "focus",
    "asset": "irrigation_canal_gates",
    "brief": "Thai farmers opening wooden irrigation sluice gates so water flows into green rice terraces, hopeful early-morning mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/irrigation_canal_gates.webp",
-   "enlarged": "vanilla/focus/irrigation_canal_gates@2x.webp",
+   "native": "vanilla/focus/irrigation_canal_gates-r2.webp",
+   "enlarged": "vanilla/focus/irrigation_canal_gates-r2@2x.webp",
    "scale": 2
   },
   {
@@ -278,16 +312,16 @@
    "family": "focus",
    "asset": "laboratory_microscope_v033",
    "brief": "Research: a laboratory microscope beside glass flasks and notes.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/laboratory_microscope_v033.webp",
-   "enlarged": "vanilla/focus/laboratory_microscope_v033@2x.webp",
+   "native": "vanilla/focus/laboratory_microscope_v033-r2.webp",
+   "enlarged": "vanilla/focus/laboratory_microscope_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -295,16 +329,16 @@
    "family": "focus",
    "asset": "land_reform_plough",
    "brief": "A southern Italian peasant family marking out their own field with boundary stakes beside a plough and oxen, hopeful early 1950s mood. Bold two-colour carved print.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/land_reform_plough.webp",
-   "enlarged": "vanilla/focus/land_reform_plough@2x.webp",
+   "native": "vanilla/focus/land_reform_plough-r2.webp",
+   "enlarged": "vanilla/focus/land_reform_plough-r2@2x.webp",
    "scale": 2
   },
   {
@@ -312,16 +346,16 @@
    "family": "focus",
    "asset": "oil_gusher_celebration",
    "brief": "A Mexican oil derrick erupting in a black gusher while oilfield workers throw their hats in the air, a festive mood of national pride in the late 1930s.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/oil_gusher_celebration.webp",
-   "enlarged": "vanilla/focus/oil_gusher_celebration@2x.webp",
+   "native": "vanilla/focus/oil_gusher_celebration-r2.webp",
+   "enlarged": "vanilla/focus/oil_gusher_celebration-r2@2x.webp",
    "scale": 2
   },
   {
@@ -329,16 +363,16 @@
    "family": "focus",
    "asset": "opera_mask_scroll",
    "brief": "A Chinese opera mask on a lacquered stand beside an unrolled scroll of mountain scenery and a lute, calm 1930s cultural mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/opera_mask_scroll.webp",
-   "enlarged": "vanilla/focus/opera_mask_scroll@2x.webp",
+   "native": "vanilla/focus/opera_mask_scroll-r2.webp",
+   "enlarged": "vanilla/focus/opera_mask_scroll-r2@2x.webp",
    "scale": 2
   },
   {
@@ -346,16 +380,16 @@
    "family": "focus",
    "asset": "orange_quay_trade",
    "brief": "Crates of Valencia oranges stacked on a quay beside a steamship, dockers loading by hand, festive early 1950s trade mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/orange_quay_trade.webp",
-   "enlarged": "vanilla/focus/orange_quay_trade@2x.webp",
+   "native": "vanilla/focus/orange_quay_trade-r2.webp",
+   "enlarged": "vanilla/focus/orange_quay_trade-r2@2x.webp",
    "scale": 2
   },
   {
@@ -363,16 +397,16 @@
    "family": "focus",
    "asset": "paratrooper_drop",
    "brief": "A wing of transport aircraft over red Australian desert releasing a cloud of white parachutes, long shadows on the sand, tense 1940s mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/paratrooper_drop.webp",
-   "enlarged": "vanilla/focus/paratrooper_drop@2x.webp",
+   "native": "vanilla/focus/paratrooper_drop-r2.webp",
+   "enlarged": "vanilla/focus/paratrooper_drop-r2@2x.webp",
    "scale": 2
   },
   {
@@ -380,16 +414,16 @@
    "family": "focus",
    "asset": "parliament_dome_ballots_v033",
    "brief": "Politics: a parliament dome with ballot papers falling before it.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/parliament_dome_ballots_v033.webp",
-   "enlarged": "vanilla/focus/parliament_dome_ballots_v033@2x.webp",
+   "native": "vanilla/focus/parliament_dome_ballots_v033-r2.webp",
+   "enlarged": "vanilla/focus/parliament_dome_ballots_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -397,16 +431,16 @@
    "family": "focus",
    "asset": "railway_viaduct_opening",
    "brief": "A Turkish steam locomotive crossing a new stone viaduct high in the Anatolian mountains, villagers watching from the ridge, triumphant mood. Soft flat gouache look.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/railway_viaduct_opening.webp",
-   "enlarged": "vanilla/focus/railway_viaduct_opening@2x.webp",
+   "native": "vanilla/focus/railway_viaduct_opening-r2.webp",
+   "enlarged": "vanilla/focus/railway_viaduct_opening-r2@2x.webp",
    "scale": 2
   },
   {
@@ -414,16 +448,16 @@
    "family": "focus",
    "asset": "rally_crowd_banners_v033",
    "brief": "Politics: a rally crowd raising banners in invented colours.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/rally_crowd_banners_v033.webp",
-   "enlarged": "vanilla/focus/rally_crowd_banners_v033@2x.webp",
+   "native": "vanilla/focus/rally_crowd_banners_v033-r2.webp",
+   "enlarged": "vanilla/focus/rally_crowd_banners_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -431,16 +465,16 @@
    "family": "focus",
    "asset": "signed_treaty_quill_v033",
    "brief": "Diplomacy: a signed treaty with two wax seals and a quill pen.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/signed_treaty_quill_v033.webp",
-   "enlarged": "vanilla/focus/signed_treaty_quill_v033@2x.webp",
+   "native": "vanilla/focus/signed_treaty_quill_v033-r2.webp",
+   "enlarged": "vanilla/focus/signed_treaty_quill_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -448,16 +482,16 @@
    "family": "focus",
    "asset": "steam_locomotive_power",
    "brief": "A Yugoslav steam locomotive thundering along a river gorge with timber wagons behind it, smoke streaming, confident mood of national infrastructure.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/steam_locomotive_power.webp",
-   "enlarged": "vanilla/focus/steam_locomotive_power@2x.webp",
+   "native": "vanilla/focus/steam_locomotive_power-r2.webp",
+   "enlarged": "vanilla/focus/steam_locomotive_power-r2@2x.webp",
    "scale": 2
   },
   {
@@ -465,16 +499,16 @@
    "family": "focus",
    "asset": "steelworks_blast_furnace_v033",
    "brief": "Industry: a blast furnace pouring molten steel into a ladle, sparks flying.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/steelworks_blast_furnace_v033.webp",
-   "enlarged": "vanilla/focus/steelworks_blast_furnace_v033@2x.webp",
+   "native": "vanilla/focus/steelworks_blast_furnace_v033-r2.webp",
+   "enlarged": "vanilla/focus/steelworks_blast_furnace_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -482,16 +516,16 @@
    "family": "focus",
    "asset": "submarine_leaving_pen",
    "brief": "A sleek Japanese submarine gliding out of a concrete pen at dusk with its crew on deck, water dark and still, tense and quiet.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/submarine_leaving_pen.webp",
-   "enlarged": "vanilla/focus/submarine_leaving_pen@2x.webp",
+   "native": "vanilla/focus/submarine_leaving_pen-r2.webp",
+   "enlarged": "vanilla/focus/submarine_leaving_pen-r2@2x.webp",
    "scale": 2
   },
   {
@@ -499,16 +533,16 @@
    "family": "focus",
    "asset": "submarine_periscope_v033",
    "brief": "Naval: a submarine periscope breaking the waves at dusk.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/submarine_periscope_v033.webp",
-   "enlarged": "vanilla/focus/submarine_periscope_v033@2x.webp",
+   "native": "vanilla/focus/submarine_periscope_v033-r2.webp",
+   "enlarged": "vanilla/focus/submarine_periscope_v033-r2@2x.webp",
    "scale": 2
   },
   {
@@ -516,16 +550,16 @@
    "family": "focus",
    "asset": "torch_over_square",
    "brief": "A burning torch raised high over a crowd of silhouetted citizens in a night city square under fictional striped banners, tense yet defiant.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/torch_over_square.webp",
-   "enlarged": "vanilla/focus/torch_over_square@2x.webp",
+   "native": "vanilla/focus/torch_over_square-r2.webp",
+   "enlarged": "vanilla/focus/torch_over_square-r2@2x.webp",
    "scale": 2
   },
   {
@@ -533,16 +567,16 @@
    "family": "focus",
    "asset": "treaty_handshake",
    "brief": "A Persian envoy and a British diplomat in 1930s suits shake hands across a green felt table with a brass globe between them, quiet and hopeful mood.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/treaty_handshake.webp",
-   "enlarged": "vanilla/focus/treaty_handshake@2x.webp",
+   "native": "vanilla/focus/treaty_handshake-r2.webp",
+   "enlarged": "vanilla/focus/treaty_handshake-r2@2x.webp",
    "scale": 2
   },
   {
@@ -550,16 +584,16 @@
    "family": "focus",
    "asset": "village_radio_tower",
    "brief": "A tall radio mast above a Chinese village square where families gather around a loudspeaker, radio waves rippling outward, 1940s. Grainy ink and sepia sketch look.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/village_radio_tower.webp",
-   "enlarged": "vanilla/focus/village_radio_tower@2x.webp",
+   "native": "vanilla/focus/village_radio_tower-r2.webp",
+   "enlarged": "vanilla/focus/village_radio_tower-r2@2x.webp",
    "scale": 2
   },
   {
@@ -567,16 +601,16 @@
    "family": "focus",
    "asset": "wheat_and_gold_vault",
    "brief": "An open bank vault in Buenos Aires with stacked gold bars beside heaped wheat sheaves, a promise of economic recovery in the 1930s.",
-   "build": "0.4.0",
-   "processed_on": "0.4.0",
+   "build": "0.4.1",
+   "processed_on": "0.4.1",
    "size": [
     100,
     88
    ],
    "vanilla_check": "pass",
    "subfamily": null,
-   "native": "vanilla/focus/wheat_and_gold_vault.webp",
-   "enlarged": "vanilla/focus/wheat_and_gold_vault@2x.webp",
+   "native": "vanilla/focus/wheat_and_gold_vault-r2.webp",
+   "enlarged": "vanilla/focus/wheat_and_gold_vault-r2@2x.webp",
    "scale": 2
   },
   {
