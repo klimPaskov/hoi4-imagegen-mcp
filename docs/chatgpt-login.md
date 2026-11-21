@@ -2,12 +2,12 @@
 
 [Documentation index](../README.md#documentation)
 
-The ChatGPT-login provider makes images on your own ChatGPT plan, with no API key. Decision D-12a (HOI4 Factory, 2026-11-01) makes it a first-class local route:
+The ChatGPT-login provider makes images on your own ChatGPT plan, with no API key. It is a first-class local route:
 - It ships in every local build, with no feature flag, config entry or environment variable.
 - You sign in once in the browser. The risk note is shown as information, and signing in accepts it. There is nothing to type.
 - Once you are signed in, it is the default local provider. An explicit `provider` in a plan still wins.
 - Documented API providers stay available: OpenAI API key, Gemini, fal and ComfyUI.
-- It is never part of hosted HOI4 Factory (see "Hosted deployments" below).
+- It is local only and is never part of a hosted deployment (see "Hosted deployments" below).
 
 ## Sign in
 
@@ -17,7 +17,7 @@ hoi4-imagegen login
 
 An agent or a setup tool can start the same sign-in with the MCP tool `hoi4.image_login`, with no terminal at all. It opens the browser and returns at once, and the sign-in finishes in the background.
 
-1. **The risk note.** It is printed in the terminal (or returned by `hoi4.image_login`), and the page the browser lands on after the sign-in sums it up. Signing in is the acceptance, so there is no question to answer (a maintainer decision of 2026-11-05 that replaced the typed `yes`). The acceptance is recorded once per user, in your own data folder, never in a project. `--accept-risk` is still accepted and does nothing.
+1. **The risk note.** It is printed in the terminal (or returned by `hoi4.image_login`), and the page the browser lands on after the sign-in sums it up. Signing in is the acceptance, so there is no question to answer. The acceptance is recorded once per user, in your own data folder, never in a project. `--accept-risk` is still accepted and does nothing.
 2. **The browser.** It opens OpenAI's sign-in page, and the address is also printed. This is an OAuth 2.0 authorization-code flow with PKCE against `auth.openai.com`, using the public client id of the official Codex CLI and a loopback redirect on `127.0.0.1:1455`. Your password is typed only into OpenAI's page.
 3. **The tokens.** They go to a store only your user account can read:
    - Windows: Credential Manager, service `hoi4-imagegen.chatgpt-login`, split across numbered entries because of Windows' size limit
@@ -37,11 +37,11 @@ Other commands:
 
 The sign-in route uses ChatGPT's current image model, which is the latest one, and the backend picks it. Model choice such as GPT-Image 2.6 applies to the OpenAI API route, not to this one. The outer model and effort below are what the route fixes and checks.
 
-Every image runs on **gpt-6-luna**. This is the maintainer's decision of 2026-11-01, and there is no other model and no model fallback.
+Every image runs on **gpt-6-luna**. There is no other model and no model fallback.
 
-The reasoning effort is **the highest one the backend accepts**. On 2026-11-05 the backend began refusing `high` for image requests ("Complexity 'high' is not supported for this image model"), and the maintainer chose this rule (decision W5-6):
+The reasoning effort is **the highest one the backend accepts**. The backend can refuse `high` for image requests ("Complexity 'high' is not supported for this image model"), so the route steps down:
 - Each request asks for `reasoning.effort = high` first. If the backend refuses that effort, the same request is sent once at `medium`, then once at `low`, and finally once with no `reasoning` field at all, so the backend uses its own default effort. The first rung the backend accepts is used.
-- On 2026-11-05 the backend refused high, medium and low (it passes the effort to the image tool as its `complexity`). The maintainer added `low`, and then the request without an effort. An image made that way records `reasoning_effort: "backend default"` and the effort the backend reported. Whether such images are good enough is checked image by image.
+- The backend passes the effort to the image tool as its `complexity`, and it has refused high, medium and low at times. An image made on the last rung records `reasoning_effort: "backend default"` and the effort the backend reported.
 - A refused effort is remembered on the machine for a day (`refused_efforts` in `route-state.json`), so later images skip it and send one request. The last effort on the ladder is always tried, so a backend that changes again is noticed. After the day, `high` is tried again.
 - The attempts of one image run one after another in that image's slot and keep the slot's pacing (see "Requests at once" below).
 - If the backend refuses all four, the call ends with one clear error that lists each refusal, and the route is down until the backend changes. Nothing is retried after that.
@@ -53,11 +53,11 @@ The reasoning effort is **the highest one the backend accepts**. On 2026-11-05 t
 
 ## The image model
 
-The sign-in route asks for an image the way ChatGPT does: the request's `image_generation` tool carries no `model`, and ChatGPT draws the picture with its current image model. The route cannot choose one per family. On 2026-11-08 one request named `gpt-image-2.6-sunburst` on the tool and one named `gpt-image-2.6-flare`; the backend accepted both and ignored the field, and the response listed the same image model both times (recorded in `crates/provider-chatgpt-login/tests/fixtures/recorded-real/tool-model-*-ignored-2026-11-08.sse`). So the route keeps the backend's choice and treats it as ChatGPT's latest image model. The model each image ran on is recorded in its candidate note.
+The sign-in route asks for an image the way ChatGPT does: the request's `image_generation` tool carries no `model`, and ChatGPT draws the picture with its current image model. The route cannot choose one per family. Naming `gpt-image-2.6-sunburst` or `gpt-image-2.6-flare` on the tool was accepted and ignored by the backend, and the response listed the same image model both times (recorded in `crates/provider-chatgpt-login/tests/fixtures/recorded-real/tool-model-*-ignored-2026-11-08.sse`). So the route keeps the backend's choice and treats it as ChatGPT's latest image model. The model each image ran on is recorded in its candidate note.
 
 ## Requests at once
 
-On 2026-11-02 the server revoked every Codex sign-in on the maintainer's account while several sessions generated at once. From then until 0.3.2 the route sent one request at a time. Since 0.3.3 it may send up to three at once on the machine (maintainer decision W5-8 of 2026-11-05, a trial).
+The route paces itself across every process on the machine, because a sign-in can be revoked when too many requests arrive at once. Up to three requests run at the same time, and each slot waits between its own requests. If the server signs you out, the route drops to one request at a time.
 
 - **Slots.** Every request the route makes takes one slot: a generation, a token refresh and the sign-in code exchange. A slot is an operating system lock on a file in the per-user data folder, next to `route-state.json`. Slot 0 is `route.lock`, the same file older versions lock, and slots 1 to 5 are `route.lock.1` to `route.lock.5`. A caller takes the first free slot. When all are busy it waits, and after 10 minutes it gives up with an error that says every slot is in use. Every process on the machine shares the same slots, and a slot is freed when its process ends, even after a crash.
 - **How many.** Three by default. Set `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` to a number from 1 to 6 to change it. A value outside that range is clamped, and 1 gives the old one-at-a-time behaviour. A project can also set it in `.hoi4-imagegen/config.toml`, and the environment variable wins:
@@ -72,20 +72,20 @@ On 2026-11-02 the server revoked every Codex sign-in on the maintainer's account
 - **Backoff.** A 429 starts a backoff of 30 seconds that doubles with every further 429, up to 5 minutes. It holds every slot.
 - **Fall back to one at a time.** A sign-out by the server (a 401, or an answer that says `token_revoked`), a 429, or the backend's usage-limit message drops the route to one request at a time on the whole machine. The reason and the time are recorded in `route-state.json` (`fallback`), so every process sees it. A caller that already holds a higher slot gives it up before its next request and waits for slot 0.
 - **When it ends.** Six hours after the last sign-out or rate limit. Every new one restarts the six hours. A new sign-in does not end it early.
-- **"Unable to verify model access".** Between 19:44 and 19:47 UTC on 2026-11-05 the backend answered "Unable to verify model access right now" three times across parallel slots, with successful requests in between. It comes as an error event in the stream or in an HTTP error body, and the match ignores case. It is a temporary condition, not a terminal bad request:
+- **"Unable to verify model access".** The backend sometimes answers "Unable to verify model access right now" on a few requests while others succeed. It comes as an error event in the stream or in an HTTP error body, and the match ignores case. It is a temporary condition, not a terminal bad request:
   - The first answer fails that request with a retryable error. Its slot waits 60 seconds before its next request (`slot_pause` in `route-state.json`). The other slots keep running.
   - A second answer within 15 minutes of the last one, from any slot or process, drops the route to one request at a time with the reason `model_access_unverified`, through the same mechanism and warning as above. It lasts one hour after that answer, not six, because the message looked like a passing hiccup and not a sign-out or a plan limit. Every further answer within 15 minutes of the last restarts the hour. It never cuts a longer fall back short.
   - The count and the time of the last answer are recorded in `route-state.json` (`model_access`) and shown by `doctor`, `login-status` and `hoi4.image_status` (`chatgpt_login.route.model_access_unverified`, with the slots still paused).
 - **The warning.** While it holds, every generation from this route says so, in the image's notes or in the error. `hoi4-imagegen doctor`, `hoi4-imagegen login-status` and `hoi4.image_status` (`chatgpt_login.route.fallback` and `chatgpt_login.route.concurrency`) show it too. It reads like this:
 
   ```
-  warning: the ChatGPT-login route dropped to one request at a time on this machine after a rate limit (http_429) at 2026-11-05T10:00:00Z; it goes back to several at a time after 2026-11-05T16:00:00Z if no new sign-out or rate limit arrives
+  warning: the ChatGPT-login route dropped to one request at a time on this machine after a rate limit (http_429) at 2026-01-05T10:00:00Z; it goes back to several at a time after 2026-01-05T16:00:00Z if no new sign-out or rate limit arrives
   ```
 
   After two "Unable to verify model access" answers it reads:
 
   ```
-  warning: the ChatGPT-login route dropped to one request at a time on this machine after the backend failing twice within 15 minutes to verify model access (model_access_unverified) at 2026-11-05T19:46:00Z; it goes back to several at a time after 2026-11-05T20:46:00Z if no new model-access error arrives
+  warning: the ChatGPT-login route dropped to one request at a time on this machine after the backend failing twice within 15 minutes to verify model access (model_access_unverified) at 2026-01-05T19:46:00Z; it goes back to several at a time after 2026-01-05T20:46:00Z if no new model-access error arrives
   ```
 - **The state file.** Several slot holders write `route-state.json` at once, so every read and every change of it happens under a short lock on `route-state.lock`. The file keeps the last request of each slot (`slot_last_request`). A file written by 0.3.2 or older still reads: its single `last_request_epoch` paces every slot until the slots have their own times.
 
@@ -108,7 +108,7 @@ On 2026-11-02 the server revoked every Codex sign-in on the maintainer's account
 
 ## Hosted deployments
 
-`RunMode::Hosted` never registers the provider. `imagegen_mcp::plugin::refuses_hosted(RunMode::Hosted)` is `true`, and `crates/imagegen-mcp/tests/plugin_gates.rs` checks that a hosted engine cannot select it, even signed in and named in the project file. HOI4 Factory's S06 hosted tool profile depends on that test, and S06 adds its own profile test on the Factory side.
+`RunMode::Hosted` never registers the provider. `imagegen_mcp::plugin::refuses_hosted(RunMode::Hosted)` is `true`, and `crates/imagegen-mcp/tests/plugin_gates.rs` checks that a hosted engine cannot select it, even signed in and named in the project file.
 
 ## Recorded responses
 
@@ -116,18 +116,18 @@ Set `HOI4_IMAGEGEN_RECORD_RESPONSES=<folder>` to save each raw backend response.
 
 ## What the backend controls
 
-The first signed-in probe was on Windows on 2026-11-01. Its fixture is `crates/provider-chatgpt-login/tests/fixtures/recorded-real/focus-luna-high-2026-11-01.sse`, and the evidence is `docs/evidence/2026-11-01-luna-probe.json`.
+The first signed-in probe ran on Windows. Its fixture is `crates/provider-chatgpt-login/tests/fixtures/recorded-real/focus-luna-high-2026-11-01.sse`, and the evidence is `docs/evidence/2026-11-01-luna-probe.json`.
 - The backend ran the request on `gpt-6-luna` with `reasoning.effort = high`, as both `response.created` and `response.completed` report.
 - The pixels come from the backend's hosted image tool, which is ChatGPT's current image model, the latest one.
 - The backend replaces the tool settings we send with `quality = auto` and `size = auto`. The probe image came back at quality `medium`, 1337x1176, with a transparent background.
 
 So the route forces and verifies the outer model and effort, but it cannot choose the image tool's model, quality or size. The ledger records what the backend reported for every image.
 
-**What the backend chooses, measured (2026-11-13).** The gallery runs of 2026-11-09 recorded the image tool's report for 178 images. Every report named `gpt-image-2-codex` as the image model. The request asked for quality `high` each time. The backend chose by background, not by what was asked:
+**What the backend chooses, measured.** The gallery runs recorded the image tool's report for 178 images. Every report named `gpt-image-2-codex` as the image model. The request asked for quality `high` each time. The backend chose by background, not by what was asked:
 
 | Background | Images | Quality the backend chose |
 |---|---|---|
 | Transparent (icons, emblems, counters) | 92 | `medium` every time |
 | Opaque (portraits, events, technology, operation and decision pictures) | 86 | `low` 61, `medium` 24, `high` 1 |
 
-On 2026-11-13 one more probe also asked for quality `high` in the outer model's instructions. A leader portrait still came back at `low`, 1077x1460. The sign-in route therefore has no way to raise quality, and the model routing of decision W5-10 (Flare for icons, Sunburst for detail) applies only to the OpenAI API route. The counts are in `docs/evidence/2026-11-13-signin-quality.json`. For a detailed picture that must look its best, the OpenAI API route with `gpt-image-2.6-sunburst` at quality `high` is the choice. It is a paid route, so it asks before spending.
+One more probe also asked for quality `high` in the outer model's instructions. A leader portrait still came back at `low`, 1077x1460. The sign-in route therefore has no way to raise quality, and the model routing (Flare for icons, Sunburst for detail) applies only to the OpenAI API route. The counts are in `docs/evidence/2026-11-13-signin-quality.json`. For a detailed picture that must look its best, the OpenAI API route with `gpt-image-2.6-sunburst` at quality `high` is the choice. It is a paid route, so it asks before spending.
