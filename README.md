@@ -146,7 +146,7 @@ Before you use the login, know that it calls a ChatGPT backend that OpenAI does 
 * [Family catalogue](docs/families.md): the still families with real examples, and the [animated sprites](docs/families.md#animated-sprites)
 * [Reference](docs/reference.md): families, processing chains, names the game looks up, style references, validation, install and project config
 * [ChatGPT login](docs/chatgpt-login.md), [rules and terms](docs/rules-and-terms.md), [kit integration](docs/kit-integration.md), [test layers](docs/testing.md), [recipes](examples/recipes.md), [agent skill](skill/hoi4-imagegen/SKILL.md)
-* [Gallery](docs/gallery/big/README.md) and the trailer pages: [sources](docs/trailer/SOURCES.md), [storyboard](docs/trailer/STORYBOARD.md)
+* [Gallery](docs/gallery/big/README.md)
 
 AI-generated art in a mod: disclosing it is recommended, the ledger records provider, model, date and prompt for every asset, and portraits of real people raise personal-rights questions. Read [rules and terms](docs/rules-and-terms.md).
 
