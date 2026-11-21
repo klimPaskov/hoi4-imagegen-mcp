@@ -52,3 +52,7 @@ CI (`.github/workflows/ci.yml`) runs format, clippy with warnings denied and the
 | Small families | up to 2.15; `agency_upgrade` (15 images, one far outlier) 6.70 |
 
 Examples (images measured, p95, threshold): focus 256, 1.57, 1.75; idea_spirit 255, 1.48, 1.75; decision 253, 1.90, 1.90; medal 41, 2.15, 2.15; report_event 256, 1.06, 1.75; flag 253, 1.52, 1.75. The floor of 1.75 sits just above the large families' values, so a family drawn from many images warns about roughly the outer 5 percent, and a family with few images (a wide spread in its own set) is judged by its own spread. Portrait families share one vanilla pool (all of `gfx/leaders`) because vanilla does not separate them by folder.
+
+## Gallery scripts
+
+The gallery is made by the scripts in `scripts/`: `make_gallery_big.py` runs the briefs in `gallery_briefs.json`, `make_building_pair.py` makes one building with its ruined second frame, `merge_briefs.py` merges and checks new brief files, and `build_gallery_site.py` writes the gallery pages. Each script names its inputs in its header.
