@@ -221,7 +221,7 @@ def export():
     contact_sheet(tiles)
     meta = {
         "about": "Real output of hoi4-imagegen on the ChatGPT-login route (plan quota, no money). Images are the tool's processed files at native size on a dark tile, enlarged by whole numbers with nearest neighbour when small.",
-        "game": "Hearts of Iron IV 1.19.4.1",
+        "game": "Hearts of Iron IV 1.19.5.0",
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
         "images": manifest,
     }
@@ -321,7 +321,7 @@ def docs():
     w('<p align="center"><a href="gallery/contact-sheet.webp"><img src="gallery/contact-sheet.webp" alt="One current example of each still family" width="100%"></a></p>\n')
     w("## How to read an entry\n")
     w(
-        "* **Canvas and frames** are measured from the installed game, HOI4 1.19.4.1.\n"
+        "* **Canvas and frames** are measured from the installed game, HOI4 1.19.5.0.\n"
         "* **Names the game looks up** follow the vanilla evidence in `crates/imagegen-core/src/lookup.rs`, as fixed in v0.2.2. Where a script names the sprite in full the name is free. Where the game builds the name, the tool builds the same one and the install result's `script` field says what to write.\n"
         "* **Processing** is the family's fixed chain. The tool appends it and you cannot skip it. The steps listed are the ones that ran on the example. The examples were made with version 0.2.0. Since 0.3.2 more families have their own chain: raid icons get vanilla's gold gradient, doctrine icons black units with a pale outline and glow, special project icons are redrawn as line art, counters and division emblems always end in the unit recipe, and a landmark's small strip is a flat orange pictogram. The [reference](reference.md#processing-chains) lists every chain.\n"
         "* **Checks** are the deterministic set that `hoi4.image_validate` always runs for the family. Composition and readability at game size go to the visual review.\n"

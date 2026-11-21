@@ -1,6 +1,6 @@
 //! Special project icons: any generated image turned into vanilla's pale line drawing.
 //!
-//! **What vanilla shows** (HOI4 1.19.4.1, all 55 files of `gfx/interface/special_project/project_icons/`, 161x98,
+//! **What vanilla shows** (HOI4 1.19.5.0, all 55 files of `gfx/interface/special_project/project_icons/`, 161x98,
 //! measured by the tests below):
 //!
 //! * Only lines: every visible pixel is pure white (255, 255, 255). The lines are pale because they are partly
@@ -237,7 +237,7 @@ pub fn line_art_with(img: &Rgba, width: u32, height: u32, style: &LineStyle) -> 
 }
 
 /// The largest filled area of a vanilla special project icon, in pixels: the median and the largest over the 55
-/// vanilla files (HOI4 1.19.4.1), measured by [`largest_filled_area`].
+/// vanilla files (HOI4 1.19.5.0), measured by [`largest_filled_area`].
 pub const VANILLA_FILLED_AREA: [usize; 2] = [4, 171];
 
 /// A drawing whose largest filled area is larger than this is not line art (`GFX-FILLED-INTERIOR`): half again

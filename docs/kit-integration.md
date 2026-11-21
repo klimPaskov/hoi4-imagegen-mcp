@@ -6,7 +6,7 @@ The [Agentic HOI4 Modding Kit](https://github.com/klimPaskov/Agentic-HOI4-Moddin
 
 ## What the integration is
 
-* **Profile rows.** The kit's `.tools/gfx/profiles.json` has one row per family, 40 rows in all, with the canvas for new art, accepted sizes, minimum margin, frame count and the vanilla evidence for each number. The values are the sizes measured on HOI4 1.19.4.1. The kit stays the single owner of those sizes. This repository reads the same file over its built-in defaults (also measured from 1.19.4.1) and under the project's own overrides, and reports the difference with `hoi4-imagegen calibrate`.
+* **Profile rows.** The kit's `.tools/gfx/profiles.json` has one row per family, 40 rows in all, with the canvas for new art, accepted sizes, minimum margin, frame count and the vanilla evidence for each number. The values are the sizes measured on HOI4 1.19.5.0. The kit stays the single owner of those sizes. This repository reads the same file over its built-in defaults (also measured from 1.19.5.0) and under the project's own overrides, and reports the difference with `hoi4-imagegen calibrate`.
 * **`family_ids.json`.** `.tools/gfx/family_ids.json` is the kit's list of the 40 still family ids (the 4 animated families are not in it). The kit's `shelf` check verifies that its profiles, shelf catalog and shelf builder input name exactly that list.
 * **The shelf.** The kit's asset skill ships a vanilla reference shelf (`assets/vanilla_reference/` with a `CATALOG.md` that lists the canvas of every family). A mod's copy of the shelf is style tier 2, and the advisor, achievement and portrait templates and the YuNet face model come from the mod's copy of the same skill (see the [reference](reference.md)).
 * **Skills and agents.** The kit's `hoi4-imagegen` skill (a downstream copy of `skill/hoi4-imagegen/SKILL.md` in this repository) and its icon, portrait and generated-feature-art agents call the `hoi4.image_*` tools. They pick the `family`, run the loop and never build a second image pipeline. The kit's `hoi4-feature-assets` skill keeps the source, naming and handoff rules that the loop follows.
@@ -50,7 +50,7 @@ The processing recipe of a family (`icon`, `report_card`, `achievement`...) is n
 
 ## Rows
 
-The built-in defaults are the vanilla-measured values of HOI4 1.19.4.1 (`crates/imagegen-core/data/vanilla-measurement.json`), one row per family. A kit row overrides any of them. A mod keeps the sizes it chose (for example 94x86 for focus, 64x64 for ideas and 32x32 for decisions) by listing them in its own `.tools/gfx/profiles.json`, and `hoi4.image_families` then shows the override next to the vanilla value. Examples:
+The built-in defaults are the vanilla-measured values of HOI4 1.19.5.0 (`crates/imagegen-core/data/vanilla-measurement.json`), one row per family. A kit row overrides any of them. A mod keeps the sizes it chose (for example 94x86 for focus, 64x64 for ideas and 32x32 for decisions) by listing them in its own `.tools/gfx/profiles.json`, and `hoi4.image_families` then shows the override next to the vanilla value. Examples:
 
 ```json
 "focus": {

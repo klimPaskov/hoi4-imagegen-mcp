@@ -1,6 +1,6 @@
 //! Companion images the game looks up next to a family's main sprite, derived from the main art.
 //!
-//! Each derivation was fitted to the installed game (HOI4 1.19.4.1) and none is exact: vanilla draws these
+//! Each derivation was fitted to the installed game (HOI4 1.19.5.0) and none is exact: vanilla draws these
 //! companions by hand, so a derived one is a faithful stand-in, not a copy of a vanilla process.
 //!
 //! | Kind | Families | What vanilla shows | Derivation |
@@ -78,7 +78,7 @@ pub fn derive(kind: DeriveKind, main: &Rgba, frames: u32) -> Result<Rgba> {
     }
 }
 
-/// Vanilla's small landmark ramp (HOI4 1.19.4.1, frame 1 of the 23 `gfx/interface/buildings/*_icon_small.dds` strips
+/// Vanilla's small landmark ramp (HOI4 1.19.5.0, frame 1 of the 23 `gfx/interface/buildings/*_icon_small.dds` strips
 /// of 64x32): the median colour of the inside pixels whose luminance lies within 8 of 48, 64 ... 192, extended
 /// linearly to black below 48 where vanilla has almost no pixels.
 pub const LANDMARK_RAMP: [[u8; 3]; 13] = [

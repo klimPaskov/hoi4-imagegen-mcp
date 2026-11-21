@@ -307,7 +307,7 @@ impl Engine {
     }
 
     /// The division template symbol number for an emblem: the number an earlier install of the same asset recorded,
-    /// otherwise one past the highest of vanilla's numbers (read from the installed game, or 1.19.4.1's 121 when the
+    /// otherwise one past the highest of vanilla's numbers (read from the installed game, or 1.19.5.0's 121 when the
     /// game is absent), every number the mod's `interface/` `.gfx` files register and every number recorded by
     /// earlier installs.
     fn division_template_number(&self, asset_id: &str, entries: &[imagegen_core::ledger::Entry]) -> EResult<u32> {

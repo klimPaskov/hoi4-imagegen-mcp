@@ -73,7 +73,7 @@ impl Group {
 }
 
 /// The kind of a `gui_texture`: it picks the vanilla style references and adds the kind's vanilla form to the
-/// prompt. Measured on HOI4 1.19.4.1 (see `stylesrc.rs` for the folders).
+/// prompt. Measured on HOI4 1.19.5.0 (see `stylesrc.rs` for the folders).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum GuiTextureKind {

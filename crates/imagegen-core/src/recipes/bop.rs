@@ -1,6 +1,6 @@
 //! Balance of power side icons: one emblem in its stages.
 //!
-//! **What vanilla shows** (HOI4 1.19.4.1, the 36 `bop_<TAG>_<name>_side` and `_improved_side` pairs of
+//! **What vanilla shows** (HOI4 1.19.5.0, the 36 `bop_<TAG>_<name>_side` and `_improved_side` pairs of
 //! `gfx/interface/bop/`, 72x88, alpha cut-outs with no frame and no plate):
 //!
 //! * The standard stage is the emblem in grey (a bust, a head, a symbol): mean colour about (51, 51, 51) and

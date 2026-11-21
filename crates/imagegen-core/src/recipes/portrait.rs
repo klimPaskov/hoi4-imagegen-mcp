@@ -124,7 +124,7 @@ impl Framing {
     /// cards keep it.
     pub const KIT: Framing = Framing { face_heights: 4.5, above: 0.9 };
     /// Vanilla's leader, commander, operative and scientist portraits, measured with YuNet on 70 of the 156x210
-    /// files in gfx/leaders (HOI4 1.19.4.1): the face box is 0.543 of the height (10th to 90th percentile 0.452 to
+    /// files in gfx/leaders (HOI4 1.19.5.0): the face box is 0.543 of the height (10th to 90th percentile 0.452 to
     /// 0.619) and its top sits at 0.181, so the crop is 1/0.543 = 1.84 face heights with 0.333 of one above the face.
     /// The kit framing made the face 0.22 of the height, far smaller than vanilla's.
     pub const VANILLA_LEADER: Framing = Framing { face_heights: 1.84, above: 0.333 };

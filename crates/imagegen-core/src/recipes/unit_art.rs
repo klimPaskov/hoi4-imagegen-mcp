@@ -1,7 +1,7 @@
 //! Unit art: the battalion counter, the on-map counter and the division template symbol, made from a generated
 //! silhouette and finished in vanilla's own look.
 //!
-//! Vanilla (HOI4 1.19.4.1) draws all three in one consistent material, so the model is asked for the shape only and
+//! Vanilla (HOI4 1.19.5.0) draws all three in one consistent material, so the model is asked for the shape only and
 //! this module renders the material itself. That is what makes generated art match vanilla reliably: the model's
 //! colours and shading never reach the game.
 //!
@@ -416,7 +416,7 @@ pub struct GlyphStyle {
 }
 
 impl GlyphStyle {
-    /// The style of a kind, fitted to HOI4 1.19.4.1.
+    /// The style of a kind, fitted to HOI4 1.19.5.0.
     pub fn of(kind: UnitArtKind) -> GlyphStyle {
         match kind {
             // 111 battalion strips: ink area p10 367, p50 546, p90 809; width p50 47, p90 62; height p50 23, p90 30;
@@ -1206,7 +1206,7 @@ pub const SHAPE_ALPHA: u8 = 64;
 pub const KEPT_WIDE_FACTOR: f64 = 2.0;
 
 /// The widest and the narrowest glyph (width over height) vanilla draws, with a margin, measured on frame 1 of every
-/// file of HOI4 1.19.4.1 (alpha 128 and up, and the limits hold at [`SHAPE_ALPHA`] too). Large counters (111 strips) run from 0.81 to 4.64, on-map counters (83)
+/// file of HOI4 1.19.5.0 (alpha 128 and up, and the limits hold at [`SHAPE_ALPHA`] too). Large counters (111 strips) run from 0.81 to 4.64, on-map counters (83)
 /// from 0.50 to 4.00 and division symbols (101) from 0.48 to 6.10. The widest are special art such as the guided
 /// missile counter and a few wide symbols.
 pub fn vanilla_aspect_range(kind: UnitArtKind) -> [f64; 2] {
@@ -1978,7 +1978,7 @@ mod tests {
             }
             eprintln!("{}: {checked} vanilla files checked, {} refused", kind.as_str(), failed.len());
             assert!(checked >= 50, "{kind:?}: only {checked}");
-            // HOI4 1.19.4.1: 3 of 111 battalion strips, 2 of 81 grey on-map strips and 3 of 101 symbols are refused,
+            // HOI4 1.19.5.0: 3 of 111 battalion strips, 2 of 81 grey on-map strips and 3 of 101 symbols are refused,
             // special art such as the guided missile, transport helicopter and mothership counters, whose frame 2 is
             // not the standard NATO box
             assert!(failed.len() * 20 <= checked, "{kind:?}: more than 5 percent of vanilla refused: {failed:#?}");

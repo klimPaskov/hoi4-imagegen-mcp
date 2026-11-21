@@ -1,6 +1,6 @@
 //! Vanilla measurements behind the form rules and the `small_detail` check: the MIO trait glyph, the readability of
 //! small icons and the landmark aspect. The vanilla side is read from the installed game and never copied. Without
-//! the game the vanilla tests print `SKIPPED` and pass (set `HOI4_GAME_DIR` to point at it). Measured on HOI4 1.19.4.1.
+//! the game the vanilla tests print `SKIPPED` and pass (set `HOI4_GAME_DIR` to point at it). Measured on HOI4 1.19.5.0.
 
 use std::path::{Path, PathBuf};
 

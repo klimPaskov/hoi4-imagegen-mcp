@@ -246,7 +246,7 @@ pub const SMALL_DETAIL_CODE: &str = "GFX-SMALL-DETAIL";
 pub const BACKDROP_CODE: &str = "GFX-PORTRAIT-BACKDROP";
 
 /// A portrait family's vanilla backdrop: the median CIE L*a*b* of the two top corners ([`crate::vanillamatch::backdrop_lab`]
-/// at 156x210) over the family's vanilla files (HOI4 1.19.4.1, measured by `tests/vanilla_forms.rs`), and the largest
+/// at 156x210) over the family's vanilla files (HOI4 1.19.5.0, measured by `tests/vanilla_forms.rs`), and the largest
 /// colour distance (CIE76) before `GFX-PORTRAIT-BACKDROP` warns. Leaders and commanders share one pale cream-grey
 /// template, scientists have a pale blue-grey one, and vanilla's 163 operative portraits (La Resistance's
 /// `portrait_*_operative_*`) are dark warm charcoal at the top. The distance
@@ -338,7 +338,7 @@ pub fn edge_share(img: &Rgba) -> Option<f64> {
 }
 
 /// The highest [`edge_share`] of a small icon family before `GFX-SMALL-DETAIL` warns: the 95th percentile of the
-/// family's vanilla files at its canvas (HOI4 1.19.4.1, measured by `tests/vanilla_forms.rs`), so about one vanilla
+/// family's vanilla files at its canvas (HOI4 1.19.5.0, measured by `tests/vanilla_forms.rs`), so about one vanilla
 /// file in twenty would get the warning too. `None` for a family without a limit.
 pub fn small_detail_limit(family: crate::family::Family) -> Option<f64> {
     use crate::family::Family::*;
@@ -360,7 +360,7 @@ const PERSONAL_TRAIT_LIMIT: f64 = 0.448;
 const DECISION_CATEGORY_ICON_LIMIT: f64 = 0.112;
 
 /// The narrowest a technology picture's subject may be, width over height of its visible box, before the side view
-/// is doubted: vanilla's 10th percentile (HOI4 1.19.4.1: 2.30 over 269 pictures at 146x54, 1.81 over 55 at 131x52;
+/// is doubted: vanilla's 10th percentile (HOI4 1.19.5.0: 2.30 over 269 pictures at 146x54, 1.81 over 55 at 131x52;
 /// medians 3.09 and 2.29). A side profile of a tank, gun, aircraft or ship is long and low; a three-quarter or front
 /// view is not.
 pub fn side_view_min_aspect(canvas: [u32; 2]) -> f64 {

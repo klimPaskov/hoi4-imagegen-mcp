@@ -3,7 +3,7 @@
 //! automatic vanilla references (tier 4) are vanilla files of that form.
 //!
 //! SYNTHETIC: the prompt tests plan against an empty project with no game, and nothing is generated. The reference
-//! tests read the installed game (HOI4 1.19.4.1) and skip when it is absent. No game file is copied anywhere.
+//! tests read the installed game (HOI4 1.19.5.0) and skip when it is absent. No game file is copied anywhere.
 
 mod common;
 

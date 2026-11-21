@@ -1,6 +1,6 @@
 //! Intelligence agency upgrades: any subject turned into vanilla's round, muted, darkened-edge vignette.
 //!
-//! **What vanilla shows** (HOI4 1.19.4.1, the 15 `agency_*.dds` upgrade icons of `gfx/interface/operatives/icons/`,
+//! **What vanilla shows** (HOI4 1.19.5.0, the 15 `agency_*.dds` upgrade icons of `gfx/interface/operatives/icons/`,
 //! 68x68; measured by the tests below and by the vanilla-match calibration):
 //!
 //! * Every file is one disc centred at (34, 34) with a radius of 26.1 px (diameter 52, 0.765 of the canvas), opaque
@@ -577,7 +577,7 @@ mod tests {
     }
 
     /// The constants are vanilla's: the disc's centre, radius and edge, the edge darkening, the backdrop colour and the
-    /// palette medians. Measured on HOI4 1.19.4.1 (15 files): centre (34.0, 34.0), radius 26.1, alpha 0.96, 0.50 and
+    /// palette medians. Measured on HOI4 1.19.5.0 (15 files): centre (34.0, 34.0), radius 26.1, alpha 0.96, 0.50 and
     /// 0.01 across the edge, darkening 0.47, 0.55, 0.70, 0.81, 0.82, 0.89 and 0.99, mean colour (110, 94, 80),
     /// saturation 0.249, value 0.423.
     #[test]
@@ -587,7 +587,7 @@ mod tests {
             eprintln!("SKIPPED agency vignette vs vanilla: Hearts of Iron IV not found (set HOI4_GAME_DIR)");
             return;
         }
-        assert_eq!(files.len(), 15, "vanilla 1.19.4.1 has 15 agency upgrades");
+        assert_eq!(files.len(), 15, "vanilla 1.19.5.0 has 15 agency upgrades");
         let stats: Vec<DiscStats> = files.iter().map(disc_stats).collect();
         for (k, want) in [34.0, 34.0, 26.1].iter().enumerate() {
             let m = median(stats.iter().map(|s| s.centre_radius[k]).collect());

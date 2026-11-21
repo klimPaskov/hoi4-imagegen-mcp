@@ -429,7 +429,7 @@ pub fn shelf_folder(f: Family) -> Option<&'static str> {
 }
 
 /// Texture folders (game-relative, also used inside a mod) and file-name rules of a family. Each family's rules
-/// keep to the files that show its one vanilla form (measured on HOI4 1.19.4.1): commander traits leave out the
+/// keep to the files that show its one vanilla form (measured on HOI4 1.19.5.0): commander traits leave out the
 /// operative traits (a shield plaque without a ribbon) and the placeholders, the operation phase icon and picture keep
 /// to their own sizes, and a GUI texture takes the files of its kind.
 fn texture_dirs(f: Family, gui_kind: Option<GuiTextureKind>) -> Vec<Dir> {
@@ -477,7 +477,7 @@ fn texture_dirs(f: Family, gui_kind: Option<GuiTextureKind>) -> Vec<Dir> {
         OperationPicture => vec![dir("gfx/interface/operations", true).pre(&["phase_"]).not_has(&["_small"])],
         Technology => vec![dir("gfx/interface/technologies", true)],
         Achievement => vec![dir("gfx/achievements", false).not_has(&["_grey", "_not_eligible"])],
-        // Each portrait family keeps to the files with its own backdrop (measured on 1.19.4.1, see
+        // Each portrait family keeps to the files with its own backdrop (measured on 1.19.5.0, see
         // validate::portrait_backdrop): scientists are the gfx/leaders/scientists folder (pale blue-grey), operatives
         // La Resistance's portrait_*_operative_* files (163 at 156x210, dark warm charcoal with a spotlight behind the
         // head) plus a mod's own operatives folder, and leaders and commanders the rest of gfx/leaders (one pale

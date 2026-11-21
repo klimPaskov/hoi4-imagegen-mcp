@@ -184,7 +184,7 @@ fn division_template_numbers_follow_vanilla_and_a_new_one_is_free() {
     let text = std::fs::read(game.join("interface/subuniticons.gfx")).unwrap();
     let numbers = div_template_numbers(&String::from_utf8_lossy(&text));
     let want: Vec<u32> = (0..=43).chain(65..=121).collect();
-    assert_eq!(numbers, want, "vanilla 1.19.4.1 symbols are 0-43 and 65-121");
+    assert_eq!(numbers, want, "vanilla 1.19.5.0 symbols are 0-43 and 65-121");
     assert_eq!(numbers.iter().copied().max(), Some(VANILLA_DIV_TEMPLATE_MAX));
     let sprites = vanilla_sprites(&game);
     for n in &numbers {

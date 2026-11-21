@@ -1,21 +1,66 @@
 #!/usr/bin/env python3
 """Measure every HOI4 icon / picture family from the installed game (read-only).
 
-Usage: scripts/py.sh measure.py [--out DIR] [--sample N]
-Writes families.json into DIR (default: folder of this script).
-Reads: the game install (base, dlc/*, integrated_dlc/*) and the kit reference shelf.
+Usage: HOI4_KIT_SHELF=<kit>/assets/vanilla_reference scripts/py.sh scripts/measure_families.py [--out DIR] [--sample N]
+Writes families.json into DIR (default: folder of this script), with the game's version and the inputs
+(texture and gfx counts, a hash of the measured file list, the hash of the game's own checksum manifest).
+Reads: the game install (base, dlc/*, integrated_dlc/*) and the kit reference shelf. Never writes to either.
+The game is found through the Steam libraries (libraryfolders.vdf); HOI4_GAME_DIR overrides it.
 """
-import time, datetime
+import time, datetime, hashlib
 import os, re, sys, json, struct, collections, statistics, argparse
 import numpy as np
 from PIL import Image
 
-GAME = r"C:\Program Files (x86)\Steam\steamapps\common\Hearts of Iron IV"
-SHELF = r"C:\Users\klimp\Documents\Projects\agentic-hoi4-modding\.claude\skills\hoi4-feature-assets\assets\vanilla_reference"
 BS = chr(92)
 
-NOV1_TS = datetime.datetime(2026, 11, 1, 0, 0).timestamp()
-UPDATE_TS = datetime.datetime(2026, 11, 1, 19, 46).timestamp()
+
+def find_game():
+    """HOI4_GAME_DIR, else the install named by the Steam libraries (libraryfolders.vdf)."""
+    env = os.environ.get('HOI4_GAME_DIR')
+    if env:
+        return env
+    steams = [r"C:\Program Files (x86)\Steam", r"C:\Program Files\Steam"]
+    libs = list(steams)
+    for s in steams:
+        vdf = os.path.join(s, 'steamapps', 'libraryfolders.vdf')
+        if os.path.isfile(vdf):
+            for m in re.finditer(r'"path"\s+"([^"]+)"', open(vdf, encoding='utf-8', errors='replace').read()):
+                libs.append(m.group(1).replace(BS * 2, BS))
+    for lib in libs:
+        g = os.path.join(lib, 'steamapps', 'common', 'Hearts of Iron IV')
+        if os.path.isfile(os.path.join(g, 'launcher-settings.json')):
+            return g
+    sys.exit('HOI4 not found in the Steam libraries; set HOI4_GAME_DIR')
+
+
+GAME = find_game()
+# The kit's vanilla reference shelf (its PNG copies of vanilla art); there is no default, the path is the kit's.
+SHELF = os.environ.get('HOI4_KIT_SHELF') or sys.exit('set HOI4_KIT_SHELF to the kit shelf folder (assets/vanilla_reference)')
+
+
+def game_version_text():
+    """The game's own version text from launcher-settings.json, with Steam's build id when the manifest is found."""
+    ls = json.load(open(os.path.join(GAME, 'launcher-settings.json'), encoding='utf-8-sig'))
+    text = '%s (%s)' % (ls['rawVersion'], ls.get('version', ''))
+    acf = os.path.normpath(os.path.join(GAME, '..', '..', 'appmanifest_394360.acf'))
+    if os.path.isfile(acf):
+        m = re.search(r'"buildid"\s+"(\d+)"', open(acf, encoding='utf-8', errors='replace').read())
+        if m:
+            text += '; Steam build id ' + m.group(1)
+    return text
+
+
+GFX_FILES = [0]  # .gfx files read by index_sprites
+MEASURED = {}  # every texture a family measured: path under the game folder -> size in bytes
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
 
 # ----------------------------------------------------------------------------
 # roots and gfx index
@@ -90,6 +135,7 @@ def index_sprites():
                 dn[:] = [x for x in dn if x not in ('dlc', 'integrated_dlc')]
             for f in fn:
                 if f.endswith('.gfx'):
+                    GFX_FILES[0] += 1
                     p = os.path.join(dp, f)
                     try:
                         txt = open(p, encoding='utf-8-sig', errors='replace').read()
@@ -499,6 +545,7 @@ def measure_family(fam, S, name_index, tex_users, sample):
                 tex_files[norm(r)] = p
     elif not sel:
         tex_files = dict(dirfiles)
+    MEASURED.update({os.path.relpath(p, GAME).replace(BS, '/'): os.path.getsize(p) for p in tex_files.values()})
     # headers over ALL measured textures
     sizes = collections.Counter(); fmts = collections.Counter(); mips = collections.Counter(); ex = {}
     for r, p in tex_files.items():
@@ -511,9 +558,6 @@ def measure_family(fam, S, name_index, tex_users, sample):
         ex.setdefault(k, os.path.relpath(p, GAME).replace(BS, '/'))
     n = sum(sizes.values())
     dom = sizes.most_common(1)[0] if sizes else (None, 0)
-    nov1 = sum(1 for p in tex_files.values() if os.path.getmtime(p) >= NOV1_TS)
-    newer = [os.path.relpath(p, GAME).replace(BS, '/') for p in tex_files.values() if os.path.getmtime(p) >= UPDATE_TS]
-    gfxnew = sorted({'%s:%s' % (x['root'], x['file']) for x in sel if os.path.getmtime(os.path.join(RP[x['root']], x['file'].replace('/', os.sep))) >= UPDATE_TS})
     # pixel stats on even sample
     stats = []; fails = []
     for r in sample_even(list(tex_files), sample):
@@ -621,8 +665,6 @@ def measure_family(fam, S, name_index, tex_users, sample):
         canvas_outlier_examples={k: v for k, v in list(ex.items())[:8]},
         dds_tga_formats=dict(fmts.most_common(6)), mipmap_counts=dict(mips.most_common(4)),
         filename_first_token_top=dict(stems.most_common(6)),
-        measured_from_files_unchanged_since_update=(len(newer) == 0 and len(gfxnew) == 0),
-        textures_modified_since_1_19_4_1_update=dict(count=len(newer), examples=newer[:5]), textures_with_mtime_on_or_after_2026_11_01=nov1, gfx_modified_since_update=gfxnew[:5],
         pixels=pix, pixel_decode_failures=fails,
         registration=reg,
         textures_on_disk_in_dirs_not_registered_by_any_family_sprite=dict(count=len(orphan), examples=orphan[:5]) if sel else None,
@@ -726,8 +768,21 @@ def main():
         n = len([f for f in fn if f.lower().endswith('.png') and f != 'contact_sheet.png'])
         if n:
             shelf[rel] = n
-    doc = dict(game=GAME, game_version='1.19.4.1 (Operation Postern, launcher v1.19.4.1.99a5; coordinator-reported update at 2026-11-01 19:46 local)', roots=[r for r, _ in ROOTS], sprite_definitions_indexed=len(S),
-               families=out, idea_categories=ic, shelf_inventory_png_counts=shelf)
+    TAB, NL = chr(9), chr(10)
+    listing = ''.join(('%s' + TAB + '%d' + NL) % kv for kv in sorted(MEASURED.items()))
+    manifest = os.path.join(GAME, 'checksum_manifest.txt')
+    inputs = dict(
+        game_version_file='launcher-settings.json',
+        launcher_settings_sha256=sha256_file(os.path.join(GAME, 'launcher-settings.json')),
+        game_checksum_manifest_sha256=sha256_file(manifest) if os.path.isfile(manifest) else None,
+        gfx_files_indexed=GFX_FILES[0],
+        textures_measured=len(MEASURED),
+        textures_listing_sha256=hashlib.sha256(listing.encode('utf-8')).hexdigest(),
+        textures_listing='sha256 of the sorted lines (path under the game folder, a tab, size in bytes) of every texture a family measured',
+        pixel_sample_per_family=a.sample,
+        shelf_png_files=sum(shelf.values()))
+    doc = dict(game='Hearts of Iron IV (Steam install; the path is not recorded)', game_version=game_version_text(), roots=[r for r, _ in ROOTS], sprite_definitions_indexed=len(S),
+               inputs=inputs, families=out, idea_categories=ic, shelf_inventory_png_counts=shelf)
     with open(os.path.join(a.out, 'families.json'), 'w', encoding='utf-8', newline='\n') as f:
         json.dump(doc, f, indent=1)
     print('wrote', os.path.join(a.out, 'families.json'), file=sys.stderr)

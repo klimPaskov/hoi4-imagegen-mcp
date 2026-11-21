@@ -1,6 +1,6 @@
 //! Raid icons: any fitted subject recoloured in vanilla's golden gradient with its black outline.
 //!
-//! **What vanilla shows** (HOI4 1.19.4.1, the 17 `raid_type_icon_*.dds` map icons of
+//! **What vanilla shows** (HOI4 1.19.5.0, the 17 `raid_type_icon_*.dds` map icons of
 //! `gfx/interface/military_raids/map_icons/`, 32x32, the magenta placeholder `raid_type_icon_unknown` left out; measured
 //! by the tests below):
 //!
@@ -308,7 +308,7 @@ mod tests {
     }
 
     /// Vanilla's own shapes, recoloured the way a model draws them (a red-brown body with its own shading kept), go
-    /// through the recipe and come out with vanilla's colour statistics. Measured on HOI4 1.19.4.1: inside median
+    /// through the recipe and come out with vanilla's colour statistics. Measured on HOI4 1.19.5.0: inside median
     /// colour (176, 135, 64), band medians 183, 172, 147, 139, 112, edge luminance 3.
     #[test]
     fn the_gradient_matches_vanillas_colour_statistics() {

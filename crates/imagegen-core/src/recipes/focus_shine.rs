@@ -2,7 +2,7 @@
 //!
 //! This is text, not pixels: every vanilla focus icon has a second `SpriteType` named `<icon>_shine` that reuses
 //! the icon's texture as an animation mask. The block below is the structure vanilla `interface/goals_shine.gfx`
-//! uses (HOI4 1.19.4.1): `effectFile = "gfx/FX/buttonstate.lua"` and two scrolling animations over
+//! uses (HOI4 1.19.5.0): `effectFile = "gfx/FX/buttonstate.lua"` and two scrolling animations over
 //! `gfx/interface/goals/shine_overlay.dds`, one at rotation -90 and one at 90, then `legacy_lazy_load = no`.
 //!
 //! [`crate::sprite::shine_sprite`] writes a close variant that leaves out `animationrotationoffset`; this one

@@ -366,7 +366,7 @@ fn the_families_tool_reports_measured_specs_and_style_sources() {
     assert_eq!(f["canvas"], json!([60, 68]));
     assert_eq!(f["group"], "icon");
     assert_eq!(f["tool"], "hoi4.image_icon");
-    assert_eq!(f["measured"]["game_version"].as_str().unwrap().split(' ').next().unwrap(), "1.19.4.1");
+    assert_eq!(f["measured"]["game_version"].as_str().unwrap().split(' ').next().unwrap(), "1.19.5.0");
     assert_eq!(f["measured"]["distribution"][0]["size"], json!([60, 68]));
     assert!(f["check_set_hash"].as_str().unwrap().len() == 64);
     assert_eq!(f["style_sources"]["reference_dirs"][0]["dir"], "references/idea_spirit");

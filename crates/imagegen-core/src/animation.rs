@@ -1,6 +1,6 @@
 //! Animated sprites: the `frameAnimatedSpriteType` strips of the `animation` group.
 //!
-//! Vanilla 1.19.4.1 registers 160 `frameAnimatedSpriteType` sprites (`data/vanilla-measurement.json`,
+//! Vanilla 1.19.5.0 registers 160 `frameAnimatedSpriteType` sprites (`data/vanilla-measurement.json`,
 //! `animated_sprites`, produced by `scripts/measure_animated.py`). Four kinds cover most of them, and each is one
 //! family here:
 //!
@@ -37,7 +37,7 @@ pub const RECIPE_VERSION: u32 = 1;
 pub const BLEND_EFFECT: &str = "gfx/FX/buttonstate_blendframes.lua";
 
 /// Alpha of the dim frame of a blend glow relative to the bright one: the median over the 66 vanilla two-frame
-/// glow textures whose dim frame is neither empty nor as bright (0.1698, measured on 1.19.4.1; 21 more fade to
+/// glow textures whose dim frame is neither empty nor as bright (0.1698, measured on 1.19.5.0; 21 more fade to
 /// nothing).
 pub const GLOW_DIM_RATIO: f64 = 0.17;
 

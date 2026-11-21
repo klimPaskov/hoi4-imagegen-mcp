@@ -6,7 +6,7 @@
 //!
 //! What counts as near is the family's own: the threshold is the 1st percentile of the distances between distinct
 //! files of the family's reference set (vanilla when it falls to vanilla, up to 256 files sampled evenly), so a warning
-//! means two outputs are closer than 99 in 100 pairs of the family's own art. Measured on HOI4 1.19.4.1: focus 28,
+//! means two outputs are closer than 99 in 100 pairs of the family's own art. Measured on HOI4 1.19.5.0: focus 28,
 //! national spirits 31, decisions 27, decision categories 15, report events 41, unit leader traits 22 and
 //! technologies 24 bits. Vanilla's own recolours and copies sit at 0 to 6 bits.
 

@@ -8,7 +8,7 @@ Every example below was made by the tool itself on the [ChatGPT login](chatgpt-l
 
 ## How to read an entry
 
-* **Canvas and frames** are measured from the installed game, HOI4 1.19.4.1.
+* **Canvas and frames** are measured from the installed game, HOI4 1.19.5.0.
 * **Names the game looks up** follow the vanilla evidence in `crates/imagegen-core/src/lookup.rs`, as fixed in v0.2.2. Where a script names the sprite in full the name is free. Where the game builds the name, the tool builds the same one and the install result's `script` field says what to write.
 * **Processing** is the family's fixed chain. The tool appends it and you cannot skip it. The steps listed are the ones that ran on the example. The examples were made with version 0.2.0. Since 0.3.2 more families have their own chain: raid icons get vanilla's gold gradient, doctrine icons black units with a pale outline and glow, special project icons are redrawn as line art, counters and division emblems always end in the unit recipe, and a landmark's small strip is a flat orange pictogram. Since 0.3.4 agency upgrades are cut to vanilla's round, muted vignette with its darkened edge. The [reference](reference.md#processing-chains) lists every chain.
 * **Checks** are the deterministic set that `hoi4.image_validate` always runs for the family. Composition and readability at game size go to the visual review.
@@ -691,7 +691,7 @@ events/*.txt: 830 of 833 picture values are full GFX_ names (interface/eventpict
 
 **Tree box (since 0.3.5).** The install writes the picture sprite only. The technology also needs a box in a tree, or the game logs "Found no grid box for tech <key>" and never draws it: a `path` from an existing vanilla technology (with a mod copy of that technology file), or the mod's own gridbox in a copy of `interface/countrytechtreeview.gui` (vanilla names its gridboxes like `tech_support_tree`). The install output, the handoff note and the receipt carry this note.
 
-**Picture size (since 0.3.5).** The game picks the tree item from the technology, not from the picture. Pass `canvas` `[146, 54]` (default) for a technology that enables equipment or sub-units in the land and air folders (183x84 item), `[64, 64]` for any other technology (the small 72x72 item) and `[285, 56]` for naval, artillery and electronics equipment (204x72 item). The sizes are vanilla's most common for each kind, measured on 1.19.4.1 (see the reference). The install note names the item the art is sized for.
+**Picture size (since 0.3.5).** The game picks the tree item from the technology, not from the picture. Pass `canvas` `[146, 54]` (default) for a technology that enables equipment or sub-units in the land and air folders (183x84 item), `[64, 64]` for any other technology (the small 72x72 item) and `[285, 56]` for naval, artillery and electronics equipment (204x72 item). The sizes are vanilla's most common for each kind, measured on 1.19.5.0 (see the reference). The install note names the item the art is sized for.
 
 | | |
 |---|---|
@@ -1188,7 +1188,7 @@ hoi4-imagegen call hoi4.image_interface '{"family": "model_reference", "feature_
 
 ## Animated sprites
 
-Planned with `hoi4.image_animation`. These four families make `frameAnimatedSpriteType` strips, measured from the 160 that vanilla 1.19.4.1 registers (`scripts/measure_animated.py`). Only one base frame is generated. The other frames are derived from it, so shape, palette and position cannot drift between frames. The examples below are the tool's own preview GIFs, made by `hoi4.image_preview`. They are installed files, not in-game captures, and the strips have not been checked in game.
+Planned with `hoi4.image_animation`. These four families make `frameAnimatedSpriteType` strips, measured from the 160 that vanilla 1.19.5.0 registers (`scripts/measure_animated.py`). Only one base frame is generated. The other frames are derived from it, so shape, palette and position cannot drift between frames. The examples below are the tool's own preview GIFs, made by `hoi4.image_preview`. They are installed files, not in-game captures, and the strips have not been checked in game.
 
 The examples were made on 2026-11-02 on the ChatGPT login (plan quota, no money): 4 generations and 2 edits, one at a time, with `scripts/make_animations.py`. A blend strip's GIF shows the engine's cross-fade as linear blends at 20 pictures a second, an approximation because the shader was not traced.
 

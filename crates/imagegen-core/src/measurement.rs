@@ -1,7 +1,7 @@
 //! The vanilla measurement the built-in family table is derived from.
 //!
 //! `data/vanilla-measurement.json` was produced by `scripts/measure_families.py` from the installed game
-//! (HOI4 1.19.4.1, every texture of the surveyed folders, pixels sampled). It is embedded here so that a
+//! (HOI4 1.19.5.0, every texture of the surveyed folders, pixels sampled). It is embedded here so that a
 //! family's `source` text cites real counts, `hoi4.image_families` can show the distribution, and a unit test
 //! can fail the build when a re-measure changes what vanilla looks like (see `builtin.rs`).
 
@@ -191,14 +191,34 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_embedded_measurement_is_the_1_19_4_1_run() {
+    fn the_embedded_measurement_is_the_1_19_5_0_run() {
         let m = data();
-        assert!(m.game_version().starts_with("1.19.4.1"), "{}", m.game_version());
+        assert!(m.game_version().starts_with("1.19.5.0"), "{}", m.game_version());
         assert_eq!(m.entry_ids().len(), 45);
         assert_eq!(m.dominant("focus_icon").unwrap().0, [100, 88]);
         assert_eq!(parse_size("146x54"), Some([146, 54]));
         assert!(m.summary("decision_icon").unwrap().contains("33x32 is 223 files"));
         assert_eq!(m.idea_category_dominant("industrial_concern"), Some([64, 64]));
+    }
+
+    /// The inputs of the 1.19.5.0 run are recorded in the file (`scripts/measure_families.py`): the numbers below
+    /// pin what was measured, so a re-measure on another build cannot be mistaken for this one. The run found
+    /// every canvas, count, format and pixel statistic of 1.19.4.1 unchanged on 1.19.5.0 (the game files of the
+    /// surveyed folders did not change in that patch), so no style threshold moved.
+    #[test]
+    fn the_run_records_what_it_measured() {
+        let m = data();
+        let inputs = m.root.get("inputs").expect("the file records its inputs");
+        let text = |k: &str| inputs.get(k).and_then(Value::as_str).unwrap_or("");
+        let number = |k: &str| inputs.get(k).and_then(Value::as_u64).unwrap_or(0);
+        assert!(m.game_version().contains("Steam build id 26479645"), "{}", m.game_version());
+        assert_eq!(number("textures_measured"), 24741);
+        assert_eq!(number("gfx_files_indexed"), 340);
+        assert_eq!(number("pixel_sample_per_family"), 48);
+        assert_eq!(m.root.get("sprite_definitions_indexed").and_then(Value::as_u64), Some(30631));
+        assert_eq!(text("launcher_settings_sha256"), "1dc5d1a666b8843268449376b2d6d7a2f70045086c4c02babd5974847ce133d4");
+        assert_eq!(text("game_checksum_manifest_sha256"), "771814d81faf7bae0f32819380c1114c61bbec1c897b060cecd1592f104f2b76");
+        assert_eq!(text("textures_listing_sha256"), "4db4e8280fdb6b4bf1923b3bb6194b27c993dfa2aba95740f7f3325970165150");
     }
 
     #[test]

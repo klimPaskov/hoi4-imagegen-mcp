@@ -72,7 +72,7 @@ pub fn animated_sprite(name: &str, texture_path: &str, frames: u32, spec: &crate
     Ok(SpriteEntry {
         name: name.to_string(),
         text: crate::animation::sprite_block(name, texture_path, frames, spec)?,
-        caveat: "frameAnimatedSpriteType fields copied from the vanilla 1.19.4.1 sprites of the same kind; playback in game has not been checked by this tool.".into(),
+        caveat: "frameAnimatedSpriteType fields copied from the vanilla 1.19.5.0 sprites of the same kind; playback in game has not been checked by this tool.".into(),
     })
 }
 
@@ -86,7 +86,7 @@ pub fn shine_sprite(icon_name: &str, texture_path: &str) -> Result<SpriteEntry> 
     Ok(SpriteEntry {
         name: format!("{icon_name}_shine"),
         text,
-        caveat: "Shine block copied field for field from vanilla 1.19.4.1 goals_shine.gfx; required: a focus without it shows a ? in game (checked on 1.19.4.1, 2026-11-02).".into(),
+        caveat: "Shine block copied field for field from vanilla 1.19.5.0 goals_shine.gfx; required: a focus without it shows a ? in game (checked on 1.19.4.1, 2026-11-02).".into(),
     })
 }
 
