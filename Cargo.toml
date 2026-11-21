@@ -7,7 +7,7 @@ members = [
     "crates/imagegen-cli",
     "crates/provider-chatgpt-login",
 ]
-# Every crate is part of the default build, the ChatGPT-login provider included (decision D-12a).
+# Every crate is part of the default build, the ChatGPT-login provider included.
 default-members = [
     "crates/imagegen-core",
     "crates/imagegen-providers",

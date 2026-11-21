@@ -38,7 +38,7 @@ In the United States, wholly AI-generated output is not copyrightable (US Copyri
 1. **No ban was found.** The binding rules are the general ones: keep the mod free, do not infringe, and only upload what you have the right to upload.
 2. **Disclosure.** Paradox and Steam do not require it for mods, as far as could be found, but players often expect it. Every asset's ledger records the provider, model, date and prompt, and `hoi4.image_ledger` can produce a list for the mod's description. Disclosing is recommended.
 3. **Real people.** HOI4 portraits show real historical leaders, and the Steam warranty covers personal rights. Providers may refuse, or treat differently, images of real people. The portrait tools warn about this. Prefer stylised portraits, and do not edit photographs of identifiable living people.
-4. **Vanilla art as references.** The maintainer decided on 2026-11-01 that vanilla references may always be sent to providers when they help match the style. The EULA gives you no rights in Paradox's art, so:
+4. **Vanilla art as references.** Vanilla references may always be sent to providers when they help match the style. The EULA gives you no rights in Paradox's art, so:
    - The tool never copies vanilla files into a mod.
    - It records which references were sent with each request.
    - Assets must be new works in the vanilla style, not near-copies. The review rubric asks for this.
