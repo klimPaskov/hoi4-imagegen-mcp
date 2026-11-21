@@ -85,9 +85,7 @@ impl<E: EnvSource> EnvSource for SetupKeyEnv<E> {
         let mut cache = self.cache.lock().ok()?;
         cache
             .entry(field.to_string())
-            .or_insert_with(|| {
-                keyring::Entry::new(SETUP_SERVICE, &setup_account(field)).ok()?.get_password().ok().filter(|v| !v.is_empty())
-            })
+            .or_insert_with(|| keyring::Entry::new(SETUP_SERVICE, &setup_account(field)).ok()?.get_password().ok().filter(|v| !v.is_empty()))
             .clone()
     }
 }
