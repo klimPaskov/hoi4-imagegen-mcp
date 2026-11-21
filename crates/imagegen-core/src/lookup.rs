@@ -1,4 +1,4 @@
-//! How Hearts of Iron IV 1.19.4.1 finds each family's art, the companions it looks up next to it, and what the
+//! How Hearts of Iron IV 1.19.5.0 finds each family's art, the companions it looks up next to it, and what the
 //! mod's script must say so the lookup succeeds.
 //!
 //! The families fall into five kinds of lookup (evidence is file and line in the installed game):
@@ -58,7 +58,7 @@ pub struct Lookup {
     pub kind: LookupKind,
     /// What the mod writes so the game finds the art. `{sprite}` is the main sprite name, `{asset}` the asset name.
     pub script: &'static str,
-    /// Where vanilla shows the lookup (installed game, 1.19.4.1).
+    /// Where vanilla shows the lookup (installed game, 1.19.5.0).
     pub evidence: &'static str,
     /// An asset name for which the tool's sprite names must equal vanilla sprites, for the test against the game.
     /// `None` for families whose vanilla names are free-form.
@@ -111,7 +111,7 @@ pub fn lookup_of(family: Family) -> Lookup {
 }
 
 /// How many vanilla sprites of each family's name pattern carry `legacy_lazy_load = no`, as (family, with the line,
-/// all). Measured on HOI4 1.19.4.1 with all DLC (`interface/**/*.gfx` and `dlc/*/interface/**/*.gfx`, 25,769
+/// all). Measured on HOI4 1.19.5.0 with all DLC (`interface/**/*.gfx` and `dlc/*/interface/**/*.gfx`, 25,769
 /// sprites of which 4,840 have the line, counting every `*SpriteType` block by its `name`). The install writes the
 /// line wherever vanilla uses it for most of a family's sprites: only the text icon (201 of 201) and the focus
 /// `_shine` companion (2,930 of 2,930, written by [`crate::recipes::focus_shine`]). Every other family is below 1%
@@ -155,7 +155,7 @@ pub const VANILLA_LEGACY_LAZY_LOAD: &[(&str, u32, u32)] = &[
 
 /// One box of the tech tree a technology picture is sized for. The game picks the box from the technology, not
 /// from the picture: a technology that enables equipment or sub-units gets the large item of its folder, any
-/// other gets the small 72x72 item. Measured on HOI4 1.19.4.1 with all DLC: 549 technologies, 428 with a
+/// other gets the small 72x72 item. Measured on HOI4 1.19.5.0 with all DLC: 549 technologies, 428 with a
 /// `GFX_<tech>_medium` sprite whose DDS header was read. Item sizes are the `containerWindowType` sizes in
 /// `interface/countrytechtreeview.gui` (`techtree_<folder>_folder_small_item` 72x72, `_folder_item` 183x84 for the
 /// infantry, support, armour, NSB armour and both air folders, 204x72 for the naval, artillery, industry and
@@ -310,7 +310,7 @@ pub fn derived_companion(family: Family, key: &str) -> Option<DerivedCompanion> 
     [[64, 64], [0, 0]].iter().flat_map(|c| derived_companions(family, *c)).find(|d| d.key == key)
 }
 
-/// Highest division template symbol number vanilla 1.19.4.1 registers (`interface/subuniticons.gfx:418`).
+/// Highest division template symbol number vanilla 1.19.5.0 registers (`interface/subuniticons.gfx:418`).
 pub const VANILLA_DIV_TEMPLATE_MAX: u32 = 121;
 
 /// Every division template symbol number registered in a `.gfx` text (`GFX_div_templ_<n>_large` or `_small`,

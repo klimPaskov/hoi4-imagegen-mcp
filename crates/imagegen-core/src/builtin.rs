@@ -1,6 +1,6 @@
 //! Built-in family table, measured from the installed game.
 //!
-//! Source: `data/vanilla-measurement.json` (HOI4 1.19.4.1, every texture of the surveyed folders, pixels
+//! Source: `data/vanilla-measurement.json` (HOI4 1.19.5.0, every texture of the surveyed folders, pixels
 //! sampled; produced by `scripts/measure_families.py`). Canvas, accepted sizes, frames and the pixel class come
 //! from that file, and a unit test fails when a family's row stops matching it, with explicit commented
 //! exceptions where a row deliberately differs. These are defaults, not authority: the mod's own
@@ -97,9 +97,9 @@ pub fn is_small_icon(family: Family, canvas: [u32; 2]) -> bool {
 }
 
 // Per-family form and medium. The general icon rules ask for a loose subject with no frame, which is wrong for the
-// families below: their vanilla art (the kit's 1.19.4.1 reference shelf) has a fixed form. Each rule states that
+// families below: their vanilla art (the kit's 1.19.5.0 reference shelf) has a fixed form. Each rule states that
 // form so the model draws it, and those families drop "a frame or border" from the negative list.
-/// Vanilla focus icons have no single frame. On a look at 160 vanilla `goal_*` and `focus_*` files (HOI4 1.19.4.1, 80
+/// Vanilla focus icons have no single frame. On a look at 160 vanilla `goal_*` and `focus_*` files (HOI4 1.19.5.0, 80
 /// drawn from all of them and 80 from the generic ones) about seven in ten sit on a round plaque or medallion, about
 /// one in ten on a diamond, square or rectangular plaque, about one in fifteen on a heraldic shield, and about one in
 /// eight have no frame at all. Frames, colours and compositions vary, so the rule names the range.
@@ -181,7 +181,7 @@ const MIO_DEPARTMENT_NEGATIVE: &[&str] = &[
     "drafting tools such as a compass or a ruler",
     "a second main object",
 ];
-/// MIO traits. Measured on the 44 vanilla trait icons (HOI4 1.19.4.1), inside the glyph (alpha 224 and up): mean value
+/// MIO traits. Measured on the 44 vanilla trait icons (HOI4 1.19.5.0), inside the glyph (alpha 224 and up): mean value
 /// 0.50 in the median file (10th percentile 0.39), dark pixels (value under 0.2) 6 percent and light ones (over 0.75)
 /// 15 percent, 14 colour buckets for 90 percent of the pixels. Around it, a soft black shadow takes 48 percent of the
 /// visible pixels. The 0.3.2 gallery's traits had about the same number of colours (7 to 16) but were dark and
@@ -208,7 +208,7 @@ const MIO_TRAIT_NEGATIVE: &[&str] = &[
     "a three-quarter view from above with visible depth",
     "a scene, landscape or background",
 ];
-/// Agency upgrades. Measured on the 15 vanilla upgrades (HOI4 1.19.4.1): mean saturation 0.249 and mean value 0.423
+/// Agency upgrades. Measured on the 15 vanilla upgrades (HOI4 1.19.5.0): mean saturation 0.249 and mean value 0.423
 /// in the median file, but a wide tonal range (luminance standard deviation 0.23, the 10th to 90th percentile 0.12 to
 /// 0.72) and clear accent colours: 13 percent of the disc has a saturation above 0.5 (brass, steel blue, brick red,
 /// green), the 90th percentile of saturation is 0.56. The 0.3.2 gallery's upgrades were darker, more saturated and
@@ -429,7 +429,7 @@ const MODEL_NEGATIVE: &[&str] = &[
     "a frame or border",
 ];
 
-/// Vanilla leader portraits (gfx/leaders, 1.19.4.1): a close head-and-shoulders crop (the face is about half the
+/// Vanilla leader portraits (gfx/leaders, 1.19.5.0): a close head-and-shoulders crop (the face is about half the
 /// height) on a plain pale backdrop. Generated portraits use that crop and backdrop. A custom backdrop is only for
 /// council or otherwise unusual portraits.
 /// Portrait framing, shared by the four portrait families.
@@ -437,7 +437,7 @@ const PORTRAIT_FRAMING: &str = "A close head-and-shoulders portrait in the paint
 const PORTRAIT_PERIOD: &str = "Period-appropriate clothing.";
 const PORTRAIT_INVENTED: &str =
     "An invented person: the face, the name and the likeness are fictional and must not resemble any real historical figure.";
-// Each portrait family's own vanilla backdrop, measured on HOI4 1.19.4.1 in the two top corners and the side strips
+// Each portrait family's own vanilla backdrop, measured on HOI4 1.19.5.0 in the two top corners and the side strips
 // (see validate::portrait_backdrop): leaders and commanders share one pale cream-grey template, scientists have a
 // pale blue-grey one lit from the upper left, and vanilla's operative portraits are dark charcoal.
 /// Leader and commander portraits: 424 of 447 decodable files outside the scientists folder.
@@ -467,7 +467,7 @@ const FRAME_STRIP_RULES: &[&str] = &[
     "Real transparent background: no backdrop, no frame, no plate. Leave clear space around the emblem: the tool adds the second frame (its highlight or its disabled look) itself.",
 ];
 /// The widest a landmark may be, width over height of one frame's subject. Vanilla's 52 landmark strips (HOI4
-/// 1.19.4.1, frame 1 at 128x64 and 64x32) run from 0.34 (Big Ben) to 4.00 (the small Cataract dam), median 1.41, 95th
+/// 1.19.5.0, frame 1 at 128x64 and 64x32) run from 0.34 (Big Ben) to 4.00 (the small Cataract dam), median 1.41, 95th
 /// percentile 3.77, and every frame's box is centred within 0.47 to 0.55 of the frame. On 0.3.3, 6 of 12 generated
 /// landmarks (dams, a grain elevator, a palace) were refused by the vanilla-match check as wider than vanilla.
 pub const BUILDING_MAX_ASPECT: f64 = 4.0;
@@ -1173,7 +1173,7 @@ mod tests {
                 assert!(p.source.starts_with("Not measured in vanilla"), "{f}: {}", p.source);
                 assert!(p.canvas == [0, 0], "{f}: a family nobody measured has a mod-defined canvas");
             } else {
-                assert!(p.source.contains("1.19.4.1"), "{f}: {}", p.source);
+                assert!(p.source.contains("1.19.5.0"), "{f}: {}", p.source);
                 assert!(p.source.contains("Measured on HOI4"), "{f}");
             }
         }
@@ -1435,7 +1435,7 @@ mod tests {
     }
 
     /// The families whose output drifted from vanilla's form state that form in their first rule, and
-    /// nothing in their rules or negatives contradicts it. The phrases are the measured vanilla form (HOI4 1.19.4.1).
+    /// nothing in their rules or negatives contradicts it. The phrases are the measured vanilla form (HOI4 1.19.5.0).
     #[test]
     fn reviewed_families_state_their_vanilla_form() {
         let set = by_family();
@@ -1590,7 +1590,7 @@ mod tests {
     /// a solid subject of the same aspect goes through the family's own finishing, and the median span (the larger of
     /// the width and height shares of the visible box) is compared with vanilla's median. The first five are never
     /// smaller than vanilla's by more than one pixel; the last five, fitted to vanilla's margins, are within one pixel
-    /// either way. Measured on HOI4 1.19.4.1: focus 0.966, decision category icon 0.950, MIO department 0.979,
+    /// either way. Measured on HOI4 1.19.5.0: focus 0.966, decision category icon 0.950, MIO department 0.979,
     /// doctrine 0.953, commander trait 0.909, MIO trait 0.667, agency upgrade 0.765, raid
     /// 0.719, idea concern 0.906.
     #[test]

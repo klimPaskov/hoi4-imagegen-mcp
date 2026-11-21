@@ -1,7 +1,7 @@
 //! Doctrine icons: ground units in black with a pale outline and glow, aircraft, ships and accents in simple colour, as
 //! vanilla draws them.
 //!
-//! **What vanilla shows** (HOI4 1.19.4.1, the 105 files of `gfx/interface/doctrines/icons/`, 64x64; measured by the
+//! **What vanilla shows** (HOI4 1.19.5.0, the 105 files of `gfx/interface/doctrines/icons/`, 64x64; measured by the
 //! tests below):
 //!
 //! * The units (tanks, soldiers, ships, aircraft) are solid black silhouettes: inside a dark shape the median
@@ -102,7 +102,7 @@ pub fn is_cool(p: [u8; 4]) -> bool {
 
 /// Hue of a warm accent at the top and at the bottom of the accents' box. Vanilla's accents fall from yellow-orange to
 /// red-orange: the median hue is 38 degrees in the top third of the box and 19 in the bottom third (78 icons with an
-/// accent, HOI4 1.19.4.1, [`warm_fall`]). The 0.3.8 gallery's accents were one flat orange, 26 degrees top and bottom.
+/// accent, HOI4 1.19.5.0, [`warm_fall`]). The 0.3.8 gallery's accents were one flat orange, 26 degrees top and bottom.
 pub const WARM_HUE: (f64, f64) = (44.0, 15.5);
 /// Vanilla's warm saturation range (median 0.72; the 0.3.8 gallery's accents were 0.95).
 pub const WARM_SAT: (f64, f64) = (0.62, 0.82);
@@ -567,7 +567,7 @@ mod tests {
 
     /// Vanilla's own shapes as a model draws them (black units painted dark grey, pale parts light grey, aircraft and
     /// ships in a saturated model blue or teal, warm accents kept, no glow) come out of the recipe with vanilla's black
-    /// fill, pale outline, shadow, clear background and simple colour. Measured on HOI4 1.19.4.1: black share 0.39,
+    /// fill, pale outline, shadow, clear background and simple colour. Measured on HOI4 1.19.5.0: black share 0.39,
     /// warm share 0.21, cool share 0.19, cool hue 185 to 219 at saturation 0.41, value 0.77 at the top and 0.58 at the
     /// bottom, pale outline luminance 180 alpha 136 at 1 px, 214 and 37 at 2 px, shadow alpha 140, 65 and 24 at 1 to 3
     /// px, nothing behind.

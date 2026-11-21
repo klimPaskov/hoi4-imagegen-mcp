@@ -72,7 +72,7 @@ pub fn cutout_margin(canvas: [u32; 2]) -> u32 {
 }
 
 /// The box a medal is fitted into on its 56x84 frame: vanilla's medal is 33 px wide and 56 px tall in the median of
-/// the 85 frames of its large strips (HOI4 1.19.4.1; margins 12 px at the sides, 13 at the top, 15 at the bottom), so
+/// the 85 frames of its large strips (HOI4 1.19.5.0; margins 12 px at the sides, 13 at the top, 15 at the bottom), so
 /// it spans 0.667 of the frame. Fitted edge to edge with the default 2 px margin it spanned 0.94 to 0.95.
 pub const MEDAL_BOX: [u32; 2] = [33, 56];
 

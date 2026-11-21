@@ -87,7 +87,7 @@ pub struct Analysis {
 pub const TINTED_MIN: f64 = 0.03;
 
 /// Hue spread from which a set counts as varied: its images do not share one colour, so a style paragraph does not
-/// name one. Measured on HOI4 1.19.4.1 with [`hue_spread`] over up to 150 files a folder, every nth file in name
+/// name one. Measured on HOI4 1.19.5.0 with [`hue_spread`] over up to 150 files a folder, every nth file in name
 /// order: generic focus icons 0.05 (nearly all warm), national spirits 0.25, unit leader traits 0.47 and technology
 /// pictures 0.58. On a random sample of 150: achievements 0.07, decisions 0.16, state modifiers 0.20 and MIO policies
 /// 0.64.

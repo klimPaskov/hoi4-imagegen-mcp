@@ -186,7 +186,7 @@ fn warm_medallion(side: u32) -> imagegen_core::pixels::Rgba {
 }
 
 /// The agency upgrade check refuses a saturated, warm medallion that the 0.3.3 chain (trim and fit) passed on its
-/// form, and the 0.3.4 chain (the round vignette, then the fit) brings it into vanilla's range. On HOI4 1.19.4.1 the
+/// form, and the 0.3.4 chain (the round vignette, then the fit) brings it into vanilla's range. On HOI4 1.19.5.0 the
 /// family's vanilla pass rate stays 15 of 15 with the family's palette checks.
 #[test]
 fn a_saturated_warm_agency_medallion_is_refused_until_processed() {
@@ -221,7 +221,7 @@ fn a_saturated_warm_agency_medallion_is_refused_until_processed() {
 }
 
 /// Each portrait family is checked against its own vanilla files, base game and DLC, with the backdrop in the top
-/// corners and, for operatives, the spotlight behind the figure. On HOI4 1.19.4.1: leaders and commanders 268 of 271
+/// corners and, for operatives, the spotlight behind the figure. On HOI4 1.19.5.0: leaders and commanders 268 of 271
 /// measured files pass (a regency council, a placeholder and a cut-out portrait fail), scientists 217 of 217,
 /// operatives 163 of 163. With 0.3.3's one shared set of every base-game gfx/leaders file it was 231 of 232 for each,
 /// and the typical file of another family's backdrop is refused on the backdrop, except that the leader and commander

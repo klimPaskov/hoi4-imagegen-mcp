@@ -17,7 +17,7 @@
 //! features that tell painted art, line art and grey art apart. The others (contrast, edge density, soft alpha,
 //! palette size) are only reported: art of the right form spreads as widely in them as art of the wrong form, so a
 //! range on them would refuse right art without refusing wrong art. The checked list and the widening keep at least
-//! 97 percent of every family's own vanilla files inside (measured on HOI4 1.19.4.1); `tests/vanilla_match.rs`
+//! 97 percent of every family's own vanilla files inside (measured on HOI4 1.19.5.0); `tests/vanilla_match.rs`
 //! asserts those pass rates and refuses synthetic art drawn outside each rule.
 //!
 //! A family whose vanilla art is one consistent palette can add palette features of its own, with a narrower range
@@ -116,7 +116,7 @@ pub type FamilyCheck = (&'static str, f64, (f64, f64));
 
 /// Palette features checked for one family only. The general palette features are left unchecked because art of the
 /// right form spreads widely in them, but where a family's vanilla art is one consistent palette or backdrop,
-/// a candidate far from it is the wrong medium. Measured on HOI4 1.19.4.1:
+/// a candidate far from it is the wrong medium. Measured on HOI4 1.19.5.0:
 ///
 /// * `agency_upgrade`: vanilla's 15 upgrades are muted vignettes, mean saturation 0.115 to 0.402 (median 0.249), mean
 ///   value 0.239 to 0.518 (median 0.423), gold and bronze tones on 0 to 0.399 of the disc (median 0.106). With the

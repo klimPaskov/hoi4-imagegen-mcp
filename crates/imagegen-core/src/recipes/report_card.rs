@@ -57,7 +57,7 @@ pub struct ReportCardParams {
 impl ReportCardParams {
     /// The operation phase picture: the same card, tilted the other way and lower.
     ///
-    /// Vanilla's 71 phase pictures (`gfx/interface/operations/images/phase_*.dds`, HOI4 1.19.4.1) use four alpha masks.
+    /// Vanilla's 71 phase pictures (`gfx/interface/operations/images/phase_*.dds`, HOI4 1.19.5.0) use four alpha masks.
     /// 46 share one that is not a report card's: the card is tilted clockwise (top-left corner highest, at x 16 y 12;
     /// right edge at y 25) and its box runs from (7, 11) to (205, 173) instead of (3, 4) to (206, 171). A rotated
     /// rectangle fits it best at the report card's size, 3.5 degrees clockwise, centred 2 px right and 4 px down of

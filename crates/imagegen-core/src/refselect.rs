@@ -413,7 +413,7 @@ const STOP: &[&str] = &[
 /// File-name tokens that mark art made for any country.
 const GENERIC: &[&str] = &["generic", "gen"];
 
-/// Country tags of HOI4 1.19.4.1 (`common/country_tags/00_countries.txt`), used whether or not the game is found.
+/// Country tags of HOI4 1.19.5.0 (`common/country_tags/00_countries.txt`), used whether or not the game is found.
 const BUILTIN_TAGS: &str = concat!(
     "ABK ADU AFA AFG ALB ALG ALT ANG ANU AOI ARG ARM AST ASY ATJ AUS AZR BAH BAN BAR BAS BAY BEG BEL BHR BHU BIA BLC BLI BLR ",
     "BLZ BOL BOS BOT BOU BRA BRD BRI BRM BRN BSK BUK BUL BYA CAM CAN CAR CAT CAY CBV CHA CHI CHL CHM CHR CHU CIN CIP CKK CMR ",

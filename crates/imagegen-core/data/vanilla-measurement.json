@@ -1,6 +1,6 @@
 {
- "game": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Hearts of Iron IV",
- "game_version": "1.19.4.1 (Operation Postern, launcher v1.19.4.1.99a5; coordinator-reported update at 2026-11-01 19:46 local)",
+ "game": "Hearts of Iron IV (Steam install; the path is not recorded)",
+ "game_version": "1.19.5.0 (Operation Postern v1.19.5.0.7c6c (c184)); Steam build id 26479645",
  "roots": [
   "base",
   "dlc001",
@@ -21,6 +21,17 @@
   "int_dlc023"
  ],
  "sprite_definitions_indexed": 30631,
+ "inputs": {
+  "game_version_file": "launcher-settings.json",
+  "launcher_settings_sha256": "1dc5d1a666b8843268449376b2d6d7a2f70045086c4c02babd5974847ce133d4",
+  "game_checksum_manifest_sha256": "771814d81faf7bae0f32819380c1114c61bbec1c897b060cecd1592f104f2b76",
+  "gfx_files_indexed": 340,
+  "textures_measured": 24741,
+  "textures_listing_sha256": "4db4e8280fdb6b4bf1923b3bb6194b27c993dfa2aba95740f7f3325970165150",
+  "textures_listing": "sha256 of the sorted lines (path under the game folder, a tab, size in bytes) of every texture a family measured",
+  "pixel_sample_per_family": 48,
+  "shelf_png_files": 727
+ },
  "families": [
   {
    "id": "focus_icon",
@@ -67,13 +78,6 @@
     "focus": 2782,
     "goal": 102
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.2826,
@@ -293,7 +297,7 @@
     ]
    },
    "shelf_files": {
-    "icons/national_focus": 16
+    "icons/national_focus": 18
    },
    "notes": []
   },
@@ -323,13 +327,6 @@
    "filename_first_token_top": {
     "shine": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 1,
     "median_fully_transparent_fraction": 0.0,
@@ -496,13 +493,6 @@
     "spa": 11,
     "the": 2
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3158,
@@ -721,7 +711,7 @@
     ]
    },
    "shelf_files": {
-    "icons/ideas": 15
+    "icons/ideas": 18
    },
    "notes": []
   },
@@ -759,13 +749,6 @@
     "idea": 1100,
     "portrait": 9
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.1548,
@@ -1055,13 +1038,6 @@
    "filename_first_token_top": {
     "decision": 346
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3456,
@@ -1260,8 +1236,8 @@
     ]
    },
    "shelf_files": {
-    "icons/decisions": 15,
-    "icons/missions": 5
+    "icons/decisions": 18,
+    "icons/missions": 0
    },
    "notes": []
   },
@@ -1310,13 +1286,6 @@
    "filename_first_token_top": {
     "decision": 112
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3721,
@@ -1474,7 +1443,7 @@
     ]
    },
    "shelf_files": {
-    "icons/decision_categories": 28
+    "icons/decision_categories": 30
    },
    "notes": []
   },
@@ -1510,13 +1479,6 @@
    "filename_first_token_top": {
     "decision": 133
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0003,
@@ -1668,7 +1630,7 @@
     ]
    },
    "shelf_files": {
-    "icons/decision_categories/pictures": 13
+    "icons/decision_categories/pictures": 15
    },
    "notes": []
   },
@@ -1701,13 +1663,6 @@
    "filename_first_token_top": {
     "modifiers": 98
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.2729,
@@ -1931,13 +1886,6 @@
    "filename_first_token_top": {
     "modifier": 47
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 47,
     "median_fully_transparent_fraction": 0.3478,
@@ -2075,7 +2023,7 @@
     ]
    },
    "shelf_files": {
-    "icons/modifiers": 5
+    "icons/modifiers": 15
    },
    "notes": [
     "engine binds GFX_MODIFIER_<MODIFIER_KEY_UPPERCASE> automatically when it exists"
@@ -2107,13 +2055,6 @@
    "filename_first_token_top": {
     "sp": 54
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.8539,
@@ -2310,13 +2251,6 @@
     "specialization": 4,
     "project": 4
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 41,
     "median_fully_transparent_fraction": 0.3848,
@@ -2532,13 +2466,6 @@
    "filename_first_token_top": {
     "spirit": 149
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.4336,
@@ -2732,13 +2659,6 @@
     "rebellious": 2,
     "army": 2
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.2211,
@@ -2940,13 +2860,6 @@
     "intel": 1,
     "launch": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.4561,
@@ -3174,13 +3087,6 @@
    "filename_first_token_top": {
     "generic": 65
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.4664,
@@ -3378,13 +3284,6 @@
     "generic": 43,
     "mio": 20
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.6378,
@@ -3547,13 +3446,6 @@
     "bop": 95,
     "prc": 6
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3658,
@@ -3723,7 +3615,7 @@
     ]
    },
    "shelf_files": {
-    "icons/balance_of_power": 12
+    "icons/balance_of_power": 15
    },
    "notes": []
   },
@@ -3774,13 +3666,6 @@
     "ita": 6,
     "jap": 6
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3245,
@@ -3991,13 +3876,6 @@
     "agency": 37,
     "intelligence": 35
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 1,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.4266,
@@ -4180,13 +4058,6 @@
    "filename_first_token_top": {
     "agency": 15
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 15,
     "median_fully_transparent_fraction": 0.5225,
@@ -4354,13 +4225,6 @@
     "boost": 2,
     "capture": 2
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.1701,
@@ -4559,7 +4423,7 @@
     ]
    },
    "shelf_files": {
-    "icons/intelligence_operations": 15
+    "icons/intelligence_operations": 18
    },
    "notes": []
   },
@@ -4590,13 +4454,6 @@
     "portrait": 244,
     "portraits": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -4794,13 +4651,6 @@
    "filename_first_token_top": {
     "trait": 68
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3808,
@@ -4970,13 +4820,6 @@
    "filename_first_token_top": {
     "trait": 95
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.4242,
@@ -5149,13 +4992,6 @@
     "a": 12,
     "crusader": 12
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -5261,13 +5097,6 @@
    "filename_first_token_top": {
     "faction": 62
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.3048,
@@ -5409,7 +5238,7 @@
     ]
    },
    "shelf_files": {
-    "icons/factions": 5
+    "icons/factions": 15
    },
    "notes": []
   },
@@ -5460,13 +5289,6 @@
     "war": 2,
     "peace": 2
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0711,
@@ -5671,13 +5493,6 @@
     "cristo": 2,
     "hofburg": 2
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.671,
@@ -5823,7 +5638,7 @@
     ]
    },
    "shelf_files": {
-    "icons/buildings": 5
+    "icons/buildings": 15
    },
    "notes": []
   },
@@ -5878,13 +5693,6 @@
     "eng": 85,
     "ita": 84
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.5622,
@@ -6098,7 +5906,7 @@
     ]
    },
    "shelf_files": {
-    "icons/technologies": 2,
+    "icons/technologies": 18,
     "units/equipment/technology_art": 17
    },
    "notes": []
@@ -6136,13 +5944,6 @@
     "doctrine": 114,
     "grand": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.4183,
@@ -6366,13 +6167,6 @@
     "support": 33,
     "pioneers": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.5715,
@@ -6574,10 +6368,10 @@
     ]
    },
    "shelf_files": {
-    "units/land/counters_large": 6,
-    "units/land/map_counters": 5,
-    "units/air/map_counters": 15,
-    "units/naval/map_counters": 15
+    "units/land/counters_large": 15,
+    "units/land/map_counters": 15,
+    "units/air/map_counters": 12,
+    "units/naval/map_counters": 11
    },
    "notes": []
   },
@@ -6612,13 +6406,6 @@
    "filename_first_token_top": {
     "custom": 202
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.7028,
@@ -6789,13 +6576,6 @@
     "afg": 21,
     "cze": 21
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 6,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -6847,7 +6627,7 @@
     "gfx_files": []
    },
    "shelf_files": {
-    "flags/normal": 3
+    "flags/normal": 18
    },
    "notes": []
   },
@@ -6889,13 +6669,6 @@
     "afg": 21,
     "cze": 21
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 21,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -6931,7 +6704,7 @@
     "gfx_files": []
    },
    "shelf_files": {
-    "flags/medium": 7
+    "flags/medium": 18
    },
    "notes": []
   },
@@ -6971,19 +6744,6 @@
     "afg": 21,
     "cze": 21
    },
-   "measured_from_files_unchanged_since_update": false,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 5,
-    "examples": [
-     "gfx/flags/small/JAP_fascism.tga",
-     "gfx/flags/small/ROM_democratic.tga",
-     "gfx/flags/small/TIB_neutrality.tga",
-     "gfx/flags/small/YUG_democratic.tga",
-     "gfx/flags/small/YUG_neutrality.tga"
-    ]
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 94,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -7019,7 +6779,7 @@
     "gfx_files": []
    },
    "shelf_files": {
-    "flags/small": 7
+    "flags/small": 18
    },
    "notes": []
   },
@@ -7063,15 +6823,6 @@
     "portraits": 1,
     "portriat": 1
    },
-   "measured_from_files_unchanged_since_update": false,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [
-    "dlc034:interface/nsb_portraits.gfx"
-   ],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -7333,8 +7084,8 @@
     ]
    },
    "shelf_files": {
-    "portraits/leaders": 5,
-    "portraits/commanders": 5
+    "portraits/leaders": 18,
+    "portraits/commanders": 18
    },
    "notes": []
   },
@@ -7365,13 +7116,6 @@
    "filename_first_token_top": {
     "portrait": 217
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -7508,13 +7252,6 @@
    "filename_first_token_top": {
     "report": 596
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.1136,
@@ -7672,7 +7409,7 @@
     ]
    },
    "shelf_files": {
-    "event_art/report": 5
+    "event_art/report": 18
    },
    "notes": []
   },
@@ -7709,13 +7446,6 @@
     "news": 281,
     "olympics": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -7825,7 +7555,7 @@
     ]
    },
    "shelf_files": {
-    "event_art/news": 5
+    "event_art/news": 18
    },
    "notes": []
   },
@@ -7856,13 +7586,6 @@
     "event": 1,
     "olympics": 1
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 2,
     "median_fully_transparent_fraction": 0.0,
@@ -7951,13 +7674,6 @@
     "eng": 157,
     "generic": 113
    },
-   "measured_from_files_unchanged_since_update": true,
-   "textures_modified_since_1_19_4_1_update": {
-    "count": 0,
-    "examples": []
-   },
-   "textures_with_mtime_on_or_after_2026_11_01": 0,
-   "gfx_modified_since_update": [],
    "pixels": {
     "sampled": 48,
     "median_fully_transparent_fraction": 0.0,
@@ -12325,34 +12041,39 @@
   }
  },
  "shelf_inventory_png_counts": {
-  "event_art/news": 5,
-  "event_art/report": 5,
-  "flags": 4,
-  "flags/medium": 7,
-  "flags/normal": 3,
-  "flags/small": 7,
+  "event_art/news": 18,
+  "event_art/operation": 15,
+  "event_art/report": 18,
+  "flags/medium": 18,
+  "flags/normal": 18,
+  "flags/small": 18,
   "icons/achievements": 15,
   "icons/achievements/template": 3,
-  "icons/balance_of_power": 12,
-  "icons/buildings": 5,
+  "icons/agency_logos": 15,
+  "icons/balance_of_power": 15,
+  "icons/buildings": 15,
   "icons/commander_traits": 15,
-  "icons/decisions": 15,
+  "icons/decisions": 18,
   "icons/decision_categories": 15,
-  "icons/decision_categories/pictures": 13,
-  "icons/factions": 5,
-  "icons/ideas": 15,
+  "icons/decision_categories/pictures": 15,
+  "icons/doctrines": 15,
+  "icons/factions": 15,
+  "icons/ideas": 18,
+  "icons/idea_concerns": 15,
   "icons/intelligence_agency": 15,
-  "icons/intelligence_operations": 15,
+  "icons/intelligence_operations": 18,
   "icons/medals": 15,
   "icons/military_industrial_organizations": 15,
   "icons/military_raids": 15,
-  "icons/missions": 5,
-  "icons/modifiers": 5,
-  "icons/national_focus": 16,
+  "icons/mio_policies": 15,
+  "icons/mio_traits": 15,
+  "icons/modifiers": 15,
+  "icons/national_focus": 18,
   "icons/officer_corps_spirits": 15,
+  "icons/personal_traits": 15,
   "icons/special_projects": 15,
   "icons/state_modifiers": 15,
-  "icons/technologies": 2,
+  "icons/technologies": 18,
   "interface/vanilla": 1,
   "interface/vanilla/design_and_organization": 6,
   "interface/vanilla/diplomacy_and_outcomes": 1,
@@ -12360,20 +12081,20 @@
   "interface/vanilla/projects_and_research": 8,
   "interface/vanilla/settings_and_controls": 10,
   "portraits/advisors": 16,
-  "portraits/commanders": 5,
-  "portraits/leaders": 5,
+  "portraits/commanders": 18,
+  "portraits/leaders": 18,
   "portraits/operatives": 15,
-  "units/air/map_counters": 15,
+  "portraits/scientists": 15,
+  "units/air/map_counters": 12,
   "units/equipment/technology_art": 17,
-  "units/land/counters_large": 6,
+  "units/land/counters_large": 15,
   "units/land/division_template_emblems": 15,
-  "units/land/map_counters": 5,
+  "units/land/map_counters": 15,
   "units/models_3d/air_materials": 5,
   "units/models_3d/land_materials": 5,
   "units/models_3d/naval_materials": 5,
-  "units/naval/map_counters": 15
+  "units/naval/map_counters": 11
  },
- "update_note": "Game reported updated to 1.19.4.1 on 2026-11-01 ~19:46 local. This families.json was produced by a full run that started after the update (all families measured from current files). Files with mtime on 2026-11-01: flag_large 6, flag_medium 21, flag_small 94 (5 after 19:46), intel_agency_logo 1, leader_portrait gfx nsb_portraits.gfx (dlc034) modified. career_profile, alerts, dlc049 gfx not part of a measured family. All other families: measured_from_files_unchanged_since_update=true.",
  "animated_sprites": {
   "type": "frameAnimatedSpriteType",
   "sprite_count": 160,

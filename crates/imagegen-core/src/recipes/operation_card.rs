@@ -1,6 +1,6 @@
 //! Operation card and map medallion: the 85x85 picture of an operation and its 48x48 map icon.
 //!
-//! **What vanilla shows** (HOI4 1.19.4.1, `gfx/interface/operations/<name>.dds` and `map/<name>_map.dds`, the
+//! **What vanilla shows** (HOI4 1.19.5.0, `gfx/interface/operations/<name>.dds` and `map/<name>_map.dds`, the
 //! `GFX_operations_<name>` and `GFX_operations_<name>_map` sprites of `interface/lar_operations.gfx`, which the
 //! operation's `icon` and `map_icon` name; 17 pairs measured):
 //!

@@ -1,6 +1,6 @@
 //! Technology picture overlays: the tier numeral (I, II, III ...) and the blue gem of the capital-ship pictures.
 //!
-//! **What vanilla does** (HOI4 1.19.4.1). The numerals are baked into the textures. The technology tree's item
+//! **What vanilla does** (HOI4 1.19.5.0). The numerals are baked into the textures. The technology tree's item
 //! (`interface/countrytechtreeview.gui`, for example the `iconType` named `Icon` at `position = { x=3 y=3 }` with
 //! `spriteType = "GFX_technology_medium"`) draws one sprite and no numeral layer, no `.gfx` or `.gui` file names a
 //! numeral or tier sprite, and the sprites themselves point at single textures (`interface/Technologies.gfx`:

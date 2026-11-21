@@ -4,7 +4,7 @@
 //! Frame 1 is the fitted icon. Frame 2 is made from it, so the two always agree on shape and place:
 //!
 //! * **Selected** (faction and agency logos): a light stroke around the icon and a wide dark-red glow outside
-//!   it, the icon itself unchanged on top. The constants were fitted to the vanilla logos (1.19.4.1): over 31
+//!   it, the icon itself unchanged on top. The constants were fitted to the vanilla logos (1.19.5.0): over 31
 //!   faction strips the alpha outside frame 1's silhouette falls from 0.97 at 1 px to 0.53 at 5 px, 0.26 at 8 px,
 //!   0.13 at 10 px and 0.055 at 12 px, the first two pixels are cream (about 208, 198, 165) and everything beyond
 //!   the fourth pixel is (37, 5, 5). The model is `stroke = clamp(2.91 + 0.5 - d)`, `glow = 0.97 * Gaussian
@@ -51,7 +51,7 @@ impl Default for SelectedStyle {
 }
 
 /// How far inside its frame a selected-strip emblem sits in frame 1, so frame 2's glow fits around it and the
-/// emblem draws at vanilla size. Measured on 1.19.4.1 as the median smallest frame-1 margin: 14 px over the 37
+/// emblem draws at vanilla size. Measured on 1.19.5.0 as the median smallest frame-1 margin: 14 px over the 37
 /// 234x119 agency logos (p10 12, p90 17, emblem about 89 px) and 10 px over the 31 200x100 faction logos (p10 7,
 /// p90 13). An agency logo fitted with 2 px drew about 25 percent wider than vanilla emblems in game. The
 /// profile's `margin` stays the minimum every frame keeps, which frame 2's glow brings down to about 2.
