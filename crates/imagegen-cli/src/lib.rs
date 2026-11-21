@@ -347,7 +347,9 @@ pub fn execute(engine: &Engine, cli: &Cli, out: &mut dyn Write) -> i32 {
             Ok((v["calibration"].clone(), 0, Some(text)))
         }
         Command::Families { family } => {
-            Ok((engine.families_info(serde_json::from_value(json!({"family": family})).map_err(|e| EngineError::invalid(e.to_string()))?)?, 0, None))
+            let v = engine.families_info(serde_json::from_value(json!({"family": family})).map_err(|e| EngineError::invalid(e.to_string()))?)?;
+            let text = families_text(&v);
+            Ok((v, 0, Some(text)))
         }
         Command::Plan(a) => {
             let mut refs = Vec::new();
@@ -692,22 +694,79 @@ fn plan_text(p: &Value) -> String {
     t
 }
 
+/// `families` as text: the catalogue as a table, one family as its facts.
+fn families_text(v: &Value) -> String {
+    fn size(c: &Value) -> String {
+        match (c[0].as_u64(), c[1].as_u64()) {
+            (Some(w), Some(h)) => format!("{w}x{h}"),
+            _ => "-".to_string(),
+        }
+    }
+    let mut t = String::new();
+    if let Some(list) = v["families"].as_array() {
+        t.push_str(&format!("{} families. Details of one: hoi4-imagegen families <family>\n\n", list.len()));
+        t.push_str(&format!("  {:<26} {:<10} {:<9} {:>6}  {:<5} {}\n", "family", "group", "canvas", "frames", "file", "tool"));
+        for f in list {
+            t.push_str(&format!(
+                "  {:<26} {:<10} {:<9} {:>6}  {:<5} {}\n",
+                f["family"].as_str().unwrap_or("?"),
+                f["group"].as_str().unwrap_or("?"),
+                size(&f["canvas"]),
+                f["frames"],
+                f["container"].as_str().unwrap_or("?"),
+                f["tool"].as_str().unwrap_or("?"),
+            ));
+        }
+        return t;
+    }
+    let f = &v["family"];
+    t.push_str(&format!(
+        "{}  ({} group, tool {})\n",
+        f["family"].as_str().unwrap_or("?"),
+        f["group"].as_str().unwrap_or("?"),
+        f["tool"].as_str().unwrap_or("?")
+    ));
+    t.push_str(&format!(
+        "  canvas {}, {} frame(s), {} background, {} file\n",
+        size(&f["canvas"]),
+        f["frames"],
+        f["background"].as_str().unwrap_or("?"),
+        f["container"].as_str().unwrap_or("?")
+    ));
+    let accepted: Vec<String> = f["accepted"].as_array().into_iter().flatten().map(size).collect();
+    if !accepted.is_empty() {
+        t.push_str(&format!("  accepted sizes {}\n", accepted.join(", ")));
+    }
+    let checks: Vec<&str> = f["checks"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+    if !checks.is_empty() {
+        t.push_str(&format!("  checks {}\n", checks.join(", ")));
+    }
+    if let Some(e) = f["evidence"].as_str() {
+        t.push_str(&format!("  measured: {e}\n"));
+    }
+    t.push_str("\nFull detail (style references, review questions, recipe): add --json.");
+    t
+}
+
 fn audit_text(v: &Value) -> String {
     let s = &v["summary"];
     let mut t = format!(
-        "Audit of {}\n  game {}\n  {} sprites ({} definitions), {} traced uses, {} textures resolved, {} missing\n",
+        "Audit of {}\n  game {}\n  index: {} sprites ({} definitions) from the game and the mod, {} textures found, {} without a texture file (the game has some of its own)\n  this mod: {} traced sprite use(s)\n",
         v["project_root"].as_str().unwrap_or("?"),
         v["game_dir"].as_str().unwrap_or("not found"),
         s["sprites_indexed"],
         s["definitions"],
-        s["uses"],
         s["textures_resolved"],
         s["textures_missing"],
+        s["uses"],
     );
     if !v["allowlist"].is_null() {
         t.push_str(&format!("  allowlist {}\n", v["allowlist"]["path"].as_str().unwrap_or("?")));
     }
     t.push_str("\nUses per family:\n");
+    if v["uses_by_family"].as_object().is_none_or(|m| m.is_empty()) {
+        t.push_str("  none: this mod does not use any sprite yet\n");
+    }
     for (family, c) in v["uses_by_family"].as_object().into_iter().flatten() {
         t.push_str(&format!(
             "  {:<26} {:>6} uses  {} defined  {} undefined  {} direct  {} texture missing\n",
@@ -769,6 +828,29 @@ mod tests {
     use super::*;
     use imagegen_core::config::MapEnv;
     use imagegen_providers::types::{CancelToken, RealSleeper};
+
+    #[test]
+    fn audit_text_separates_the_game_index_from_this_mods_uses() {
+        let v = json!({"project_root": "m", "game_dir": "g", "summary": {"sprites_indexed": 10, "definitions": 12, "uses": 0, "textures_resolved": 9, "textures_missing": 1}, "uses_by_family": {}, "findings": {}, "canvas_checked": 0, "alpha_checked": 0});
+        let t = audit_text(&v);
+        assert!(t.contains("from the game and the mod"), "{t}");
+        assert!(t.contains("this mod: 0 traced sprite use(s)"), "{t}");
+        assert!(t.contains("none: this mod does not use any sprite yet"), "{t}");
+    }
+
+    #[test]
+    fn families_text_is_a_table_and_a_fact_sheet_not_json() {
+        let list = json!({"families": [{"family": "focus", "group": "icon", "canvas": [100, 88], "frames": 1, "container": "dds", "tool": "hoi4.image_icon"}]});
+        let t = families_text(&list);
+        assert!(t.contains("1 families") && t.contains("focus") && t.contains("100x88") && t.contains("hoi4.image_icon"), "{t}");
+        assert!(!t.contains('{'), "{t}");
+        let one = json!({"family": {"family": "focus", "group": "icon", "tool": "hoi4.image_icon", "canvas": [100, 88], "accepted": [[100, 88], [99, 88]], "frames": 1, "background": "transparent", "container": "dds", "checks": ["size", "alpha"], "evidence": "Measured."}});
+        let t = families_text(&one);
+        assert!(
+            t.contains("canvas 100x88") && t.contains("accepted sizes 100x88, 99x88") && t.contains("checks size, alpha") && t.contains("--json"),
+            "{t}"
+        );
+    }
 
     #[test]
     fn the_doctor_reports_a_server_revoked_sign_in_from_the_recorded_state_alone() {

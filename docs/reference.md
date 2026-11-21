@@ -84,7 +84,7 @@ There are 45 families in seven groups. The group names the tool that plans them.
 
 ### Measured from the game
 
-The built-in canvas, frames, accepted sizes and pixel class of every family come from the installed game, version 1.19.4.1. The data is in `crates/imagegen-core/data/vanilla-measurement.json`, made by `scripts/measure_families.py`. A unit test fails when a family stops matching it. Examples: focus 100x88, idea_spirit 60x68, advisor_card 65x67, decision 33x32, report_event 210x176, news_event 397x153, flags 82x52, 41x26 and 10x7.
+The built-in canvas, frames, accepted sizes and pixel class of every family come from the installed game, version 1.19.4.1. The data is in `crates/imagegen-core/data/vanilla-measurement.json`, made by `scripts/measure_families.py`. A unit test fails when a family stops matching it. The sizes were checked again on game version 1.19.5.0 with `hoi4-imagegen calibrate` (a survey of file headers): every family's majority size is the one listed here. The colour and style statistics come from the full measurement on 1.19.4.1 and were not re-run on 1.19.5.0. Examples: focus 100x88, idea_spirit 60x68, advisor_card 65x67, decision 33x32, report_event 210x176, news_event 397x153, flags 82x52, 41x26 and 10x7.
 
 The emblem inside an icon is fitted at vanilla's size too, measured as the median over the family's vanilla files. mio_trait and agency_upgrade keep an 8 px margin, the clear margin every vanilla file of those families has. raid keeps 4 px and idea_concern 3 px, the margins closest to the vanilla median. A test (it needs the game) checks these and focus, decision_category_icon, mio_department, doctrine and commander_trait against the vanilla median, within 1 px.
 
