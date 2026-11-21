@@ -1,5 +1,5 @@
 {
-  "game_version": "1.19.4.1",
+  "game_version": "1.19.5.0",
   "method": "files: the family's vanilla texture folders and name rules; group: the theme of the file name and folder tokens (refselect::THEMES, subfamily::GROUPS), groups under 8 files count as other; measured: the vanilla-match sample of up to 400 files; style groups: deterministic k-medoids of the style descriptors, one group per 10 measured files, at most 8",
   "families": [
     {
@@ -1516,97 +1516,6 @@
             "warm_metal_share": 0.078
           },
           "form_note": "Vanilla military industrial organization department icon files that match no theme: nearly all are an open, loose subject with no frame, in moderate colour. Choose the form that suits the brief within that range."
-        }
-      ]
-    },
-    {
-      "family": "operation_icon",
-      "files": 71,
-      "subfamilies": [
-        {
-          "id": "intelligence",
-          "files": 20,
-          "examples": [
-            "phase_bruneval_infiltration_small.dds",
-            "phase_free_operative_smuggle_in_escape_gear_small.dds",
-            "phase_infiltration_diplomatic_small.dds"
-          ],
-          "style_groups": [
-            {
-              "medoid": "phase_infiltrate_military_seduction_small.dds",
-              "size": 13
-            },
-            {
-              "medoid": "phase_capture_tito_infiltration_small.dds",
-              "size": 7
-            }
-          ],
-          "measured": {
-            "images": 20,
-            "framed_share": 1.0,
-            "loose_share": 0.0,
-            "saturation_mean": 0.163,
-            "warm_metal_share": 0.012
-          },
-          "form_note": "Vanilla intelligence operation icon intelligence files: nearly all are a compact framed shape (a plaque, disc, shield or badge), in muted, nearly grey colour. Choose the form that suits the brief within that range."
-        },
-        {
-          "id": "army",
-          "files": 11,
-          "examples": [
-            "phase_bruneval_attack_small.dds",
-            "phase_coordinate_strike_mark_targets_small.dds",
-            "phase_fake_intel_decoy_tanks_small.dds"
-          ],
-          "style_groups": [
-            {
-              "medoid": "phase_capture_tito_attack_small.dds",
-              "size": 11
-            }
-          ],
-          "measured": {
-            "images": 11,
-            "framed_share": 1.0,
-            "loose_share": 0.0,
-            "saturation_mean": 0.172,
-            "warm_metal_share": 0.007
-          },
-          "form_note": "Vanilla intelligence operation icon army files: nearly all are a compact framed shape (a plaque, disc, shield or badge), in muted, nearly grey colour. Choose the form that suits the brief within that range."
-        },
-        {
-          "id": "other",
-          "files": 40,
-          "examples": [
-            "phase_bruneval_exfiltration_small.dds",
-            "phase_fake_intel_press_releases_small.dds",
-            "phase_rescue_mussolini_exfiltration_small.dds"
-          ],
-          "style_groups": [
-            {
-              "medoid": "phase_steal_blueprints_infiltrate_naval_design_office_small.dds",
-              "size": 29
-            },
-            {
-              "medoid": "phase_exfiltration_go_to_ground_small.dds",
-              "size": 8
-            },
-            {
-              "medoid": "phase_exfiltration_submarine_pickup_small.dds",
-              "size": 2
-            },
-            {
-              "medoid": "phase_fake_intel_deliberate_leaks_small.dds",
-              "size": 1
-            }
-          ],
-          "measured": {
-            "images": 40,
-            "framed_share": 1.0,
-            "loose_share": 0.0,
-            "saturation_mean": 0.161,
-            "warm_metal_share": 0.023
-          },
-          "form_note": "Vanilla intelligence operation icon files that match no theme: nearly all are a compact framed shape (a plaque, disc, shield or badge), in muted, nearly grey colour. Choose the form that suits the brief within that range."
         }
       ]
     },
