@@ -478,7 +478,7 @@ The check is a gate, not a verdict. Art that looks wrong in a way these features
 
 When a plan names no provider, the first ready one in this order is used: ChatGPT login, OpenAI, Gemini, fal, ComfyUI. A `provider` in the plan, a style profile or `[defaults]` in the project config wins.
 
-Keys come from the environment first. If a variable is not set, the tool reads the key HOI4 Mod Setup saved in the operating system credential store. A project file can choose models and endpoints but cannot send a key to a new host. Model ids retire quickly, so ids, limits and prices live in dated tables under `crates/imagegen-providers/data/`, and a retired model is refused before any request.
+Keys come from the environment first. If a variable is not set, the tool reads the key HOI4 Mod Setup saved in the operating system credential store, once per key and process. On macOS that lookup is off by default, because the Keychain asks for the login password whenever a different program reads an item (an MCP server cannot answer that dialog). Set `HOI4_IMAGEGEN_SETUP_KEYCHAIN=1` to turn it on, or `0` to turn it off elsewhere. A project file can choose models and endpoints but cannot send a key to a new host. Model ids retire quickly, so ids, limits and prices live in dated tables under `crates/imagegen-providers/data/`, and a retired model is refused before any request.
 
 ### The ChatGPT login
 

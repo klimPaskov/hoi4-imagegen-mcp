@@ -374,7 +374,7 @@ impl Engine {
         if !provider.is_configured() {
             return Err(EngineError::new(
                 "provider_not_configured",
-                format!("provider {provider_id} has no credentials in the environment (keys are read from environment variables only)"),
+                format!("provider {provider_id} has no credentials: set its key in the environment, or save it in HOI4 Mod Setup"),
                 RetryClass::RequiresAuthorization,
             ));
         }

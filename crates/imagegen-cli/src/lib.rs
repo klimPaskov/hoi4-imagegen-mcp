@@ -576,6 +576,9 @@ fn doctor_text(s: &Value) -> String {
         let keys = p["key_env"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(" or ")).unwrap_or_default();
         let state = if p["configured"] == json!(true) {
             "ready".to_string()
+        } else if id == "chatgpt_login" {
+            // the sign-in is a login, not a key or an address
+            "not signed in: run `hoi4-imagegen login`".to_string()
         } else if keys.is_empty() {
             // local servers need an address, not a key
             format!("set providers.{id}.endpoint")

@@ -178,7 +178,7 @@ pub fn status_text_at(store: &CredentialStore, now: i64) -> Result<String, Strin
         Some(c) => {
             format!("{}\n(local view only: this does not ask the server; `login-status --check` can)\nstored in: {}", describe(&c), store.location())
         }
-        None => format!("not signed in (run `hoi4-imagegen login`; tokens would go to the {})", store.location()),
+        None => format!("not signed in (run `hoi4-imagegen login`; the sign-in will be kept in {})", store.location()),
     };
     Ok(format!("{text}{warning}"))
 }
