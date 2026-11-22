@@ -137,6 +137,7 @@ impl Engine {
             let subject =
                 Subject { family: artifact.family, asset_id: &artifact.asset_id, processed: artifact.processed, root_id: &artifact.root_id };
             findings.extend(self.near_duplicate_findings(&subject, &img, near_bits));
+            findings.extend(self.variant_findings(&subject, &img));
         }
         // the family's processing must be on record: a processed artifact whose chain lacks a required stage fails
         if let Some(rec) = &artifact.record {

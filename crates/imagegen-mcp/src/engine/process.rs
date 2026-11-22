@@ -197,7 +197,8 @@ impl Engine {
         let problems = chain::audit(&record, &profile);
         let subject =
             super::diversity::Subject { family: artifact.family, asset_id: &artifact.asset_id, processed: true, root_id: &artifact.root_id };
-        let near = self.near_duplicate_findings(&subject, &main, self.style_model(&profile).and_then(|m| m.near_duplicate_bits));
+        let mut near = self.near_duplicate_findings(&subject, &main, self.style_model(&profile).and_then(|m| m.near_duplicate_bits));
+        near.extend(self.variant_findings(&subject, &main));
         Ok(json!({
             "artifact_id": id,
             "path": written_rel,

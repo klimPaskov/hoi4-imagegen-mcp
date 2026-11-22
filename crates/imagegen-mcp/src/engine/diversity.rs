@@ -104,3 +104,71 @@ impl Engine {
         out
     }
 }
+
+impl Engine {
+    /// `GFX-VARIANTS-UNIFORM` (D-118): a prompt to review, never a verdict on one flag. A small change can be right
+    /// (an emblem added to a kept national flag) and a country with a new identity may break with its old flag, so one
+    /// close variant never warns. A flag named `TAG_suffix` is a variant of `TAG`. The warning fires when the country
+    /// has at least two variants (this one and the latest earlier output of other `TAG_*` assets) and every one of
+    /// them keeps the base design, which is the mechanical pattern D-118 forbids. The base is the latest earlier
+    /// output of `TAG` of the family, or else the installed `gfx/flags/TAG.tga`.
+    pub(crate) fn variant_findings(&self, s: &Subject, img: &Rgba) -> Vec<Finding> {
+        let Some((base, _)) = s.asset_id.split_once('_').filter(|(b, rest)| s.family == Family::Flag && !b.is_empty() && !rest.is_empty()) else {
+            return vec![];
+        };
+        let Ok(entries) = self.ledger.entries() else { return vec![] };
+        let prefix = format!("{base}_");
+        let mut base_img: Option<(String, Rgba)> = None;
+        let mut siblings: Vec<(String, Rgba)> = Vec::new();
+        let mut seen: BTreeSet<String> = BTreeSet::new();
+        for e in entries.iter().rev() {
+            let wanted =
+                if s.processed { e.kind == kind::PROCESSED } else { matches!(e.kind.as_str(), kind::GENERATED | kind::EDITED | kind::IMPORTED) };
+            let Some(asset) = e.asset_id.as_deref() else { continue };
+            if !wanted || e.data.get("family").and_then(Value::as_str) != Some(s.family.as_str()) || asset == s.asset_id {
+                continue;
+            }
+            let is_base = asset == base;
+            if !(is_base || asset.starts_with(&prefix)) || !seen.insert(asset.to_string()) {
+                continue;
+            }
+            let Some(path) = e.data.get("path").and_then(Value::as_str) else { continue };
+            let Some((other, _)) = self.fs.read(path, MAX_BYTES).ok().and_then(|b| decode(&b, Some(path), DecodeLimits::default()).ok()) else {
+                continue;
+            };
+            if is_base {
+                base_img = Some((path.to_string(), other));
+            } else {
+                siblings.push((asset.to_string(), other));
+            }
+        }
+        if base_img.is_none() {
+            let path = format!("gfx/flags/{base}.tga");
+            base_img = self.fs.read(&path, MAX_BYTES).ok().and_then(|b| decode(&b, Some(&path), DecodeLimits::default()).ok()).map(|d| (path, d.0));
+        }
+        let (Some((path, other)), false) = (base_img, siblings.is_empty()) else { return vec![] };
+        let Some(mine) = diversity::variant_containment(&other, img) else { return vec![] };
+        let mut kept = vec![(s.asset_id.to_string(), mine)];
+        for (name, sibling) in &siblings {
+            match diversity::variant_containment(&other, sibling) {
+                Some(k) => kept.push((name.clone(), k)),
+                None => return vec![],
+            }
+        }
+        let lowest = kept.iter().map(|(_, k)| *k).fold(1.0, f64::min);
+        if lowest < diversity::VARIANT_CONTAINMENT {
+            return vec![];
+        }
+        vec![Finding {
+            code: "GFX-VARIANTS-UNIFORM".into(),
+            level: Level::Warning,
+            message: format!(
+                "all {} variants of flag {base} ({path}) keep at least {:.0}% of its edge structure, so each reads as the base with colours or marks added. Review them: how would this country really present itself under each government or path? A small change is right for some, but not as a rule for every variant",
+                kept.len(),
+                lowest * 100.0
+            ),
+            frame: None,
+            evidence: json!({"base": base, "base_path": path, "variants": kept.iter().map(|(n, k)| json!({"asset": n, "edge_containment": k})).collect::<Vec<_>>(), "threshold": diversity::VARIANT_CONTAINMENT}),
+        }]
+    }
+}
