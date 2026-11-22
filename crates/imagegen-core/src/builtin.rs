@@ -75,6 +75,7 @@ macro_rules! colour_by_subject_rule {
 }
 
 const ICON_RULES: &[&str] = &[
+    "When the brief is a variant of an existing emblem or icon (another ideology, route or cosmetic tag of the same country), design it for how that country would present itself under that government or path, true to its culture and history. That is often a new picture and sometimes one small fitting change. Never apply one mechanical rule that gives every variant the base design with a tint, frame, badge, crown or other mark added.",
     "One centred subject with a strong, simple silhouette that stays readable at {w}x{h} pixels.",
     "Painterly, slightly aged texture in the style of Hearts of Iron IV interface art, with readable contrast.",
     "Real transparent background: no backdrop, no frame, no border, no plate behind the subject.",
@@ -442,6 +443,7 @@ const PORTRAIT_INVENTED: &str =
 // pale blue-grey one lit from the upper left, and vanilla's operative portraits are dark charcoal.
 /// Leader and commander portraits: 424 of 447 decodable files outside the scientists folder.
 const LEADER_PORTRAIT_RULES: &[&str] = &[
+    "When the brief is the same person or office under another ideology, route or cosmetic tag, show them as that government would present them, with a pose, dress and setting that fit the culture and period. Often that is a new portrait. Never apply one mechanical rule of a colour shift, badge, crown or other mark added to the base portrait for every variant.",
     PORTRAIT_FRAMING,
     "Vanilla's leader portrait backdrop: one plain, smooth studio background in pale cream-grey (about RGB 229, 226, 209 at the top), evenly lit and darker toward the bottom (about 190, 186, 170 at the sides by the shoulders), with no objects, room, landscape, flag or pattern. Not the blue-grey of scientist portraits and not a dark background. Use another backdrop only when the brief asks for a council or otherwise unusual portrait.",
     PORTRAIT_PERIOD,
@@ -495,6 +497,7 @@ const BUILDING_NEGATIVE: &[&str] = &[
 const FLAG_RULES: &[&str] = &[
     "A flat national flag design with simple shapes that stay readable at 82x52 pixels and at 10x7 pixels.",
     "The flag fills the whole frame edge to edge.",
+    "When the brief is a variant of a country's flag (an ideology, a route, a cosmetic tag or a formable), design it for how this country would really present itself under that government or path, true to its culture, crown and history. Often that is a complete reimagining with its own layout, main charge and arrangement. Sometimes a small change is right, such as an emblem added to an otherwise kept national flag. A country with a new identity (a formable, a puppet, a conquest, a conversion, a new dynasty) may get a wholly new flag. Never apply one mechanical rule that makes every variant the base design with colours, a border, a band, a crown or a dye added.",
 ];
 const FLAG_NEGATIVE: &[&str] = &["text", "a pole or cloth folds", "perspective", "a border"];
 const UNIT_RULES: &[&str] = &[
