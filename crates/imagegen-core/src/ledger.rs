@@ -9,7 +9,7 @@ use std::fs::{self, OpenOptions, TryLockError};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -21,7 +21,15 @@ use crate::hashing::{canonical_hash, Clock};
 
 /// Project-relative path of the ledger.
 pub const LEDGER_PATH: &str = ".hoi4-imagegen/ledger.jsonl";
+/// The marker file older versions lock with: 0.3.x and 0.4.0 to 0.4.3 create it exclusively for an append and remove
+/// it after, and 0.4.4 locks it at the OS level and leaves it on disk. Every version since 0.4.5 holds it too.
 const LOCK_PATH: &str = ".hoi4-imagegen/ledger.lock";
+/// Held at the OS level by every 0.4.5 and later process for an append, so they never race each other for the marker.
+const MUTEX_PATH: &str = ".hoi4-imagegen/ledger.mutex";
+/// How long an append waits for the lock before it gives up.
+const LOCK_WAIT: Duration = Duration::from_secs(60);
+/// A marker older than this, with nobody holding it, belongs to a crashed process.
+const STALE_AFTER: Duration = Duration::from_secs(60);
 const GENESIS: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 /// One ledger line.
@@ -70,14 +78,41 @@ pub struct Ledger {
     clock: Arc<dyn Clock>,
 }
 
-/// An OS file lock on the ledger's lock file, held for one append. The OS releases it when the process ends, so a crashed
-/// writer never leaves a stale lock, and it covers parallel MCP calls and separate processes alike.
-struct LockGuard(fs::File);
+/// The ledger lock of one append. It speaks every protocol in use, so servers of different versions on one machine
+/// keep one chain: an OS lock on `ledger.mutex` (0.4.5 and later against each other), the marker file `ledger.lock`
+/// created exclusively (0.3.x and 0.4.0 to 0.4.3 wait while it exists), and an OS lock on that marker (0.4.4). A crash
+/// releases the OS locks at once, and a marker that nobody holds is removed by the next writer once it is stale.
+struct LockGuard {
+    mutex: fs::File,
+    marker: Option<fs::File>,
+    marker_path: PathBuf,
+}
 
 impl Drop for LockGuard {
     fn drop(&mut self) {
-        let _ = self.0.unlock();
+        if let Some(marker) = self.marker.take() {
+            let _ = marker.unlock();
+            drop(marker);
+            // On Windows the removal can fail for a moment (another process's failed open still holds a handle). A marker
+            // that stays behind blocks older versions for a minute, so the removal is retried.
+            for _ in 0..200 {
+                match fs::remove_file(&self.marker_path) {
+                    Ok(()) => break,
+                    Err(e) if e.kind() == ErrorKind::NotFound => break,
+                    Err(_) => std::thread::sleep(Duration::from_millis(2)),
+                }
+            }
+        }
+        let _ = self.mutex.unlock();
     }
+}
+
+/// True for a marker nobody holds that a crashed writer left: older than [`STALE_AFTER`], or empty and a moment old
+/// (0.4.4 leaves its marker empty on disk for good, and 0.3.x writes its process id at once).
+fn marker_is_stale(path: &Path) -> bool {
+    let Ok(meta) = fs::metadata(path) else { return false };
+    let age = meta.modified().ok().and_then(|t| SystemTime::now().duration_since(t).ok()).unwrap_or_default();
+    age > STALE_AFTER || (meta.len() == 0 && age > Duration::from_secs(2))
 }
 
 impl Ledger {
@@ -87,22 +122,72 @@ impl Ledger {
     }
 
     fn lock(&self) -> Result<LockGuard> {
-        let path = self.fs.resolve(LOCK_PATH)?;
-        if let Some(parent) = path.parent() {
+        self.lock_within(LOCK_WAIT)
+    }
+
+    fn lock_within(&self, wait: Duration) -> Result<LockGuard> {
+        let marker_path = self.fs.resolve(LOCK_PATH)?;
+        let mutex_path = self.fs.resolve(MUTEX_PATH)?;
+        if let Some(parent) = marker_path.parent() {
             fs::create_dir_all(parent).map_err(|e| Error::io(parent.display(), e))?;
         }
-        let file = OpenOptions::new().create(true).truncate(false).write(true).open(&path).map_err(|e| Error::io(path.display(), e))?;
         let started = Instant::now();
+        let mutex = OpenOptions::new().create(true).truncate(false).write(true).open(&mutex_path).map_err(|e| Error::io(mutex_path.display(), e))?;
         loop {
-            match file.try_lock() {
-                Ok(()) => return Ok(LockGuard(file)),
+            match mutex.try_lock() {
+                Ok(()) => break,
                 Err(TryLockError::WouldBlock) => {
-                    if started.elapsed() > Duration::from_secs(60) {
-                        return Err(Error::Ledger("timed out waiting for the ledger lock: another hoi4-imagegen process is still appending".into()));
+                    if started.elapsed() > wait {
+                        return Err(Error::Ledger(format!(
+                            "timed out waiting for the ledger lock: another hoi4-imagegen process (this is version {}) is still appending",
+                            env!("CARGO_PKG_VERSION")
+                        )));
                     }
                     std::thread::sleep(Duration::from_millis(5));
                 }
-                Err(TryLockError::Error(e)) => return Err(Error::io(path.display(), e)),
+                Err(TryLockError::Error(e)) => return Err(Error::io(mutex_path.display(), e)),
+            }
+        }
+        // from here the guard releases the mutex on every way out
+        let mut guard = LockGuard { mutex, marker: None, marker_path: marker_path.clone() };
+        loop {
+            match OpenOptions::new().write(true).create_new(true).open(&marker_path) {
+                Ok(mut f) => {
+                    // 0.4.4 locks this file at the OS level, so hold that lock as well
+                    let _ = f.try_lock();
+                    let _ = writeln!(f, "{}", std::process::id());
+                    guard.marker = Some(f);
+                    return Ok(guard);
+                }
+                Err(e) if matches!(e.kind(), ErrorKind::AlreadyExists | ErrorKind::PermissionDenied | ErrorKind::NotFound) => {
+                    // Some other version holds the marker, or a crashed one left it. Under the mutex no 0.4.5 writer
+                    // can be mid-append, so a marker that is OS-locked belongs to a live 0.4.4 server and one that is not
+                    // is an older version's or a leftover.
+                    if let Ok(f) = OpenOptions::new().write(true).open(&marker_path) {
+                        if f.try_lock().is_ok() {
+                            let _ = f.unlock();
+                            drop(f);
+                            if marker_is_stale(&marker_path) {
+                                let _ = fs::remove_file(&marker_path);
+                                continue;
+                            }
+                        }
+                    }
+                    if started.elapsed() > wait {
+                        let holder = fs::read_to_string(&marker_path)
+                            .ok()
+                            .and_then(|t| t.trim().parse::<u32>().ok())
+                            .map_or(String::new(), |pid| format!(" (process {pid})"));
+                        return Err(Error::Ledger(format!(
+                            "timed out waiting for the ledger lock: .hoi4-imagegen/ledger.lock is held by another hoi4-imagegen process{holder}, \
+                             which may be an older version (this is {}). 0.3.x servers lock with that file and 0.4.4 locks it at the OS level; \
+                             from 0.4.5 every version takes both. Close the older server (or wait for its call to end) and retry",
+                            env!("CARGO_PKG_VERSION")
+                        )));
+                    }
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(e) => return Err(Error::io(marker_path.display(), e)),
             }
         }
     }
@@ -352,8 +437,7 @@ mod tests {
         assert_eq!(seqs, (1..=12).collect::<Vec<_>>());
         let r = l.verify().unwrap();
         assert!(r.ok && r.entries == 12, "{r:?}");
-        let lock = OpenOptions::new().write(true).open(dir.path().join(LOCK_PATH)).unwrap();
-        assert!(lock.try_lock().is_ok(), "lock released");
+        assert!(!dir.path().join(LOCK_PATH).exists(), "the marker is released");
     }
 
     /// Long floats in an entry's data (the preview metrics of an animation) must survive a write and a read:
@@ -419,6 +503,99 @@ mod tests {
         }
         let r = ledger(&dir).verify().unwrap();
         assert!(r.ok && r.entries == 50, "{r:?}");
+    }
+
+    /// What 0.3.x does: create the marker exclusively, work, remove it. A writer of this version waits for it.
+    fn old_lock(dir: &tempfile::TempDir) -> std::io::Result<fs::File> {
+        fs::create_dir_all(dir.path().join(".hoi4-imagegen"))?;
+        OpenOptions::new().write(true).create_new(true).open(dir.path().join(LOCK_PATH))
+    }
+
+    #[test]
+    fn an_older_servers_marker_makes_an_append_wait_until_it_is_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        l.append("generated", Some("f.a"), None, json!({"n": 0})).unwrap();
+        let mut marker = old_lock(&dir).unwrap();
+        writeln!(marker, "4242").unwrap();
+        let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = released.clone();
+        let path = dir.path().join(LOCK_PATH);
+        let old_writer = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(400));
+            flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            drop(marker);
+            fs::remove_file(path).unwrap();
+        });
+        let e = l.append("generated", Some("f.a"), None, json!({"n": 1})).unwrap();
+        assert!(released.load(std::sync::atomic::Ordering::SeqCst), "the append waited for the older server to finish");
+        assert_eq!(e.seq, 2);
+        old_writer.join().unwrap();
+        assert!(l.verify().unwrap().ok);
+    }
+
+    #[test]
+    fn while_this_version_appends_an_older_server_sees_its_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        let guard = l.lock().unwrap();
+        let err = old_lock(&dir).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::AlreadyExists, "0.3.x finds the marker and waits");
+        // another writer of this version waits too, and its error names the version
+        let err = l.lock_within(Duration::from_millis(150)).err().unwrap().to_string();
+        assert!(err.contains("another hoi4-imagegen process") && err.contains(env!("CARGO_PKG_VERSION")), "{err}");
+        drop(guard);
+        assert!(!dir.path().join(LOCK_PATH).exists(), "the marker is removed on release");
+        drop(old_lock(&dir).unwrap());
+    }
+
+    #[test]
+    fn a_marker_that_blocks_for_good_is_named_as_a_version_clash() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        let mut marker = old_lock(&dir).unwrap();
+        writeln!(marker, "4242").unwrap();
+        let err = l.lock_within(Duration::from_millis(150)).err().unwrap().to_string();
+        assert!(
+            err.contains("ledger.lock") && err.contains("older version") && err.contains("process 4242") && err.contains(env!("CARGO_PKG_VERSION")),
+            "{err}"
+        );
+        assert!(dir.path().join(LOCK_PATH).exists(), "a live older server's marker is never removed");
+    }
+
+    /// 0.4.4 leaves an empty marker on disk for good and locks it at the OS level while it appends.
+    #[test]
+    fn a_leftover_empty_marker_does_not_block_and_an_os_locked_one_does() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        let leftover = old_lock(&dir).unwrap();
+        drop(leftover);
+        std::thread::sleep(Duration::from_millis(2100));
+        l.append("generated", Some("f.a"), None, json!({"n": 1})).unwrap();
+        assert!(!dir.path().join(LOCK_PATH).exists());
+        // a 0.4.4 server in the middle of an append
+        let held = OpenOptions::new().create(true).truncate(false).write(true).open(dir.path().join(LOCK_PATH)).unwrap();
+        held.try_lock().unwrap();
+        std::thread::sleep(Duration::from_millis(2100));
+        let err = l.lock_within(Duration::from_millis(200)).err().unwrap().to_string();
+        assert!(err.contains("ledger.lock"), "{err}");
+        held.unlock().unwrap();
+        drop(held);
+        l.append("generated", Some("f.a"), None, json!({"n": 2})).unwrap();
+        assert!(l.verify().unwrap().ok);
+    }
+
+    /// An older server crashed in the middle of an append: its marker is old and nobody holds it.
+    #[test]
+    fn a_crashed_servers_old_marker_is_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        let mut marker = old_lock(&dir).unwrap();
+        writeln!(marker, "4242").unwrap();
+        marker.set_modified(SystemTime::now() - Duration::from_secs(120)).unwrap();
+        drop(marker);
+        l.append("generated", Some("f.a"), None, json!({"n": 1})).unwrap();
+        assert!(l.verify().unwrap().ok);
     }
 
     /// Separate OS processes (this test binary, run again as children) append to one ledger at once.
