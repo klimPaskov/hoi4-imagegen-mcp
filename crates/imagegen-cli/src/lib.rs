@@ -77,6 +77,9 @@ pub enum Command {
     },
     /// Print the risk note that `login` shows.
     LoginRiskNote,
+    /// Clear the learned limit that sign-outs by the server lowered the number of ChatGPT-login requests at once to, so
+    /// the configured number is used again. No project needed.
+    ResetConcurrency,
     /// Sign out of ChatGPT and remove the stored tokens. No project needed.
     Logout,
     /// Check or repair the provenance ledger (`.hoi4-imagegen/ledger.jsonl`). Opens no providers and makes no request.
@@ -279,6 +282,7 @@ pub fn account_action(command: &Command) -> Option<(&str, bool)> {
         Command::Login { accept_risk } => Some(("login", *accept_risk)),
         Command::LoginStatus { check } => Some((if *check { "status-check" } else { "status" }, false)),
         Command::LoginRiskNote => Some(("risk-note", false)),
+        Command::ResetConcurrency => Some(("reset-concurrency", false)),
         Command::Logout => Some(("logout", false)),
         Command::ChatgptLogin { action } => Some((action.as_str(), false)),
         _ => None,
@@ -513,7 +517,12 @@ pub fn execute(engine: &Engine, cli: &Cli, out: &mut dyn Write) -> i32 {
             };
             Ok((dispatch(engine, tool, parsed)?, 0, None))
         }
-        Command::Login { .. } | Command::LoginStatus { .. } | Command::LoginRiskNote | Command::Logout | Command::ChatgptLogin { .. } => {
+        Command::Login { .. }
+        | Command::LoginStatus { .. }
+        | Command::LoginRiskNote
+        | Command::ResetConcurrency
+        | Command::Logout
+        | Command::ChatgptLogin { .. } => {
             let text = account(&cli.command, &*engine.env, &*engine.clock).map_err(EngineError::invalid)?;
             Ok((json!({"result": text}), 0, Some(text)))
         }
@@ -555,9 +564,9 @@ fn note_login_revocation(s: &mut Value, env: &dyn imagegen_core::config::EnvSour
 /// environment alone). The shape is `provider_chatgpt_login::route::report`. No request is made.
 #[cfg(test)]
 fn note_route_state(s: &mut Value, env: &dyn imagegen_core::config::EnvSource, now: i64) {
-    use provider_chatgpt_login::route::{configured_concurrency, report, Route};
+    use provider_chatgpt_login::route::{concurrency_setting, report, Route};
     let Some(store) = provider_chatgpt_login::store::CredentialStore::for_environment(env).ok() else { return };
-    s["chatgpt_login"]["route"] = report(&Route::new(store.state_dir()).state(), configured_concurrency(env, None), now);
+    s["chatgpt_login"]["route"] = report(&Route::new(store.state_dir()).state(), &concurrency_setting(env, None, None), now);
 }
 
 fn route_text(r: &Value) -> Option<String> {
@@ -574,6 +583,19 @@ fn route_text(r: &Value) -> Option<String> {
     }
     if let Some(m) = r["fallback"]["message"].as_str() {
         t.push_str(&format!("  warning: {m}\n"));
+    }
+    if let Some(limit) = r["concurrency"]["learned_limit"].as_u64() {
+        t.push_str(&format!(
+            "  warning: the learned limit is {limit} at once, lowered by one at each of the {} sign-outs by the server; `{}` clears it\n",
+            r["concurrency"]["sign_outs_seen"],
+            r["concurrency"]["reset"].as_str().unwrap_or("hoi4-imagegen reset-concurrency")
+        ));
+    }
+    let above = r["concurrency"]["needs_confirmation_above"].as_u64().unwrap_or(10);
+    if configured > above && r["concurrency"]["confirmed"] != json!(true) {
+        t.push_str(&format!(
+            "  warning: {configured} at once were asked for, but more than {above} needs your confirmation (concurrency_confirmed = true beside concurrency in .hoi4-imagegen/config.toml), so the route uses {above}\n"
+        ));
     }
     if let Some(m) = r["model_access_unverified"].as_object() {
         t.push_str(&format!(
@@ -1015,20 +1037,17 @@ mod tests {
         note_route_state(&mut s, &env, now);
         let text = doctor_text(&s);
         assert!(text.contains("sign-in revoked by the server: YES"));
-        // the revocation dropped the route to one request at a time, and the doctor says so
-        assert!(text.contains("requests at once: 1 (configured 3)"), "{text}");
-        assert!(
-            text.contains(
-                "warning: the ChatGPT-login route dropped to one request at a time on this machine after a sign-out by the server (token_revoked)"
-            ),
-            "{text}"
-        );
-        assert_eq!(s["chatgpt_login"]["route"]["fallback"]["reason"], json!("sign_out"));
-        // six hours later it is back to three
+        // the revocation lowered the learned limit from 10 to 9, and the doctor says so
+        assert!(text.contains("requests at once: 9 (configured 10)"), "{text}");
+        assert!(text.contains("warning: the learned limit is 9 at once, lowered by one at each of the 1 sign-outs by the server"), "{text}");
+        assert!(text.contains("hoi4-imagegen reset-concurrency"), "{text}");
+        assert!(s["chatgpt_login"]["route"]["fallback"].is_null(), "no fall back to one at a time");
+        assert_eq!(s["chatgpt_login"]["route"]["concurrency"]["learned_limit"], json!(9));
+        // the learned limit does not expire
         let mut s = json!({"chatgpt_login": {"state": "signed in"}});
-        note_route_state(&mut s, &env, now - 10 + provider_chatgpt_login::route::FALLBACK_HOLD_SECS);
+        note_route_state(&mut s, &env, now - 10 + 30 * 86_400);
         let text = doctor_text(&s);
-        assert!(text.contains("requests at once: up to 3 on this machine") && !text.contains("warning:"), "{text}");
+        assert!(text.contains("requests at once: 9 (configured 10)"), "{text}");
     }
 
     #[test]
@@ -1060,7 +1079,8 @@ mod tests {
         note_route_state(&mut s, &env, now);
         let text = doctor_text(&s);
         assert!(
-            text.contains("requests at once: 1 (configured 3)") && text.contains("warning: the ChatGPT-login route dropped to one request at a time"),
+            text.contains("requests at once: 1 (configured 10)")
+                && text.contains("warning: the ChatGPT-login route dropped to one request at a time"),
             "{text}"
         );
         assert!(text.contains("(model_access_unverified)"), "{text}");

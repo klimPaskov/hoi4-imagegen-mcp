@@ -44,6 +44,14 @@ pub fn run_with(action: &str, env: &dyn EnvSource, clock: &dyn Clock) -> Result<
             let provider = ChatGptLoginProvider::from_environment(env, Arc::new(UreqTransport::new()))?;
             status_check(&store, &provider, &CallContext::new())
         }
+        "reset-concurrency" => {
+            let had = Route::new(store.state_dir()).reset_concurrency()?;
+            Ok(if had {
+                "the learned limit is cleared: every process on this machine uses the configured number of requests at once".to_string()
+            } else {
+                "nothing to reset: no sign-out has lowered the number of requests at once".to_string()
+            })
+        }
         "logout" => {
             let existed = store.delete()?;
             // signing out also forgets the server-revoked record: there is nothing left for it to describe
@@ -63,7 +71,7 @@ pub fn run_with(action: &str, env: &dyn EnvSource, clock: &dyn Clock) -> Result<
             let note = if store.forget_old_keychain() { "\nremoved the Keychain item of an older sign-in" } else { "" };
             Ok(format!("{text}{note}"))
         }
-        other => Err(format!("unknown action '{other}': use login, status, status-check or logout")),
+        other => Err(format!("unknown action '{other}': use login, status, status-check, reset-concurrency or logout")),
     }
 }
 
@@ -170,7 +178,17 @@ pub fn status_text(store: &CredentialStore) -> Result<String, String> {
 pub fn status_text_at(store: &CredentialStore, now: i64) -> Result<String, String> {
     let route = Route::new(store.state_dir()).state();
     let stored = store.load()?;
-    let warning = route.active_fallback(now).map(|f| format!("\nwarning: {}", f.message())).unwrap_or_default();
+    let lowered = match route.step_down.as_ref() {
+        Some(d) => format!(
+            "\nnote: the learned limit is {} requests at once, lowered by one at each of the {} sign-outs by the server (the last at {}). `{}` clears it",
+            d.limit,
+            d.sign_outs,
+            d.last_sign_out_at,
+            route::RESET_COMMAND
+        ),
+        None => String::new(),
+    };
+    let warning = format!("{}{lowered}", route.active_fallback(now).map(|f| format!("\nwarning: {}", f.message())).unwrap_or_default());
     if let Some(msg) = route.revoked_message() {
         return Ok(format!("{msg}\nno request is made until you sign in again{warning}\nstored in: {}", store.location()));
     }
@@ -327,7 +345,7 @@ mod tests {
     #[test]
     fn the_risk_note_warns_about_concurrent_use_and_says_what_the_tool_now_does() {
         assert!(RISK_NOTE.contains("revoke") && RISK_NOTE.contains("every Codex sign-in") && RISK_NOTE.contains("signs you out of Codex"));
-        assert!(RISK_NOTE.contains("up to three requests at a time") && RISK_NOTE.contains("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY"));
+        assert!(RISK_NOTE.contains("up to ten requests at a time") && RISK_NOTE.contains("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY"));
         assert!(RISK_NOTE.contains("falls back to one request at a time"));
         assert!(RISK_NOTE.contains(&format!("{} seconds", crate::route::MIN_GAP_SECS)));
         let text = run_with("risk-note", &MapEnv::from_pairs(&[(crate::store::PATH_ENV, "x.json")]), &FixedClock(0)).unwrap();

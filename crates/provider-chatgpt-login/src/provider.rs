@@ -68,13 +68,24 @@ impl ChatGptLoginProvider {
     /// [`ChatGptLoginProvider::from_environment`] with `[providers.chatgpt_login] concurrency` from the project config.
     /// The environment variable wins over it.
     pub fn from_environment_with(env: &dyn EnvSource, transport: Arc<dyn HttpTransport>, concurrency: Option<i64>) -> Result<Self, String> {
+        Self::from_environment_confirmed(env, transport, concurrency, None)
+    }
+
+    /// [`ChatGptLoginProvider::from_environment_with`] with `[providers.chatgpt_login] concurrency_confirmed`: a number
+    /// above [`route::CONFIRMATION_ABOVE`] is used only when it is confirmed there or in the environment.
+    pub fn from_environment_confirmed(
+        env: &dyn EnvSource,
+        transport: Arc<dyn HttpTransport>,
+        concurrency: Option<i64>,
+        confirmed: Option<bool>,
+    ) -> Result<Self, String> {
         let mut p = Self::new(CredentialStore::for_environment(env)?, transport, Arc::new(SystemClock))
-            .with_concurrency(route::configured_concurrency(env, concurrency));
+            .with_concurrency(route::concurrency_setting(env, concurrency, confirmed).in_use);
         p.record_dir = env.get(RECORD_ENV).map(PathBuf::from);
         Ok(p)
     }
 
-    /// The same provider with `n` requests at once on the machine (clamped to 1..=16).
+    /// The same provider with `n` requests at once on the machine (at least one).
     pub fn with_concurrency(mut self, n: usize) -> Self {
         self.route = self.route.with_concurrency(n);
         self
@@ -127,7 +138,7 @@ impl ChatGptLoginProvider {
         self.route.state()
     }
 
-    /// The warning that the route dropped to one request at a time, while that holds.
+    /// The warning that the route dropped to one request at a time after a rate limit, while that holds.
     pub fn fallback_notice(&self) -> Option<String> {
         self.route.state().active_fallback(self.now_secs()).map(route::Fallback::message)
     }

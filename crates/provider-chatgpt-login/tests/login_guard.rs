@@ -137,14 +137,10 @@ fn a_401_is_recorded_reported_everywhere_and_no_call_is_made_afterwards() {
     let e = rig.generate().unwrap_err();
     assert_eq!((e.kind, e.retry), (ErrorKind::Auth, RetryClass::RequiresAuthorization), "never retried automatically");
     assert!(e.message.starts_with("signed out by the server (token revoked at 2026-11-01T19:32:14Z"), "{}", e.message);
-    assert!(e.message.contains("code token_revoked): run `hoi4-imagegen login` to sign in again; warning: "), "{}", e.message);
-    assert!(
-        e.message.ends_with("warning: the ChatGPT-login route dropped to one request at a time on this machine after a sign-out by the server (token_revoked) at 2026-11-01T19:32:14Z; it goes back to several at a time after 2026-11-02T01:32:14Z if no new sign-out or rate limit arrives"),
-        "{}",
-        e.message
-    );
+    assert!(e.message.ends_with("code token_revoked): run `hoi4-imagegen login` to sign in again"), "{}", e.message);
     assert_eq!(rig.backend_calls(), 1);
-    assert_eq!(rig.route().with_clock(rig.clock.clone()).effective_concurrency(), 1, "every new caller gets one slot");
+    let route = rig.route().with_clock(rig.clock.clone());
+    assert_eq!(route.effective_concurrency(), route.concurrency() - 1, "a sign-out lowers the learned limit by one, not to one request");
 
     // the record holds a time and a code, never a secret, a header or the body text
     let raw = std::fs::read_to_string(rig.dir.path().join("route-state.json")).unwrap();
@@ -169,26 +165,37 @@ fn a_401_is_recorded_reported_everywhere_and_no_call_is_made_afterwards() {
     assert!(status.contains("no request is made until you sign in again"));
     assert!(rig.provider.revocation_notice().unwrap().contains("hoi4-imagegen login"));
     let status = provider_chatgpt_login::cli::status_text_at(&rig.store(), NOW).unwrap();
-    assert!(status.contains("\nwarning: the ChatGPT-login route dropped to one request at a time on this machine after a sign-out"), "{status}");
+    assert!(!status.contains("warning"), "a sign-out is no warning: {status}");
+    assert!(status.contains("learned limit is 9") && status.contains("1 sign-outs"), "{status}");
 
     // `login-status --check` makes no call either
     let e = rig.provider.check(&ctx(&rig.sleeper)).unwrap_err();
     assert!(e.message.contains("signed out by the server"));
     assert_eq!(rig.fixture.requests().len(), 1);
 
-    // a fresh login (or logout) clears the revocation, and the route works again, still one request at a time
+    // a fresh login (or logout) clears the revocation, and the route carries on at the configured number
     rig.route().clear().unwrap();
     assert!(rig.provider.revocation_notice().is_none());
     let out = rig.generate().unwrap();
-    assert!(out.notes.iter().any(|n| n.starts_with("warning: the ChatGPT-login route dropped to one request at a time")), "{:?}", out.notes);
-    assert_eq!(rig.backend_calls(), 2);
-
-    // six hours after the sign-out the route goes back to the configured number, and the warning is gone
-    rig.clock.0.store(NOW + route::FALLBACK_HOLD_SECS, Ordering::SeqCst);
-    let out = rig.generate().unwrap();
     assert!(!out.notes.iter().any(|n| n.starts_with("warning:")), "{:?}", out.notes);
-    assert_eq!(rig.route().with_clock(rig.clock.clone()).effective_concurrency(), 3);
-    assert!(!provider_chatgpt_login::cli::status_text_at(&rig.store(), NOW + route::FALLBACK_HOLD_SECS).unwrap().contains("warning"));
+    assert_eq!(rig.backend_calls(), 2);
+    assert_eq!(
+        rig.route().with_clock(rig.clock.clone()).effective_concurrency(),
+        rig.route().concurrency() - 1,
+        "it carries on at the learned limit"
+    );
+
+    // every sign-out lowers it by one more, for every process, until the reset
+    rig.fixture.clear_route(Method::Post, BACKEND_PATH).respond(Method::Post, BACKEND_PATH, 401, &[], REVOKED_BODY);
+    rig.clock.0.store(NOW + 3600, Ordering::SeqCst);
+    assert!(rig.generate().is_err());
+    rig.route().clear().unwrap();
+    let route = rig.route().with_clock(rig.clock.clone());
+    assert_eq!(route.effective_concurrency(), route.concurrency() - 2);
+    let status = provider_chatgpt_login::cli::status_text_at(&rig.store(), NOW + 3600).unwrap();
+    assert!(status.contains("hoi4-imagegen reset-concurrency") && status.contains("2 sign-outs"), "{status}");
+    assert!(route.reset_concurrency().unwrap());
+    assert_eq!(route.effective_concurrency(), route.concurrency());
 }
 
 #[test]
@@ -444,9 +451,14 @@ fn a_caller_that_waits_too_long_gets_the_clear_error() {
     let rig = Rig::new(None);
     rig.fixture.respond(Method::Post, BACKEND_PATH, 200, &[], RECORDED);
     // other "processes" hold every slot; the sleeper does not sleep, so the bounded wait runs out at once
-    let held: Vec<_> = (0..3).map(|_| rig.route().acquire(&CancelToken::new(), &*rig.sleeper).unwrap()).collect();
+    let n = rig.provider.concurrency();
+    let held: Vec<_> = (0..n).map(|_| rig.route().acquire(&CancelToken::new(), &*rig.sleeper).unwrap()).collect();
     let e = rig.generate().unwrap_err();
-    assert!(e.message.contains("every ChatGPT-login slot on this machine is in use (3 request(s) at a time); try again shortly"), "{}", e.message);
+    assert!(
+        e.message.contains(&format!("every ChatGPT-login slot on this machine is in use ({n} request(s) at a time); try again shortly")),
+        "{}",
+        e.message
+    );
     assert_eq!(rig.backend_calls(), 0);
     drop(held);
     assert!(rig.generate().is_ok(), "the slots were released by the drop");

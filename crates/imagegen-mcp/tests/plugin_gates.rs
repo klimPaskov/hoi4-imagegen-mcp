@@ -124,22 +124,39 @@ fn the_login_tool_reports_an_existing_sign_in_and_is_refused_hosted() {
     assert!(e.status()["chatgpt_login"]["state"].as_str().unwrap().contains("hoi4.image_login"));
 }
 
-/// W5-8: `[providers.chatgpt_login] concurrency` reaches the provider and `hoi4.image_status`, the environment variable
-/// wins over it, and the route block shows a fall back to one at a time. No request is made.
+/// D-141: `[providers.chatgpt_login] concurrency` reaches the provider and `hoi4.image_status`, the environment variable
+/// wins over it, a number above 10 needs the user's confirmation, the default is 10, and the route block shows a fall
+/// back to one at a time after a rate limit. No request is made.
 #[test]
 fn the_configured_concurrency_and_a_fall_back_show_in_the_status_route_block() {
     let (_d, e) = open("", RunMode::LocalStdio, false, &[]);
     let r = &e.status()["chatgpt_login"]["route"];
-    assert_eq!((r["concurrency"]["configured"].as_u64(), r["concurrency"]["effective"].as_u64()), (Some(3), Some(3)), "{r}");
-    assert!(r["fallback"].is_null());
+    assert_eq!((r["concurrency"]["configured"].as_u64(), r["concurrency"]["effective"].as_u64()), (Some(10), Some(10)), "the default is ten: {r}");
+    assert!(r["fallback"].is_null() && r["concurrency"]["reason"].is_null());
 
     let (d, e) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[]);
     assert_eq!(e.status()["chatgpt_login"]["route"]["concurrency"]["configured"], 2);
+    // the variable wins; above ten without a confirmation the route uses ten and says why
     let (_d2, e2) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "20")]);
-    assert_eq!(e2.status()["chatgpt_login"]["route"]["concurrency"]["configured"], 16, "the variable wins and is clamped to 16");
-    let (_d3, e3) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "10")]);
-    let r3 = &e3.status()["chatgpt_login"]["route"]["concurrency"];
-    assert_eq!((r3["configured"].as_u64(), r3["effective"].as_u64()), (Some(10), Some(10)), "ten is kept as ten");
+    let c2 = e2.status()["chatgpt_login"]["route"]["concurrency"].clone();
+    assert_eq!((c2["configured"].as_u64(), c2["effective"].as_u64(), c2["confirmed"].as_bool()), (Some(20), Some(10), Some(false)), "{c2}");
+    assert!(c2["reason"].as_str().unwrap().contains("concurrency_confirmed = true"), "{c2}");
+    // confirmed in the environment, or beside the number in the config: the number is used
+    let (_d3, e3) = open(
+        "[providers.chatgpt_login]\nconcurrency = 2\n",
+        RunMode::LocalStdio,
+        false,
+        &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "20"), ("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED", "1")],
+    );
+    let c3 = e3.status()["chatgpt_login"]["route"]["concurrency"].clone();
+    assert_eq!((c3["configured"].as_u64(), c3["effective"].as_u64(), c3["confirmed"].as_bool()), (Some(20), Some(20), Some(true)), "{c3}");
+    let (_d4, e4) = open("[providers.chatgpt_login]\nconcurrency = 30\nconcurrency_confirmed = true\n", RunMode::LocalStdio, false, &[]);
+    assert_eq!(e4.status()["chatgpt_login"]["route"]["concurrency"]["effective"], 30);
+    let (_d5, e5) = open("[providers.chatgpt_login]\nconcurrency = 30\n", RunMode::LocalStdio, false, &[]);
+    assert_eq!(e5.status()["chatgpt_login"]["route"]["concurrency"]["effective"], 10, "no confirmation, so ten");
+    let (_d6, e6) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "10")]);
+    let c6 = &e6.status()["chatgpt_login"]["route"]["concurrency"];
+    assert_eq!((c6["configured"].as_u64(), c6["effective"].as_u64()), (Some(10), Some(10)), "ten is kept as ten");
 
     // SYNTHETIC state: a 429 recorded on this machine a minute ago
     let route = provider_chatgpt_login::route::Route::new(CredentialStore::at(d.path().join("chatgpt-auth.json")).state_dir());

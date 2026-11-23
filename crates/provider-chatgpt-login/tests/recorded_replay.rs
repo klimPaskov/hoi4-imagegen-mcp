@@ -139,14 +139,10 @@ fn rejected_tokens_and_rate_limits_are_reported_plainly() {
     let (d, _f, p) = replay(401, "{\"detail\":\"Unauthorized\"}".into(), None);
     let e = p.generate(&request(), &CallContext::new()).unwrap_err();
     assert_eq!((e.kind, e.retry), (ErrorKind::Auth, RetryClass::RequiresAuthorization));
-    assert!(
-        e.message
-            .contains("warning: the ChatGPT-login route dropped to one request at a time on this machine after a sign-out by the server (http_401)"),
-        "{}",
-        e.message
-    );
+    assert!(!e.message.contains("warning"), "a sign-out no longer drops the route to one request at a time: {}", e.message);
     let state = provider_chatgpt_login::route::Route::new(Some(d.path().to_path_buf())).state();
-    assert_eq!(state.fallback.map(|f| f.reason), Some("sign_out".to_string()));
+    assert!(state.fallback.is_none() && state.revoked.is_some());
+    assert_eq!(state.step_down.map(|d| (d.sign_outs, d.limit)), Some((1, 9)), "the sign-out lowered the learned limit from 10 to 9");
     let (_d, _f, p) = replay(429, "{\"detail\":\"rate limited\"}".into(), None);
     // the route backs off between tries; this sleeper only records, so the test does not really wait
     struct NoSleep;
@@ -178,7 +174,7 @@ fn after_an_injected_429_the_recorded_answer_comes_back_in_one_slot_with_the_war
     );
     let route = provider_chatgpt_login::route::Route::new(Some(d.path().to_path_buf())).with_clock(Arc::new(FixedClock(1_793_561_534)));
     assert_eq!(route.effective_concurrency(), 1, "every new caller on the machine gets one slot");
-    assert_eq!(route.concurrency(), 3, "the configured number is unchanged");
+    assert_eq!(route.concurrency(), 10, "the configured number is unchanged");
 }
 
 #[test]
@@ -386,6 +382,10 @@ fn provider_at(dir: &Path, now: i64, status: u16, body: String) -> (Arc<FixtureT
     (fixture, p)
 }
 
+fn three() -> provider_chatgpt_login::route::ConcurrencySetting {
+    provider_chatgpt_login::route::ConcurrencySetting { requested: 3, source: "config", confirmed: false, in_use: 3 }
+}
+
 fn route_at(dir: &Path, now: i64) -> provider_chatgpt_login::route::Route {
     provider_chatgpt_login::route::Route::new(Some(dir.to_path_buf())).with_clock(Arc::new(FixedClock(now)))
 }
@@ -413,7 +413,7 @@ fn one_model_access_answer_pauses_only_that_slot_and_is_retryable() {
     assert_eq!((m.count, m.last_epoch, m.previous_epoch), (1, T0, None));
     assert_eq!(state.slot_pause.get("0"), Some(&(T0 + 60)));
     assert_eq!(state.fallback, None);
-    assert_eq!(route_at(d.path(), T0).effective_concurrency(), 3, "the other slots keep running");
+    assert_eq!(route_at(d.path(), T0).effective_concurrency(), 10, "the other slots keep running");
 
     // slot 0 waits 60 s, slot 1 is not held back
     let r = route_at(d.path(), T0);
@@ -434,7 +434,7 @@ fn one_model_access_answer_pauses_only_that_slot_and_is_retryable() {
     assert!(!out.notes.iter().any(|n| n.starts_with("warning:")), "{:?}", out.notes);
 
     // the status shows what happened
-    let report = provider_chatgpt_login::route::report(&route_at(d.path(), T0 + 10).state(), 3, T0 + 10);
+    let report = provider_chatgpt_login::route::report(&route_at(d.path(), T0 + 10).state(), &three(), T0 + 10);
     let m = &report["model_access_unverified"];
     assert_eq!((m["count"].as_u64(), m["last_at"].as_str(), m["last_ago_secs"].as_i64()), (Some(1), Some("2026-11-01T19:32:14Z"), Some(10)));
     assert_eq!(m["slot_pauses"][0]["slot"], 0);
@@ -474,14 +474,14 @@ fn a_second_model_access_answer_within_fifteen_minutes_drops_the_route_to_one_at
         out.notes
     );
     assert!(p.fallback_notice().is_some());
-    let report = provider_chatgpt_login::route::report(&route_at(d.path(), t1 + 120).state(), 3, t1 + 120);
+    let report = provider_chatgpt_login::route::report(&route_at(d.path(), t1 + 120).state(), &three(), t1 + 120);
     assert_eq!(report["fallback"]["reason"], "model_access_unverified");
     assert_eq!(report["concurrency"]["effective"], 1);
     assert_eq!(report["model_access_unverified"]["count"], 2);
 
     // it ends an hour after the last occurrence
     assert_eq!(route_at(d.path(), t1 + 3599).effective_concurrency(), 1);
-    assert_eq!(route_at(d.path(), t1 + 3600).effective_concurrency(), 3, "back to three after an hour");
+    assert_eq!(route_at(d.path(), t1 + 3600).effective_concurrency(), 10, "back to the configured number after an hour");
 }
 
 #[test]
@@ -495,7 +495,7 @@ fn two_model_access_answers_twenty_minutes_apart_do_not_drop_the_route() {
     let state = route_at(d.path(), t1).state();
     assert_eq!(state.model_access.as_ref().map(|m| m.count), Some(2), "both are counted");
     assert_eq!(state.fallback, None);
-    assert_eq!(route_at(d.path(), t1).effective_concurrency(), 3);
+    assert_eq!(route_at(d.path(), t1).effective_concurrency(), 10);
     // the window is measured from the last occurrence: a third one 10 minutes after the second does trigger it
     let (_f, p) = provider_at(d.path(), t1 + 600, 200, injected_model_access_error());
     assert!(p.generate(&request(), &no_sleep()).unwrap_err().message.contains("warning:"));

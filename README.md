@@ -138,7 +138,7 @@ Once you have signed in, the ChatGPT login is the default provider on your machi
 
 **Which image model.** The ChatGPT sign-in route uses ChatGPT's current image model, and the backend picks it. The OpenAI API route defaults to GPT-Image 2.6 Flare for icons and small sprites and GPT-Image 2.6 Sunburst for edits, larger images, portraits, animations and model references. A model you name always wins.
 
-Before you use the login, know that it calls a ChatGPT backend that OpenAI does not document for other tools, so it can change or be blocked without notice. Heavy use counts against your plan, and the consequences are yours. The risk note is shown as information at sign-in, and signing in accepts it. How the route picks the reasoning effort, how many requests it sends at once and when it slows down are in [docs/chatgpt-login.md](docs/chatgpt-login.md).
+Before you use the login, know that it calls a ChatGPT backend that OpenAI does not document for other tools, so it can change or be blocked without notice. Heavy use counts against your plan, and the consequences are yours. The route sends up to ten requests at once by default, a higher number needs your confirmation (`concurrency_confirmed = true` beside `concurrency` under `[providers.chatgpt_login]` in `.hoi4-imagegen/config.toml`, or `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED=1`), and every sign-out by the server lowers the number by one until you reset it with `hoi4-imagegen reset-concurrency`. The risk note is shown as information at sign-in, and signing in accepts it. How the route picks the reasoning effort, how many requests it sends at once and when it slows down are in [docs/chatgpt-login.md](docs/chatgpt-login.md).
 
 ## Documentation
 

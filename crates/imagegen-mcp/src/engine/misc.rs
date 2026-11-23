@@ -96,13 +96,14 @@ impl Engine {
     /// effective), the fall back to one at a time, revocation, refused efforts, the last request and any backoff.
     /// `None` when the provider is not registered (hosted mode) or there is no per-user data folder. No request is made.
     pub fn chatgpt_route_report(&self) -> Option<Value> {
-        use provider_chatgpt_login::route::{configured_concurrency, report, Route};
+        use provider_chatgpt_login::route::{concurrency_setting, report, Route};
         if !self.plugin.enabled {
             return None;
         }
         let store = provider_chatgpt_login::store::CredentialStore::for_environment(&*self.env).ok()?;
-        let configured = configured_concurrency(&*self.env, self.config.provider("chatgpt_login").concurrency);
-        Some(report(&Route::new(store.state_dir()).state(), configured, self.clock.now_secs()))
+        let login = self.config.provider("chatgpt_login");
+        let setting = concurrency_setting(&*self.env, login.concurrency, login.concurrency_confirmed);
+        Some(report(&Route::new(store.state_dir()).state(), &setting, self.clock.now_secs()))
     }
 
     /// The style sources of a family: the tiers found with their counts, the references the plan would send with

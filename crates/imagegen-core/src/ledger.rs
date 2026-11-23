@@ -6,7 +6,7 @@
 //! and config, and is meant to be committed with the mod.
 
 use std::fs::{self, OpenOptions, TryLockError};
-use std::io::{ErrorKind, Write};
+use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
@@ -100,40 +100,101 @@ pub struct Ledger {
 }
 
 /// The ledger lock of one append. It speaks every protocol in use, so servers of different versions on one machine
-/// keep one chain: an OS lock on `ledger.mutex` (0.4.5 and later against each other), the marker file `ledger.lock`
-/// created exclusively (0.3.x and 0.4.0 to 0.4.3 wait while it exists), and an OS lock on that marker (0.4.4). A crash
-/// releases the OS locks at once, and a marker that nobody holds is removed by the next writer once it is stale.
+/// keep one chain: an OS lock on `ledger.mutex` (0.4.5 and later against each other), the marker file `ledger.lock`,
+/// which exists while the append runs (0.3.x and 0.4.0 to 0.4.3 create it exclusively and wait while it exists), and an
+/// OS lock on that marker (0.4.4 opens the file once and polls the lock on that open handle).
+///
+/// A marker is never taken away from anybody who may be waiting on it. A 0.4.4 server holding a handle on the file
+/// would otherwise lock a file that no longer has a name while the next writer creates a new one, and both would
+/// append at once (the fork of 2026-11-23). So a writer that finds the marker free adopts that very file, locks it and
+/// writes its process id into it, and on release marks it `released` and removes it only when nobody else has it open
+/// (Windows can tell by an exclusive open; elsewhere the OS offers no such check, so it is removed as before).
 struct LockGuard {
     mutex: fs::File,
     marker: Option<fs::File>,
     marker_path: PathBuf,
 }
 
+/// What a marker holds once its writer is done with it and could not remove it: nobody owns it any more.
+const RELEASED_NOTE: &[u8] = b"released\n";
+
 impl Drop for LockGuard {
     fn drop(&mut self) {
-        if let Some(marker) = self.marker.take() {
+        if let Some(mut marker) = self.marker.take() {
+            // say that the marker is free, for the writers that find it left behind (a 0.4.4 server that waited on it)
+            let _ = marker.set_len(0);
+            let _ = marker.seek(SeekFrom::Start(0));
+            let _ = marker.write_all(RELEASED_NOTE);
             let _ = marker.unlock();
             drop(marker);
-            // On Windows the removal can fail for a moment (another process's failed open still holds a handle). A marker
-            // that stays behind blocks older versions for a minute, so the removal is retried.
-            for _ in 0..200 {
-                match fs::remove_file(&self.marker_path) {
-                    Ok(()) => break,
-                    Err(e) if e.kind() == ErrorKind::NotFound => break,
-                    Err(_) => std::thread::sleep(Duration::from_millis(2)),
-                }
-            }
+            remove_marker_unless_open(&self.marker_path, 5);
         }
         let _ = self.mutex.unlock();
     }
 }
 
-/// True for a marker nobody holds that a crashed writer left: older than [`STALE_AFTER`], or empty and a moment old
-/// (0.4.4 leaves its marker empty on disk for good, and 0.3.x writes its process id at once).
-fn marker_is_stale(path: &Path) -> bool {
-    let Ok(meta) = fs::metadata(path) else { return false };
+/// Remove the marker if nobody else has it open. Returns true when it is gone.
+#[cfg(windows)]
+fn remove_marker_unless_open(path: &Path, tries: u32) -> bool {
+    use std::os::windows::fs::OpenOptionsExt;
+    const DELETE: u32 = 0x0001_0000;
+    const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x0400_0000;
+    // an exclusive open (no sharing at all) fails while any other handle exists, a waiting 0.4.4 server's included, and
+    // while it is open nobody can open the file; it goes when this handle closes
+    for _ in 0..tries.max(1) {
+        match OpenOptions::new().access_mode(DELETE).share_mode(0).custom_flags(FILE_FLAG_DELETE_ON_CLOSE).open(path) {
+            Ok(handle) => {
+                drop(handle);
+                return true;
+            }
+            Err(e) if e.kind() == ErrorKind::NotFound => return true,
+            // another writer probing the marker holds a handle for a moment: try again shortly, and give up for good
+            // only when a handle stays (it is a waiting server's, which will take the lock on this very file)
+            Err(_) => std::thread::sleep(Duration::from_millis(1)),
+        }
+    }
+    false
+}
+
+#[cfg(not(windows))]
+fn remove_marker_unless_open(path: &Path, tries: u32) -> bool {
+    for _ in 0..tries.max(1) {
+        match fs::remove_file(path) {
+            Ok(()) => return true,
+            Err(e) if e.kind() == ErrorKind::NotFound => return true,
+            Err(_) => std::thread::sleep(Duration::from_millis(2)),
+        }
+    }
+    false
+}
+
+/// Open the marker, sharing it for reading and writing but not for deletion on Windows, so nobody can remove or rename
+/// it while it is held. With `create_new` the file must not exist yet.
+fn open_marker(path: &Path, create_new: bool) -> std::io::Result<fs::File> {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true);
+    if create_new {
+        options.create_new(true);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.share_mode(0x1 | 0x2); // FILE_SHARE_READ | FILE_SHARE_WRITE
+    }
+    options.open(path)
+}
+
+/// True when a marker that nobody holds at the OS level is not an older server's live lock: it says it was released,
+/// is empty and a moment old (0.4.4 leaves its marker empty on disk for good, and 0.3.x writes its process id at once),
+/// or is older than [`STALE_AFTER`] (a crashed writer's).
+fn marker_is_free(file: &mut fs::File) -> bool {
+    let Ok(meta) = file.metadata() else { return false };
     let age = meta.modified().ok().and_then(|t| SystemTime::now().duration_since(t).ok()).unwrap_or_default();
-    age > STALE_AFTER || (meta.len() == 0 && age > Duration::from_secs(2))
+    if age > STALE_AFTER || (meta.len() == 0 && age > Duration::from_secs(2)) {
+        return true;
+    }
+    let mut text = Vec::new();
+    file.seek(SeekFrom::Start(0)).is_ok() && file.read_to_end(&mut text).is_ok() && text == RELEASED_NOTE
 }
 
 impl Ledger {
@@ -172,44 +233,50 @@ impl Ledger {
         // from here the guard releases the mutex on every way out
         let mut guard = LockGuard { mutex, marker: None, marker_path: marker_path.clone() };
         loop {
-            match OpenOptions::new().write(true).create_new(true).open(&marker_path) {
-                Ok(mut f) => {
-                    // 0.4.4 locks this file at the OS level, so hold that lock as well
-                    let _ = f.try_lock();
-                    let _ = writeln!(f, "{}", std::process::id());
-                    guard.marker = Some(f);
-                    return Ok(guard);
-                }
+            // a marker that does not exist yet is created here and is ours; one that exists is adopted when it is free
+            let taken = match open_marker(&marker_path, true) {
+                Ok(f) => match f.try_lock() {
+                    Ok(()) => Some(f),
+                    Err(_) => None,
+                },
                 Err(e) if matches!(e.kind(), ErrorKind::AlreadyExists | ErrorKind::PermissionDenied | ErrorKind::NotFound) => {
-                    // Some other version holds the marker, or a crashed one left it. Under the mutex no 0.4.5 writer
-                    // can be mid-append, so a marker that is OS-locked belongs to a live 0.4.4 server and one that is not
-                    // is an older version's or a leftover.
-                    if let Ok(f) = OpenOptions::new().write(true).open(&marker_path) {
-                        if f.try_lock().is_ok() {
-                            let _ = f.unlock();
-                            drop(f);
-                            if marker_is_stale(&marker_path) {
-                                let _ = fs::remove_file(&marker_path);
-                                continue;
+                    // Under the mutex no 0.4.5 or later writer is mid-append, so a marker that is OS-locked belongs to a
+                    // live 0.4.4 server, and one that is not is a 0.3.x server's (it holds no OS lock; its process id and
+                    // a recent time say so), or free.
+                    match open_marker(&marker_path, false) {
+                        Ok(mut f) if f.try_lock().is_ok() => {
+                            if marker_is_free(&mut f) {
+                                Some(f)
+                            } else {
+                                let _ = f.unlock();
+                                None
                             }
                         }
+                        _ => None,
                     }
-                    if started.elapsed() > wait {
-                        let holder = fs::read_to_string(&marker_path)
-                            .ok()
-                            .and_then(|t| t.trim().parse::<u32>().ok())
-                            .map_or(String::new(), |pid| format!(" (process {pid})"));
-                        return Err(Error::Ledger(format!(
-                            "timed out waiting for the ledger lock: .hoi4-imagegen/ledger.lock is held by another hoi4-imagegen process{holder}, \
-                             which may be an older version (this is {}). 0.3.x servers lock with that file and 0.4.4 locks it at the OS level; \
-                             from 0.4.5 every version takes both. Close the older server (or wait for its call to end) and retry",
-                            env!("CARGO_PKG_VERSION")
-                        )));
-                    }
-                    std::thread::sleep(Duration::from_millis(5));
                 }
                 Err(e) => return Err(Error::io(marker_path.display(), e)),
+            };
+            if let Some(mut f) = taken {
+                let _ = f.set_len(0);
+                let _ = f.seek(SeekFrom::Start(0));
+                let _ = writeln!(f, "{}", std::process::id());
+                guard.marker = Some(f);
+                return Ok(guard);
             }
+            if started.elapsed() > wait {
+                let holder = fs::read_to_string(&marker_path)
+                    .ok()
+                    .and_then(|t| t.trim().parse::<u32>().ok())
+                    .map_or(String::new(), |pid| format!(" (process {pid})"));
+                return Err(Error::Ledger(format!(
+                    "timed out waiting for the ledger lock: .hoi4-imagegen/ledger.lock is held by another hoi4-imagegen process{holder}, \
+                     which may be an older version (this is {}). 0.3.x servers lock with that file and 0.4.4 locks it at the OS level; \
+                     from 0.4.5 every version takes both. Close the older server (or wait for its call to end) and retry",
+                    env!("CARGO_PKG_VERSION")
+                )));
+            }
+            std::thread::sleep(Duration::from_millis(2));
         }
     }
 
@@ -217,6 +284,11 @@ impl Ledger {
     pub fn append(&self, kind: &str, asset_id: Option<&str>, artifact_id: Option<&str>, data: impl Serialize) -> Result<Entry> {
         let data = serde_json::to_value(data).map_err(|e| Error::Ledger(format!("cannot serialize event: {e}")))?;
         let _guard = self.lock()?;
+        self.append_locked(kind, asset_id, artifact_id, data)
+    }
+
+    /// The append itself, for a caller that holds the ledger lock.
+    fn append_locked(&self, kind: &str, asset_id: Option<&str>, artifact_id: Option<&str>, data: Value) -> Result<Entry> {
         let path = self.fs.resolve(LEDGER_PATH)?;
         let existing = match fs::read_to_string(&path) {
             Ok(s) => s,
@@ -672,7 +744,7 @@ mod tests {
         std::fs::write(&path, good.replacen("\"n\":2", "\"n\":3", 1)).unwrap();
         let before = std::fs::read_to_string(&path).unwrap();
         let err = l.append("generated", Some("f.a"), None, json!({"n": 4})).unwrap_err().to_string();
-        assert!(err.contains("chain is broken") && err.contains("hoi4.image_ledger"), "{err}");
+        assert!(err.contains("chain is broken") && err.contains("ledger verify") && err.contains("ledger repair"), "{err}");
         assert_eq!(std::fs::read_to_string(&path).unwrap(), before, "nothing was appended");
         // a line copied from another writer, with its own sequence number, is refused too
         std::fs::write(&path, format!("{good}{}\n", good.lines().next().unwrap())).unwrap();
@@ -905,6 +977,83 @@ mod tests {
         let err = l.repair("test", false).unwrap_err().to_string();
         assert!(err.contains("line 2") && err.contains("changed after it was written"), "{err}");
         assert_eq!(std::fs::read(l.path()).unwrap(), before, "nothing was changed");
+    }
+
+    /// What a 0.4.4 server does: open the marker once, poll an OS lock on that open handle, append, unlock.
+    fn append_like_0_4_4(l: &Ledger, dir: &Path, tag: &str, i: u32) {
+        let file = OpenOptions::new().create(true).truncate(false).write(true).open(dir.join(LOCK_PATH)).unwrap();
+        loop {
+            match file.try_lock() {
+                Ok(()) => break,
+                Err(TryLockError::WouldBlock) => std::hint::spin_loop(),
+                Err(TryLockError::Error(e)) => panic!("{e}"),
+            }
+        }
+        l.append_locked("generated", Some("f.a"), Some(&format!("f.a-{tag}-{i}")), json!({"tag": tag, "i": i})).unwrap();
+        let _ = file.unlock();
+    }
+
+    /// What 0.3.x and 0.4.0 to 0.4.3 do: create the marker exclusively, retry while it exists, append, remove it.
+    fn append_like_0_3(l: &Ledger, dir: &Path, tag: &str, i: u32) {
+        let path = dir.join(LOCK_PATH);
+        loop {
+            match OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(mut f) => {
+                    let _ = writeln!(f, "{}", std::process::id());
+                    break;
+                }
+                Err(_) => std::thread::sleep(Duration::from_millis(1)),
+            }
+        }
+        l.append_locked("generated", Some("f.a"), Some(&format!("f.a-{tag}-{i}")), json!({"tag": tag, "i": i})).unwrap();
+        for _ in 0..200 {
+            if fs::remove_file(&path).is_ok() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+
+    /// Writers of this version and of an older one, all appending at once from separate threads and handles.
+    fn old_and_new_writers_at_once(old: fn(&Ledger, &Path, &str, u32)) {
+        let dir = tempfile::tempdir().unwrap();
+        ledger(&dir).append("generated", Some("f.a"), None, json!({"start": true})).unwrap();
+        let per = 40u32;
+        let mut handles = Vec::new();
+        for w in 0..3 {
+            let (l, path) = (ledger(&dir), dir.path().to_path_buf());
+            handles.push(std::thread::spawn(move || {
+                for i in 0..per {
+                    old(&l, &path, &format!("old{w}"), i);
+                    std::thread::sleep(Duration::from_millis(u64::from(i % 3)));
+                }
+            }));
+            let l = ledger(&dir);
+            handles.push(std::thread::spawn(move || {
+                for i in 0..per {
+                    l.append("generated", Some("f.a"), Some(&format!("f.a-new{w}-{i}")), json!({"tag": "new", "i": i})).unwrap();
+                    std::thread::sleep(Duration::from_millis(u64::from(i % 2)));
+                }
+            }));
+        }
+        for h in handles {
+            h.join().unwrap();
+        }
+        let r = ledger(&dir).verify().unwrap();
+        assert!(r.ok && r.entries == 1 + 6 * u64::from(per), "{r:?}");
+    }
+
+    /// The fork of 2026-11-23: a 0.4.4 server waits on the marker file it opened, and the writer that releases it must
+    /// not delete that file under it. Windows only: elsewhere the OS cannot tell whether anyone has the file open.
+    #[cfg(windows)]
+    #[test]
+    fn a_0_4_4_writer_and_this_version_appending_at_once_keep_one_chain() {
+        old_and_new_writers_at_once(append_like_0_4_4);
+    }
+
+    #[test]
+    fn a_0_3_writer_and_this_version_appending_at_once_keep_one_chain() {
+        old_and_new_writers_at_once(append_like_0_3);
     }
 
     /// Separate OS processes (this test binary, run again as children) append to one ledger at once.
