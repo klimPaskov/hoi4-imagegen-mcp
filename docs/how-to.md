@@ -119,7 +119,7 @@ The family's rules already describe vanilla's form, so the brief only names the 
 | `rate limited by the ChatGPT plan (429)` | You hit your plan's limits. Wait and retry with the same `idempotency_key`, or use an API provider |
 | `the ChatGPT plan's usage limit is reached` | The plan's usage limit is spent. Wait for it to reset, or use an API provider |
 | `warning: the ChatGPT-login route dropped to one request at a time` | After a sign-out by the server or a rate limit, the route sends one request at a time on your machine for six hours. Nothing to do: it goes back to several at a time on its own, at the time the warning names |
-| `every ChatGPT-login slot on this machine is in use` | Other hoi4-imagegen requests used every slot for 10 minutes. Try again shortly. `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` (1 to 6, default 3) sets how many requests may run at once |
+| `every ChatGPT-login slot on this machine is in use` | Other hoi4-imagegen requests used every slot for 10 minutes. Try again shortly. `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` (1 to 16, default 3) sets how many requests may run at once |
 | `the provider's safety system refused this image` (a moderation block) | The brief or a reference was refused. Change the brief or the references and plan again. |
 | The backend ran another model, another effort, or did not say what it ran | The image was refused and not used. The route accepts only `gpt-6-luna`, at the effort it asked for (or the backend's default after the named efforts were refused). Retry later. If it keeps happening, the backend may have changed, so report it |
 | A plan that names a different model for the ChatGPT login | Refused at plan time. Leave `model` out |
@@ -167,7 +167,7 @@ The family's rules already describe vanilla's form, so the brief only names the 
 * Project state is in `.hoi4-imagegen/`: `config.toml`, `styles/`, style packs in `packs/`, plans, `ledger.jsonl` and records. The ledger is an append-only list of every reference, setting, hash, reviewer and output. `hoi4.image_ledger` reads it.
 * Working files are in `docs/assets/<feature>/`: source, processed images, prompts, contact sheets and `gfx_handoff.md`.
 * The server writes no log file. Its standard error carries messages for a person, and your AI client shows them in its MCP log.
-* `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` sets how many ChatGPT-login requests run at once on the machine, 1 to 6 (default 3). The slot locks and `route-state.json` are in your user data folder, next to the sign-in.
+* `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` sets how many ChatGPT-login requests run at once on the machine, 1 to 16 (default 3). The slot locks and `route-state.json` are in your user data folder, next to the sign-in.
 * `HOI4_IMAGEGEN_RECORD_RESPONSES=<folder>` saves each raw ChatGPT-backend response. Use it only to make a fixture, and read the files before sharing them.
 * Your sign-in and risk-note record are in your user data folder, never in the project.
 

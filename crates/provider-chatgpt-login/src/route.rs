@@ -6,13 +6,16 @@
 //! account was revoked by the server while several sessions generated through the Codex client id at once. The
 //! likely trigger is concurrency, so from then until 0.3.2 the route sent one request at a time. A maintainer decision
 //! of 2026-11-05 (W5-8, a trial) allows up to three requests at once across the machine, configurable from 1 to 6.
+//! The sign-in then held at six at once from 2026-11-21 with no revocation, so a maintainer decision of 2026-11-23
+//! (D-141) allows up to 16, configurable from 1 to 16 (0.4.7). The default stays three.
 //! Every request this route makes (a generation, a token refresh, the sign-in code exchange) holds one slot.
 //!
 //! Files next to the tokens in the per-user data folder (see [`crate::store::CredentialStore::state_dir`]):
-//! * `route.lock` (slot 0) and `route.lock.1` to `route.lock.5` (slots 1 to 5) are never read or written. Each only
+//! * `route.lock` (slot 0) and `route.lock.1` to `route.lock.15` (slots 1 to 15) are never read or written. Each only
 //!   carries an operating system file lock, which the system releases when the holding process dies, so a crash
 //!   cannot leave a slot stuck. Slot 0 keeps the file name of 0.3.2, so an older process and this one never send at
-//!   the same time through slot 0.
+//!   the same time through slot 0. A 0.4.6 or older process uses only slots 0 to 5, so it and this one never send at
+//!   the same time through a shared slot, and no slot is ever held twice.
 //! * `route-state.lock` carries a short-held lock around every read and every read-modify-write of the state file,
 //!   so several slot holders never lose each other's records.
 //! * `route-state.json` holds [`RouteState`]: the last request time of each slot (for pacing), the 429 backoff, the
@@ -52,9 +55,9 @@ pub const RATE_LIMIT_BACKOFF_MAX_SECS: i64 = 300;
 pub const RATE_LIMIT_MAX_RETRIES: u32 = 3;
 /// Requests at once on the machine when nothing is configured (maintainer decision W5-8, 2026-11-05).
 pub const DEFAULT_CONCURRENCY: usize = 3;
-/// The configured number of requests at once is clamped to this.
-pub const MAX_CONCURRENCY: usize = 6;
-/// Environment variable that sets the number of requests at once, 1 to 6. It wins over the project config.
+/// The configured number of requests at once is clamped to this (6 up to 0.4.6, 16 since 0.4.7, decision D-141).
+pub const MAX_CONCURRENCY: usize = 16;
+/// Environment variable that sets the number of requests at once, 1 to 16. It wins over the project config.
 pub const CONCURRENCY_ENV: &str = "HOI4_IMAGEGEN_CHATGPT_CONCURRENCY";
 /// How long the route stays at one request at a time after the last sign-out or rate limit.
 pub const FALLBACK_HOLD_SECS: i64 = 6 * 3600;
@@ -283,13 +286,13 @@ impl RouteState {
     }
 }
 
-/// Clamp a configured number of requests at once to 1..=6.
+/// Clamp a configured number of requests at once to 1..=16.
 pub fn clamp_concurrency(n: i64) -> usize {
     n.clamp(1, MAX_CONCURRENCY as i64) as usize
 }
 
 /// The configured number of requests at once: [`CONCURRENCY_ENV`] when it holds a whole number, else
-/// `[providers.chatgpt_login] concurrency` from the project config, else [`DEFAULT_CONCURRENCY`]. Clamped to 1..=6.
+/// `[providers.chatgpt_login] concurrency` from the project config, else [`DEFAULT_CONCURRENCY`]. Clamped to 1..=16.
 pub fn configured_concurrency(env: &dyn EnvSource, config: Option<i64>) -> usize {
     env.get(CONCURRENCY_ENV).and_then(|v| v.trim().parse::<i64>().ok()).or(config).map(clamp_concurrency).unwrap_or(DEFAULT_CONCURRENCY)
 }
@@ -428,7 +431,7 @@ impl Route {
         Route { dir, concurrency: DEFAULT_CONCURRENCY, clock: Arc::new(SystemClock) }
     }
 
-    /// The same route with `n` slots (clamped to 1..=6).
+    /// The same route with `n` slots (clamped to 1..=16).
     pub fn with_concurrency(mut self, n: usize) -> Self {
         self.concurrency = n.clamp(1, MAX_CONCURRENCY);
         self
@@ -591,7 +594,7 @@ impl fmt::Debug for RouteGuard {
 }
 
 impl RouteGuard {
-    /// The slot this guard holds, 0 to 5.
+    /// The slot this guard holds, 0 to 15.
     pub fn slot(&self) -> usize {
         self.slot
     }
@@ -918,6 +921,33 @@ mod tests {
         assert!(!sleeper.0.lock().unwrap().is_empty(), "it waited through the sleeper, not by spinning");
         drop(held);
         assert_eq!(route.acquire(&CancelToken::new(), &CountingSleeper::default()).unwrap().slot(), 0, "free again after the guards dropped");
+    }
+
+    #[test]
+    fn sixteen_slots_fill_and_an_older_process_still_shares_the_first_six() {
+        let d = work_dir();
+        // a configured number above the ceiling is clamped to it
+        let route = route_at(&d, 40, 1000);
+        assert_eq!(route.concurrency(), 16);
+        // a 0.4.6 process (ceiling 6) holds slot 5 through the same file
+        let old = open_lock(&slot_file(d.path(), 5)).unwrap();
+        old.try_lock().unwrap();
+        let held: Vec<RouteGuard> = (0..15).map(|_| route.acquire(&CancelToken::new(), &CountingSleeper::default()).unwrap()).collect();
+        let slots: Vec<usize> = held.iter().map(RouteGuard::slot).collect();
+        assert_eq!(slots, [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], "slot 5 belongs to the older process, so it is skipped");
+        assert!(d.path().join("route.lock.15").exists() && !d.path().join("route.lock.16").exists());
+        let e = route.acquire_within(&CancelToken::new(), &CountingSleeper::default(), Duration::from_secs(1)).unwrap_err();
+        assert!(e.message.contains("(16 request(s) at a time)"), "{}", e.message);
+        old.unlock().unwrap();
+        assert_eq!(route.acquire(&CancelToken::new(), &CountingSleeper::default()).unwrap().slot(), 5, "free again once the older process lets go");
+    }
+
+    #[test]
+    fn the_ceiling_is_sixteen_and_a_lower_setting_is_kept() {
+        assert_eq!(MAX_CONCURRENCY, 16);
+        assert_eq!((clamp_concurrency(0), clamp_concurrency(10), clamp_concurrency(16), clamp_concurrency(20)), (1, 10, 16, 16));
+        let st = RouteState::default();
+        assert_eq!((st.effective_concurrency(10, 1000), st.effective_concurrency(20, 1000)), (10, 16));
     }
 
     #[test]

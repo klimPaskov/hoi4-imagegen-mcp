@@ -25,7 +25,7 @@ ChatGPT login: read this once before signing in.
 * Running many generations at once, or from several tools that all present as Codex, can make OpenAI revoke
   every Codex sign-in on your account, which also signs you out of Codex itself. This happened on 2026-11-02.
   hoi4-imagegen sends up to three requests at a time on your machine (across every process; set
-  HOI4_IMAGEGEN_CHATGPT_CONCURRENCY from 1 to 6 to change it, 1 for one at a time). Each of those slots waits
+  HOI4_IMAGEGEN_CHATGPT_CONCURRENCY from 1 to 16 to change it, 1 for one at a time). Each of those slots waits
   at least 20 seconds between its requests, and every slot backs off when OpenAI says to slow down. After a
   sign-out by the server or a rate limit, the route falls back to one request at a time on the machine for
   six hours. If the server does revoke the sign-in, hoi4-imagegen records it, stops calling, and tells you

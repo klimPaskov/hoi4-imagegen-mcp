@@ -135,8 +135,11 @@ fn the_configured_concurrency_and_a_fall_back_show_in_the_status_route_block() {
 
     let (d, e) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[]);
     assert_eq!(e.status()["chatgpt_login"]["route"]["concurrency"]["configured"], 2);
-    let (_d2, e2) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "9")]);
-    assert_eq!(e2.status()["chatgpt_login"]["route"]["concurrency"]["configured"], 6, "the variable wins and is clamped");
+    let (_d2, e2) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "20")]);
+    assert_eq!(e2.status()["chatgpt_login"]["route"]["concurrency"]["configured"], 16, "the variable wins and is clamped to 16");
+    let (_d3, e3) = open("[providers.chatgpt_login]\nconcurrency = 2\n", RunMode::LocalStdio, false, &[("HOI4_IMAGEGEN_CHATGPT_CONCURRENCY", "10")]);
+    let r3 = &e3.status()["chatgpt_login"]["route"]["concurrency"];
+    assert_eq!((r3["configured"].as_u64(), r3["effective"].as_u64()), (Some(10), Some(10)), "ten is kept as ten");
 
     // SYNTHETIC state: a 429 recorded on this machine a minute ago
     let route = provider_chatgpt_login::route::Route::new(CredentialStore::at(d.path().join("chatgpt-auth.json")).state_dir());

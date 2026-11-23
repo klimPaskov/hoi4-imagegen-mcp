@@ -74,7 +74,7 @@ impl ChatGptLoginProvider {
         Ok(p)
     }
 
-    /// The same provider with `n` requests at once on the machine (clamped to 1..=6).
+    /// The same provider with `n` requests at once on the machine (clamped to 1..=16).
     pub fn with_concurrency(mut self, n: usize) -> Self {
         self.route = self.route.with_concurrency(n);
         self
