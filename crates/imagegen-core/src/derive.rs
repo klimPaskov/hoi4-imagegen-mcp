@@ -1315,7 +1315,13 @@ pub fn edge_finish(f: &Finish) -> Vec<String> {
 }
 
 /// Draft form lines for a switch that needs one (the vanilla rules would still ask for vanilla's form).
-pub fn draft_form(switches: &[&str]) -> Vec<String> {
+pub fn draft_form(family: Family, switches: &[&str]) -> Vec<String> {
+    if switches.contains(&"keep_colours") && family == Family::Raid {
+        return vec![
+            "One flat pictogram in the reference icons' own colours on a transparent background, with a clear silhouette, no frame and no gold tint."
+                .into(),
+        ];
+    }
     if switches.contains(&"keep_colours") {
         return vec![
             "One flat unit glyph in the reference glyphs' own colours on a transparent background, seen from the side, with no box and no shading."

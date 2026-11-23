@@ -351,7 +351,15 @@ impl Engine {
             }
             let sw = e.processing;
             let needs_form = [
-                (sw.keep_colours, "keep_colours", "the vanilla counter rules ask for a black silhouette that the tool recolours"),
+                (
+                    sw.keep_colours,
+                    "keep_colours",
+                    if *family == Family::Raid {
+                        "the vanilla raid rules ask for a pictogram that the tool recolours in vanilla's gold"
+                    } else {
+                        "the vanilla counter rules ask for a black silhouette that the tool recolours"
+                    },
+                ),
                 (sw.upright_print, "upright_print", "the vanilla report rules say the tool adds the tilt and frame"),
                 (sw.fill_canvas, "fill_canvas", "the vanilla rules ask for a transparent background"),
                 (sw.in_colour, "in_colour", "the vanilla rules ask for a black and white picture"),
@@ -368,7 +376,7 @@ impl Engine {
             }
             families.insert(
                 family.as_str().to_string(),
-                json!({"look": e.look, "form_override": !e.form.is_empty(), "negative_override": !e.negative.is_empty(), "canvas": e.canvas, "processing": sw.names(), "kinds": e.kinds.keys().map(|k| k.as_str()).collect::<Vec<_>>(), "checks": profile.imagegen.checks, "recipe": imagegen_core::chain::recipe_of(&profile).id(), "sets": entries}),
+                json!({"look": e.look, "form_override": !e.form.is_empty(), "negative_override": !e.negative.is_empty(), "canvas": e.canvas, "processing": sw.names().into_iter().filter(|s| imagegen_core::pack::switch_applies(s, &profile)).collect::<Vec<_>>(), "kinds": e.kinds.keys().map(|k| k.as_str()).collect::<Vec<_>>(), "checks": profile.imagegen.checks, "recipe": imagegen_core::chain::recipe_of(&profile).id(), "sets": entries}),
             );
         }
         Ok(json!({"name": name, "ok": problems.is_empty(), "problems": problems, "warnings": warnings, "families": families}))

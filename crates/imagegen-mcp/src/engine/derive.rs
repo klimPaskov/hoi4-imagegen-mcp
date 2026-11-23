@@ -268,7 +268,7 @@ impl Engine {
             in_colour: names.contains(&"in_colour"),
             ..Default::default()
         };
-        let form = derive::draft_form(&names);
+        let form = derive::draft_form(family, &names);
         report["status"] = json!("derived");
         report["pack_canvas"] = json!(pack_canvas);
         report["vanilla_canvas"] = json!(vanilla_canvas);

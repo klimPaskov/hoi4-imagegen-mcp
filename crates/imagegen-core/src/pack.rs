@@ -259,7 +259,7 @@ pub struct Resolved {
 pub fn switch_applies(switch: &str, profile: &Profile) -> bool {
     let recipe = crate::chain::recipe_of(&base_of(profile));
     match switch {
-        "keep_colours" => matches!(recipe, Recipe::UnitCounter | Recipe::DivisionSymbol),
+        "keep_colours" => matches!(recipe, Recipe::UnitCounter | Recipe::DivisionSymbol | Recipe::Raid),
         "upright_print" => matches!(recipe, Recipe::ReportCard | Recipe::PhaseCard),
         "fill_canvas" => recipe == Recipe::Icon,
         "crisp" => matches!(recipe, Recipe::Icon | Recipe::UnitCounter | Recipe::DivisionSymbol),
@@ -341,7 +341,10 @@ impl StylePack {
             }
             let profile = builtin.for_family(*family).expect("every family has a profile");
             for s in e.processing.names() {
-                if !switch_applies(s, profile) {
+                // snap_palette and edge_glow follow keep_colours by default, and a raid keeps its colours without them
+                let default_only =
+                    (s == "snap_palette" && e.processing.snap_palette.is_none()) || (s == "edge_glow" && e.processing.edge_glow.is_none());
+                if !default_only && !switch_applies(s, profile) {
                     return Err(Error::Invalid(format!("{at}.processing.{s} does not apply to {family} (see docs/reference.md, style packs)")));
                 }
             }

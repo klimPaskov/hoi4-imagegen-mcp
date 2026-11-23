@@ -360,7 +360,7 @@ impl Engine {
                 form_override: pack_form,
                 negative_override: pack_resolved.as_ref().is_some_and(|r| !r.negative.is_empty()),
                 canvas: pack_entry.and_then(|e| e.canvas),
-                processing: profile.processing().names().into_iter().map(str::to_string).collect(),
+                processing: profile.processing().names().into_iter().filter(|s| imagegen_core::pack::switch_applies(s, &profile)).map(str::to_string).collect(),
                 references,
                 detail,
             }
