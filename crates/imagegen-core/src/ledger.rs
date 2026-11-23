@@ -980,6 +980,7 @@ mod tests {
     }
 
     /// What a 0.4.4 server does: open the marker once, poll an OS lock on that open handle, append, unlock.
+    #[cfg(windows)]
     fn append_like_0_4_4(l: &Ledger, dir: &Path, tag: &str, i: u32) {
         let file = OpenOptions::new().create(true).truncate(false).write(true).open(dir.join(LOCK_PATH)).unwrap();
         loop {
