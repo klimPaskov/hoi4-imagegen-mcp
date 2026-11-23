@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use clap::Parser;
-use imagegen_cli::{account, account_action, execute, Cli};
+use imagegen_cli::{account, account_action, execute, is_ledger_command, ledger_command, Cli};
 use imagegen_core::config::ProcessEnv;
 use imagegen_core::hashing::SystemClock;
 use imagegen_mcp::{Engine, RunMode};
@@ -18,6 +18,19 @@ fn main() -> ExitCode {
             Ok(text) => {
                 println!("{text}");
                 ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("hoi4-imagegen: {e}");
+                ExitCode::from(1)
+            }
+        };
+    }
+    // the ledger commands need no engine, and a broken ledger must not stop them from running
+    if is_ledger_command(&cli.command) {
+        return match ledger_command(&cli, Arc::new(SystemClock)) {
+            Ok((text, code)) => {
+                println!("{text}");
+                ExitCode::from(u8::try_from(code).unwrap_or(1))
             }
             Err(e) => {
                 eprintln!("hoi4-imagegen: {e}");

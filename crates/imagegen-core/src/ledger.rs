@@ -71,6 +71,27 @@ pub struct VerifyReport {
     pub first_bad: Option<(u64, String)>,
 }
 
+/// What [`Ledger::repair`] did, or with `dry_run` what it would do.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RepairReport {
+    /// True when the file was changed.
+    pub repaired: bool,
+    /// True when nothing was written because only a look was asked for.
+    pub dry_run: bool,
+    /// Entries in the ledger before the repair.
+    pub entries_before: u64,
+    /// The 1-based line of the first bad entry, `None` when the chain was fine.
+    pub broken_at_line: Option<u64>,
+    /// What was wrong with that line.
+    pub why: Option<String>,
+    /// Entries from the bad line on, kept and chained after the repair entry.
+    pub moved: u64,
+    /// Sequence number of the `chain_repair` entry.
+    pub repair_seq: Option<u64>,
+    /// Project-relative path of the copy made before the change.
+    pub backup: Option<String>,
+}
+
 /// Handle to the ledger of one project.
 #[derive(Clone)]
 pub struct Ledger {
@@ -216,8 +237,8 @@ impl Ledger {
                 if last.seq != lines || entry_hash(&last) != last.hash {
                     return Err(Error::Ledger(format!(
                         "the ledger chain is broken at its end (last line {lines} says seq {}, or its hash does not match its content), so nothing was added. \
-                         Run `hoi4-imagegen call hoi4.image_ledger` to see the first bad entry, and restore .hoi4-imagegen/ledger.jsonl from version control or a backup. \
-                         Do not edit the file by hand",
+                         Run `hoi4-imagegen ledger verify` to see the first bad entry, then `hoi4-imagegen ledger repair --reason \"<what happened>\"` to chain it \
+                         again with a recorded repair entry (the file is backed up first). Do not edit the file by hand",
                         last.seq
                     )));
                 }
@@ -245,6 +266,181 @@ impl Ledger {
         f.write_all(line.as_bytes()).map_err(|e| Error::io(path.display(), e))?;
         f.sync_all().map_err(|e| Error::io(path.display(), e))?;
         Ok(entry)
+    }
+
+    /// Chain a broken ledger again without losing an entry. The first line whose sequence number or previous-hash link
+    /// is wrong (two writers appended from the same tail, so the same sequence number or the same previous hash
+    /// appears twice) and every line after it are kept with their content unchanged, but get new sequence numbers,
+    /// links and hashes after a `chain_repair` entry. That entry names the broken line, what was found, why, and the
+    /// old sequence number and hash of every moved entry. Lines before the break stay byte for byte. The whole file
+    /// is copied to `.hoi4-imagegen/ledger-backups/` first, and the new file replaces the old one only after the
+    /// whole new chain was checked in memory. An entry whose own hash does not match its content was altered after
+    /// it was written: that is not repaired.
+    pub fn repair(&self, reason: &str, dry_run: bool) -> Result<RepairReport> {
+        let reason = reason.trim();
+        if reason.is_empty() {
+            return Err(Error::Ledger("a repair needs a reason: say what happened, for example --reason \"two writers appended at once\"".into()));
+        }
+        let _guard = self.lock()?;
+        let path = self.fs.resolve(LEDGER_PATH)?;
+        let bytes = match fs::read(&path) {
+            Ok(b) => b,
+            Err(e) if e.kind() == ErrorKind::NotFound => Vec::new(),
+            Err(e) => return Err(Error::io(path.display(), e)),
+        };
+        let unchanged = |entries: u64| RepairReport { repaired: false, dry_run, entries_before: entries, ..RepairReport::default() };
+        if bytes.is_empty() {
+            return Ok(unchanged(0));
+        }
+        if !bytes.ends_with(b"\n") {
+            return Err(Error::Ledger("the ledger ends with a partial line (an interrupted write): inspect it before repairing".into()));
+        }
+        let text = String::from_utf8(bytes.clone()).map_err(|e| Error::Ledger(format!("the ledger is not UTF-8 text: {e}")))?;
+        let mut offsets = Vec::new();
+        let mut entries: Vec<Entry> = Vec::new();
+        let mut pos = 0usize;
+        for (i, line) in text.split_inclusive('\n').enumerate() {
+            offsets.push(pos);
+            pos += line.len();
+            let entry: Entry = serde_json::from_str(line.trim_end_matches(['\n', '\r']))
+                .map_err(|e| Error::Ledger(format!("ledger line {} is not a ledger entry ({e}): only whole entries can be chained again", i + 1)))?;
+            entries.push(entry);
+        }
+        // the first line whose sequence number or link is wrong
+        let mut prev = GENESIS.to_string();
+        let mut broken: Option<(usize, &'static str)> = None;
+        for (i, e) in entries.iter().enumerate() {
+            if e.seq != i as u64 + 1 {
+                broken = Some((i, "sequence number is not contiguous"));
+                break;
+            }
+            if e.prev != prev {
+                broken = Some((i, "previous-hash link is broken"));
+                break;
+            }
+            prev = e.hash.clone();
+        }
+        let Some((at, why)) = broken else {
+            return match entries.iter().position(|e| entry_hash(e) != e.hash) {
+                Some(i) => Err(Error::Ledger(format!(
+                    "ledger line {} does not match its own hash: its content was changed after it was written, which a repair does not hide",
+                    i + 1
+                ))),
+                None => Ok(unchanged(entries.len() as u64)),
+            };
+        };
+        // every kept and every moved entry must be what its writer wrote
+        if let Some(i) = entries.iter().position(|e| entry_hash(e) != e.hash) {
+            return Err(Error::Ledger(format!(
+                "ledger line {} does not match its own hash: its content was changed after it was written, which a repair does not hide",
+                i + 1
+            )));
+        }
+        let expected_prev = if at == 0 { GENESIS.to_string() } else { entries[at - 1].hash.clone() };
+        let stamp = self.clock.now_rfc3339();
+        let backup_rel = format!(".hoi4-imagegen/ledger-backups/ledger-before-repair-{}.jsonl", stamp.replace(':', "-"));
+        let found = &entries[at];
+        let moved: Vec<Value> = entries[at..]
+            .iter()
+            .enumerate()
+            .map(|(k, e)| {
+                json!({"old_seq": e.seq, "old_prev": e.prev, "old_hash": e.hash, "new_seq": at as u64 + 2 + k as u64,
+                       "kind": e.kind, "asset_id": e.asset_id, "artifact_id": e.artifact_id, "ts": e.ts})
+            })
+            .collect();
+        let repair_data = json!({
+            "reason": reason,
+            "tool_version": env!("CARGO_PKG_VERSION"),
+            "broken_at_line": at + 1,
+            "found": {"seq": found.seq, "prev": found.prev, "hash": found.hash, "kind": found.kind,
+                      "expected_seq": at as u64 + 1, "expected_prev": expected_prev, "why": why},
+            "moved_entries": moved.len(),
+            "moved": moved.iter().take(200).collect::<Vec<_>>(),
+            "backup": backup_rel,
+        });
+        let mut rebuilt: Vec<Entry> = Vec::with_capacity(entries.len() - at + 1);
+        let mut link = expected_prev.clone();
+        let mut repair_entry = Entry {
+            seq: at as u64 + 1,
+            ts: stamp.clone(),
+            kind: "chain_repair".into(),
+            asset_id: None,
+            artifact_id: None,
+            data: repair_data,
+            prev: link.clone(),
+            hash: String::new(),
+        };
+        repair_entry.hash = entry_hash(&repair_entry);
+        link = repair_entry.hash.clone();
+        rebuilt.push(repair_entry);
+        for (k, e) in entries[at..].iter().enumerate() {
+            let mut moved = e.clone();
+            moved.seq = at as u64 + 2 + k as u64;
+            moved.prev = link.clone();
+            moved.hash = entry_hash(&moved);
+            link = moved.hash.clone();
+            rebuilt.push(moved);
+        }
+        let report = RepairReport {
+            repaired: !dry_run,
+            dry_run,
+            entries_before: entries.len() as u64,
+            broken_at_line: Some(at as u64 + 1),
+            why: Some(why.to_string()),
+            moved: entries.len() as u64 - at as u64,
+            repair_seq: Some(at as u64 + 1),
+            backup: Some(backup_rel.clone()),
+        };
+        if dry_run {
+            return Ok(report);
+        }
+        let mut out: Vec<u8> = bytes[..offsets[at]].to_vec();
+        for e in &rebuilt {
+            out.extend_from_slice(serde_json::to_string(e).map_err(|e| Error::Ledger(e.to_string()))?.as_bytes());
+            out.push(b'\n');
+        }
+        // the new chain, read back from the new bytes, must verify before anything is replaced
+        let mut check_prev = GENESIS.to_string();
+        for (i, line) in String::from_utf8_lossy(&out).lines().enumerate() {
+            let e: Entry =
+                serde_json::from_str(line).map_err(|e| Error::Ledger(format!("the repaired chain does not read back at line {}: {e}", i + 1)))?;
+            if e.seq != i as u64 + 1 || e.prev != check_prev || entry_hash(&e) != e.hash {
+                return Err(Error::Ledger(format!("the repaired chain does not verify at line {}: nothing was changed", i + 1)));
+            }
+            check_prev = e.hash;
+        }
+        let backup = self.fs.resolve(&backup_rel)?;
+        if let Some(parent) = backup.parent() {
+            fs::create_dir_all(parent).map_err(|e| Error::io(parent.display(), e))?;
+        }
+        fs::write(&backup, &bytes).map_err(|e| Error::io(backup.display(), e))?;
+        if fs::read(&backup).map_err(|e| Error::io(backup.display(), e))? != bytes {
+            return Err(Error::Ledger("the backup does not match the ledger: nothing was changed".into()));
+        }
+        let tmp = path.with_file_name("ledger.jsonl.repair-tmp");
+        {
+            let mut f = OpenOptions::new().create(true).write(true).truncate(true).open(&tmp).map_err(|e| Error::io(tmp.display(), e))?;
+            f.write_all(&out).map_err(|e| Error::io(tmp.display(), e))?;
+            f.sync_all().map_err(|e| Error::io(tmp.display(), e))?;
+        }
+        let mut last = None;
+        for _ in 0..50 {
+            match fs::rename(&tmp, &path) {
+                Ok(()) => {
+                    last = None;
+                    break;
+                }
+                Err(e) => {
+                    last = Some(e);
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
+        }
+        if let Some(e) = last {
+            let _ = fs::remove_file(&tmp);
+            return Err(Error::io(path.display(), e));
+        }
+        Ok(report)
     }
 
     /// Every entry, in order. Fails if a line cannot be parsed.
@@ -596,6 +792,119 @@ mod tests {
         drop(marker);
         l.append("generated", Some("f.a"), None, json!({"n": 1})).unwrap();
         assert!(l.verify().unwrap().ok);
+    }
+
+    /// A line a second writer appended from the same tail view: valid on its own (its hash matches), but its
+    /// sequence number or link repeats one already in the file.
+    fn forged(seq: u64, prev: &str, kind: &str, data: Value) -> Entry {
+        let mut e = Entry {
+            seq,
+            ts: "2026-11-23T16:55:53Z".into(),
+            kind: kind.into(),
+            asset_id: Some("f.a".into()),
+            artifact_id: None,
+            data,
+            prev: prev.into(),
+            hash: String::new(),
+        };
+        e.hash = entry_hash(&e);
+        e
+    }
+
+    fn add_line(l: &Ledger, e: &Entry) {
+        let mut f = OpenOptions::new().append(true).open(l.path()).unwrap();
+        writeln!(f, "{}", serde_json::to_string(e).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn a_forked_tail_is_chained_again_with_a_repair_entry_and_a_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        for i in 0..3 {
+            l.append("generated", Some("f.a"), Some(&format!("f.a-v{i}")), json!({"i": i})).unwrap();
+        }
+        let before = l.entries().unwrap();
+        // the second writer saw the tail before entry 3 was written
+        let dup = forged(3, &before[1].hash, "job_ended", json!({"job_id": "job-1", "outcome": "completed", "x": 0.018356250794924905}));
+        add_line(&l, &dup);
+        let report = l.verify().unwrap();
+        assert!(!report.ok && report.first_bad.as_ref().unwrap().0 == 3, "{report:?}");
+        let err = l.append("generated", Some("f.a"), None, json!({})).unwrap_err().to_string();
+        assert!(err.contains("ledger repair") && err.contains("ledger verify"), "{err}");
+
+        // a look changes nothing
+        let bytes = std::fs::read(l.path()).unwrap();
+        let look = l.repair("two writers appended at once", true).unwrap();
+        assert!(look.dry_run && !look.repaired && look.broken_at_line == Some(4) && look.moved == 1, "{look:?}");
+        assert_eq!(std::fs::read(l.path()).unwrap(), bytes);
+        assert!(!dir.path().join(".hoi4-imagegen/ledger-backups").exists());
+        assert!(l.repair("  ", false).is_err(), "a repair needs a reason");
+
+        let done = l.repair("two writers appended at once", false).unwrap();
+        assert!(done.repaired && done.broken_at_line == Some(4) && done.repair_seq == Some(4) && done.moved == 1, "{done:?}");
+        let r = l.verify().unwrap();
+        assert!(r.ok && r.entries == 5, "{r:?}");
+        // the lines before the break are untouched
+        let now = std::fs::read_to_string(l.path()).unwrap();
+        let old = String::from_utf8(bytes.clone()).unwrap();
+        assert_eq!(now.lines().take(3).collect::<Vec<_>>(), old.lines().take(3).collect::<Vec<_>>());
+        // the repair entry names the broken line, the cause and the moved entry
+        let all = l.entries().unwrap();
+        assert_eq!(all[3].kind, "chain_repair");
+        assert_eq!(all[3].data["broken_at_line"], 4);
+        assert_eq!(all[3].data["reason"], "two writers appended at once");
+        assert_eq!(all[3].data["found"]["why"], "sequence number is not contiguous");
+        assert_eq!(all[3].data["moved"][0]["old_hash"], dup.hash);
+        assert_eq!(all[3].data["moved"][0]["new_seq"], 5);
+        // the moved entry keeps its content, time and kind
+        assert_eq!((all[4].kind.as_str(), all[4].ts.as_str(), &all[4].data), ("job_ended", "2026-11-23T16:55:53Z", &dup.data));
+        // the backup is the file as it was, and the ledger takes entries again
+        let backup = dir.path().join(done.backup.unwrap());
+        assert_eq!(std::fs::read(backup).unwrap(), bytes);
+        assert_eq!(l.append("generated", Some("f.a"), None, json!({})).unwrap().seq, 6);
+        assert!(!l.repair("again", false).unwrap().repaired, "an intact chain needs no repair");
+        assert!(!dir.path().join(".hoi4-imagegen/ledger.jsonl.repair-tmp").exists());
+    }
+
+    /// A 0.3.x writer does not check the tail and keeps appending after the bad line.
+    #[test]
+    fn entries_appended_after_a_fork_are_chained_again_too() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        for i in 0..3 {
+            l.append("generated", Some("f.a"), None, json!({"i": i})).unwrap();
+        }
+        let e = l.entries().unwrap();
+        let dup = forged(3, &e[1].hash, "job_ended", json!({"n": 1}));
+        let next = forged(4, &dup.hash, "validated", json!({"n": 2}));
+        let last = forged(5, &next.hash, "processed", json!({"n": 3}));
+        for x in [&dup, &next, &last] {
+            add_line(&l, x);
+        }
+        assert!(!l.verify().unwrap().ok);
+        let done = l.repair("an older server appended after the fork", false).unwrap();
+        assert_eq!((done.broken_at_line, done.moved, done.entries_before), (Some(4), 3, 6));
+        let r = l.verify().unwrap();
+        assert!(r.ok && r.entries == 7, "{r:?}");
+        let kinds: Vec<String> = l.entries().unwrap().into_iter().map(|e| e.kind).collect();
+        assert_eq!(kinds[3..], ["chain_repair", "job_ended", "validated", "processed"]);
+    }
+
+    #[test]
+    fn an_entry_changed_after_it_was_written_is_not_repaired() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        for i in 0..3 {
+            l.append("generated", Some("f.a"), None, json!({"version": i})).unwrap();
+        }
+        let e = l.entries().unwrap();
+        add_line(&l, &forged(3, &e[1].hash, "job_ended", json!({})));
+        let text = std::fs::read_to_string(l.path()).unwrap();
+        std::fs::write(l.path(), text.replacen("\"version\":1", "\"version\":9", 1)).unwrap();
+        let before = std::fs::read(l.path()).unwrap();
+        let err = l.repair("test", false).unwrap_err().to_string();
+        assert!(err.contains("line 2") && err.contains("changed after it was written"), "{err}");
+        assert_eq!(std::fs::read(l.path()).unwrap(), before, "nothing was changed");
     }
 
     /// Separate OS processes (this test binary, run again as children) append to one ledger at once.
