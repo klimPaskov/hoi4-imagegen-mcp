@@ -125,9 +125,12 @@ impl Drop for LockGuard {
             let _ = marker.set_len(0);
             let _ = marker.seek(SeekFrom::Start(0));
             let _ = marker.write_all(RELEASED_NOTE);
+            // old enough that 0.3.x and 0.4.5 to 0.4.6, which take a marker over after a minute, do not wait for it if it
+            // stays (a 0.4.4 waiter, or a virus scanner or a sync client holding a handle for a moment, can keep it)
+            let _ = marker.set_modified(SystemTime::now() - 2 * STALE_AFTER);
             let _ = marker.unlock();
             drop(marker);
-            remove_marker_unless_open(&self.marker_path, 5);
+            remove_marker_unless_open(&self.marker_path, 25);
         }
         let _ = self.mutex.unlock();
     }
@@ -1055,6 +1058,89 @@ mod tests {
     #[test]
     fn a_0_3_writer_and_this_version_appending_at_once_keep_one_chain() {
         old_and_new_writers_at_once(append_like_0_3);
+    }
+
+    /// What 0.4.5 and 0.4.6 do: the mutex, then a marker created exclusively, taken over when it is stale, and deleted
+    /// on release.
+    fn append_like_0_4_6(l: &Ledger, dir: &Path, tag: &str, i: u32) {
+        let mutex = OpenOptions::new().create(true).truncate(false).write(true).open(dir.join(MUTEX_PATH)).unwrap();
+        loop {
+            match mutex.try_lock() {
+                Ok(()) => break,
+                Err(TryLockError::WouldBlock) => std::thread::sleep(Duration::from_millis(1)),
+                Err(TryLockError::Error(e)) => panic!("{e}"),
+            }
+        }
+        let path = dir.join(LOCK_PATH);
+        let started = Instant::now();
+        let marker = loop {
+            match OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(mut f) => {
+                    let _ = f.try_lock();
+                    let _ = writeln!(f, "{}", std::process::id());
+                    break f;
+                }
+                Err(_) => {
+                    if let Ok(f) = OpenOptions::new().write(true).open(&path) {
+                        if f.try_lock().is_ok() {
+                            let _ = f.unlock();
+                            drop(f);
+                            let stale = fs::metadata(&path).ok().is_some_and(|m| {
+                                let age = m.modified().ok().and_then(|t| SystemTime::now().duration_since(t).ok()).unwrap_or_default();
+                                age > STALE_AFTER || (m.len() == 0 && age > Duration::from_secs(2))
+                            });
+                            if stale {
+                                let _ = fs::remove_file(&path);
+                                continue;
+                            }
+                        }
+                    }
+                    assert!(started.elapsed() < Duration::from_secs(10), "a 0.4.6 writer waited more than ten seconds for the marker");
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            }
+        };
+        l.append_locked("generated", Some("f.a"), Some(&format!("f.a-{tag}-{i}")), json!({"tag": tag, "i": i})).unwrap();
+        let _ = marker.unlock();
+        drop(marker);
+        for _ in 0..200 {
+            if fs::remove_file(&path).is_ok() || !path.exists() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let _ = mutex.unlock();
+    }
+
+    #[test]
+    fn a_0_4_6_writer_and_this_version_appending_at_once_keep_one_chain() {
+        old_and_new_writers_at_once(append_like_0_4_6);
+    }
+
+    /// A virus scanner or a sync client holds a handle on the marker when this version lets go: the marker stays,
+    /// marked released and old, and a 0.4.6 writer takes it over at once instead of waiting a minute for it.
+    #[test]
+    fn a_marker_that_stays_after_a_release_does_not_hold_up_an_older_writer() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        l.append("generated", Some("f.a"), None, json!({"n": 0})).unwrap();
+        let guard = l.lock().unwrap();
+        // someone else has the file open (sharing it fully, as a scanner does)
+        let scanner = OpenOptions::new().read(true).open(dir.path().join(LOCK_PATH)).unwrap();
+        drop(guard);
+        drop(scanner);
+        let marker = dir.path().join(LOCK_PATH);
+        if marker.exists() {
+            // on Windows the exclusive open failed while the scanner held it, so the marker stayed: released and old
+            assert_eq!(fs::read(&marker).unwrap(), RELEASED_NOTE);
+            let age = fs::metadata(&marker).unwrap().modified().unwrap().elapsed().unwrap();
+            assert!(age > STALE_AFTER, "{age:?}");
+        }
+        let started = Instant::now();
+        append_like_0_4_6(&l, dir.path(), "old", 1);
+        assert!(started.elapsed() < Duration::from_secs(5), "the older writer did not wait for the leftover marker");
+        l.append("generated", Some("f.a"), None, json!({"n": 2})).unwrap();
+        assert!(l.verify().unwrap().ok);
     }
 
     /// Separate OS processes (this test binary, run again as children) append to one ledger at once.

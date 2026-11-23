@@ -47,6 +47,7 @@ pub struct ChatGptLoginProvider {
     model: String,
     record_dir: Option<PathBuf>,
     route: Route,
+    auto_sign_in: Option<crate::cli::AutoSignIn>,
 }
 
 /// What `login-status --check` found.
@@ -83,6 +84,24 @@ impl ChatGptLoginProvider {
             .with_concurrency(route::concurrency_setting(env, concurrency, confirmed).in_use);
         p.record_dir = env.get(RECORD_ENV).map(PathBuf::from);
         Ok(p)
+    }
+
+    /// The same provider answering a server sign-out by opening the sign-in page once and waiting for the user
+    /// (decision D-143). Only a long-lived process (the MCP server) should do this: a command that exits would take
+    /// its listener with it.
+    pub fn with_auto_sign_in(mut self, auto: Option<crate::cli::AutoSignIn>) -> Self {
+        self.auto_sign_in = auto;
+        self
+    }
+
+    /// After a revocation was recorded: when this process won the claim for it, open the sign-in page. Exactly one
+    /// process per revocation does, because the claim is made under the route-state lock.
+    fn answer_revocation(&self) {
+        let Some(auto) = &self.auto_sign_in else { return };
+        let window = i64::try_from(auto.timeout.as_secs()).unwrap_or(i64::MAX);
+        if self.route.claim_sign_in(self.now_secs(), std::process::id(), window) == Ok(true) {
+            crate::cli::start_auto_sign_in(auto, self.store.clone(), self.route.clone(), self.transport.clone(), self.clock.clone());
+        }
     }
 
     /// The same provider with `n` requests at once on the machine (at least one).
@@ -125,7 +144,7 @@ impl ChatGptLoginProvider {
             live_verified: true,
         };
         let route = Route::new(store.state_dir()).with_clock(clock.clone());
-        ChatGptLoginProvider { desc, store, transport, policy: HostPolicy::api(&HOSTS), clock, model, record_dir: None, route }
+        ChatGptLoginProvider { desc, store, transport, policy: HostPolicy::api(&HOSTS), clock, model, record_dir: None, route, auto_sign_in: None }
     }
 
     /// The recorded server revocation, as the sentence every report uses. `None` while the sign-in is not known to be revoked.
@@ -219,7 +238,9 @@ impl ChatGptLoginProvider {
         let resp = send(&*self.transport, &self.policy, &refresh_request(&refresh))?;
         if resp.status != 200 {
             if route::is_revocation(resp.status, &resp.body) {
-                return Err(route::revoked_error(&guard.record_revoked(self.now_secs(), resp.status, &resp.body, during)));
+                let revoked = guard.record_revoked(self.now_secs(), resp.status, &resp.body, during);
+                self.answer_revocation();
+                return Err(route::revoked_error(&revoked));
             }
             return Err(status_error(resp.status, &resp.body, &[refresh, creds.access.clone()]));
         }
@@ -396,7 +417,9 @@ impl ChatGptLoginProvider {
                 }
             }
             s if route::is_revocation(s, &resp.body) => {
-                return Err(route::revoked_error(&guard.record_revoked(self.now_secs(), s, &resp.body, "generation")));
+                let revoked = guard.record_revoked(self.now_secs(), s, &resp.body, "generation");
+                self.answer_revocation();
+                return Err(route::revoked_error(&revoked));
             }
             s if is_effort_refusal(&String::from_utf8_lossy(&resp.body)) => {
                 return Ok(Attempt::EffortRefused(format!("HTTP {s}: {}", short(&String::from_utf8_lossy(&resp.body)))));

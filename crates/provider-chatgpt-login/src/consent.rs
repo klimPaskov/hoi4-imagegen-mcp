@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::store::data_dir;
 
 /// Bump when the note's substance changes.
-pub const RISK_NOTE_VERSION: u32 = 5;
+pub const RISK_NOTE_VERSION: u32 = 6;
 
 /// The note, shown before the browser opens.
 pub const RISK_NOTE: &str = "\
@@ -31,7 +31,9 @@ ChatGPT login: read this once before signing in.
   falls back to one request at a time on the machine for six hours. If the server does revoke the sign-in,
   hoi4-imagegen records it, stops calling, and tells you to run `hoi4-imagegen login` again. After you sign in
   it carries on, but every sign-out lowers the number of requests at once by one, down to one, and that lower
-  limit stays until you run `hoi4-imagegen reset-concurrency`.
+  limit stays until you run `hoi4-imagegen reset-concurrency`. When the MCP server sees the server sign you out,
+  it opens the sign-in page once in your default browser and waits up to an hour for you to finish it; it never
+  types, stores or asks for your password or a code, and it does not open the page again for the same sign-out.
 * It is for your own account on your own computer only. Never share the sign-in or run it on a server.
   HOI4 Factory's hosted service never uses it.
 * Images use the gpt-6-luna model at the highest reasoning effort the backend accepts (high, then medium,
