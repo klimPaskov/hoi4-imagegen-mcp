@@ -5,11 +5,11 @@
 //! evidence the install gate reads. It lives at `.hoi4-imagegen/ledger.jsonl`, next to the project's styles
 //! and config, and is meant to be committed with the mod.
 
-use std::fs::{self, OpenOptions};
+use std::fs::{self, OpenOptions, TryLockError};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -70,19 +70,13 @@ pub struct Ledger {
     clock: Arc<dyn Clock>,
 }
 
-struct LockGuard(PathBuf);
+/// An OS file lock on the ledger's lock file, held for one append. The OS releases it when the process ends, so a crashed
+/// writer never leaves a stale lock, and it covers parallel MCP calls and separate processes alike.
+struct LockGuard(fs::File);
 
 impl Drop for LockGuard {
     fn drop(&mut self) {
-        // On Windows the removal can fail for a moment (another thread's failed open still holds a handle). A lock
-        // that stays behind blocks every later append for a minute, so the removal is retried.
-        for _ in 0..200 {
-            match fs::remove_file(&self.0) {
-                Ok(()) => return,
-                Err(e) if e.kind() == ErrorKind::NotFound => return,
-                Err(_) => std::thread::sleep(Duration::from_millis(2)),
-            }
-        }
+        let _ = self.0.unlock();
     }
 }
 
@@ -97,36 +91,18 @@ impl Ledger {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| Error::io(parent.display(), e))?;
         }
+        let file = OpenOptions::new().create(true).truncate(false).write(true).open(&path).map_err(|e| Error::io(path.display(), e))?;
         let started = Instant::now();
         loop {
-            match OpenOptions::new().write(true).create_new(true).open(&path) {
-                Ok(mut f) => {
-                    let _ = writeln!(f, "{}", std::process::id());
-                    return Ok(LockGuard(path));
-                }
-                Err(e) if matches!(e.kind(), ErrorKind::AlreadyExists | ErrorKind::PermissionDenied | ErrorKind::NotFound) => {
-                    if e.kind() == ErrorKind::NotFound {
-                        // Windows briefly reports a lock that another thread is deleting as "not found".
-                        if let Some(parent) = path.parent() {
-                            let _ = fs::create_dir_all(parent);
-                        }
-                    }
-                    // On Windows a lock that is being deleted reports "access denied" instead of "exists".
-                    // A lock older than a minute belongs to a crashed process.
-                    let stale = fs::metadata(&path)
-                        .and_then(|m| m.modified())
-                        .map(|t| SystemTime::now().duration_since(t).map(|d| d > Duration::from_secs(60)).unwrap_or(false))
-                        .unwrap_or(false);
-                    if stale {
-                        let _ = fs::remove_file(&path);
-                        continue;
-                    }
-                    if started.elapsed() > Duration::from_secs(10) {
-                        return Err(Error::Ledger(format!("timed out waiting for the ledger lock ({e})")));
+            match file.try_lock() {
+                Ok(()) => return Ok(LockGuard(file)),
+                Err(TryLockError::WouldBlock) => {
+                    if started.elapsed() > Duration::from_secs(60) {
+                        return Err(Error::Ledger("timed out waiting for the ledger lock: another hoi4-imagegen process is still appending".into()));
                     }
                     std::thread::sleep(Duration::from_millis(5));
                 }
-                Err(e) => return Err(Error::io(path.display(), e)),
+                Err(TryLockError::Error(e)) => return Err(Error::io(path.display(), e)),
             }
         }
     }
@@ -149,6 +125,17 @@ impl Ledger {
         let (seq, prev) = match existing.lines().last() {
             Some(line) => {
                 let last: Entry = serde_json::from_str(line).map_err(|e| Error::Ledger(format!("last ledger line is unreadable: {e}")))?;
+                // Refuse to extend a chain whose tail is already wrong: a new entry would link to a bad one and
+                // hide where the break is. The whole chain is checked by `Ledger::verify` (hoi4.image_ledger).
+                let lines = existing.lines().count() as u64;
+                if last.seq != lines || entry_hash(&last) != last.hash {
+                    return Err(Error::Ledger(format!(
+                        "the ledger chain is broken at its end (last line {lines} says seq {}, or its hash does not match its content), so nothing was added. \
+                         Run `hoi4-imagegen call hoi4.image_ledger` to see the first bad entry, and restore .hoi4-imagegen/ledger.jsonl from version control or a backup. \
+                         Do not edit the file by hand",
+                        last.seq
+                    )));
+                }
                 (last.seq + 1, last.hash)
             }
             None => (1, GENESIS.to_string()),
@@ -365,7 +352,106 @@ mod tests {
         assert_eq!(seqs, (1..=12).collect::<Vec<_>>());
         let r = l.verify().unwrap();
         assert!(r.ok && r.entries == 12, "{r:?}");
-        assert!(!dir.path().join(LOCK_PATH).exists(), "lock released");
+        let lock = OpenOptions::new().write(true).open(dir.path().join(LOCK_PATH)).unwrap();
+        assert!(lock.try_lock().is_ok(), "lock released");
+    }
+
+    /// Long floats in an entry's data (the preview metrics of an animation) must survive a write and a read:
+    /// without exact float parsing, the reader's hash differs by one bit and the chain reports a false break.
+    #[test]
+    fn floats_in_the_data_keep_their_hash_across_a_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        let metrics =
+            [0.018356250794924905_f64, 0.004013536803274917, 0.007238881702284939, 1.0105794555042673, 12.39319470699433, 0.0, 1e-7, 1.5e300];
+        l.append("previewed", Some("f.a"), Some("f.a-v1"), json!({"metrics": metrics})).unwrap();
+        l.append("previewed", Some("f.a"), Some("f.a-v2"), json!({"metrics": metrics})).unwrap();
+        let r = l.verify().unwrap();
+        assert!(r.ok && r.entries == 2, "{r:?}");
+        let back = l.entries().unwrap();
+        assert_eq!(back[0].data["metrics"][0].as_f64(), Some(0.018356250794924905));
+    }
+
+    /// Entry 3763 of a real project ledger (a preview with animation metrics), unchanged. Its stored hash was made
+    /// at write time; every later version must recompute the same hash from the line.
+    #[test]
+    fn a_real_entry_with_long_floats_matches_its_stored_hash() {
+        let line = r#"{"seq":3763,"ts":"2026-11-08T20:33:44Z","kind":"previewed","asset_id":"interface_pictograms.researching_scroll_92","artifact_id":"interface_pictograms.researching_scroll_92-v1-p1","data":{"animation":{"effect_file":null,"fps":"15","frame_sheet":"docs/assets/interface_pictograms/contact_sheets/interface_pictograms_researching_scroll_92-v1-p1-preview-frames-v1.png","frame_sheet_sha256":"f8a31d5cbd8b864cfb3f5943c39cda9b11de7ec3812378be554782d0ef15182e","frames":9,"loop_gif":"docs/assets/interface_pictograms/contact_sheets/interface_pictograms_researching_scroll_92-v1-p1-preview-loop-v1.gif","loop_gif_pictures":9,"loop_gif_sha256":"764ce10534057ba310424e05ae43f799d613d1557e34a6fda621546e97679c71","metrics":{"centroid_drift_px":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"jump_ratio":1.0105794555042673,"palette_drift":[0.0,0.007238881702284939,0.011834812824328175,0.004013536803275335,0.018356250794934782,0.018356250794924905,0.004013536803274917,0.011834812824334772,0.007238881702290506],"seam_ratio":1.0080986725402616,"silhouette_iou":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],"steps":[12.39319470699433,12.263527882797732,12.206994328922494,12.263380198487713,12.355919187145558,12.31187972589792,12.213078922495274,12.209475425330814,12.362771739130435]},"motion":"scroll","note":"each frame is shown for 1 / fps seconds","scale":2},"panels":["native on dark","native on light","on checker","reference 1"],"sha256":"ff979b62deda98ed356c0db5290439821ca92e863e8d2d95fc30dc601d7ca47f","sheet":"docs/assets/interface_pictograms/contact_sheets/interface_pictograms_researching_scroll_92-v1-p1-preview-v1.png","sheet_sha256":"ae6e9c0666772786562ca39fb4739a8f7249ab16c840708c1d885f97cd4f45bf","target":"interface_pictograms.researching_scroll_92-v1-p1","vanilla_check":{"family":"anim_scroll","reason":"the installed game has fewer than 3 measurable vanilla scrolling animated strip images to compare with","reference_set":{"kind":"vanilla","rule":"vanilla_match_v2"},"status":"unavailable","version":"vanilla_match_v2"},"vanilla_sheet":{"unavailable":"the installed game has fewer than 3 measurable vanilla scrolling animated strip images to compare with"}},"prev":"4c33e24d71520f8cacf75d5d446d3fe09a76d996e7a94e8aef9556c5ae2b173f","hash":"03e7e8d2b2e2166e9a6f76cf7d9697867b203d497d92f0e88a60bd32cf6a2e82"}"#;
+        let e: Entry = serde_json::from_str(line).unwrap();
+        assert_eq!(entry_hash(&e), e.hash);
+    }
+
+    #[test]
+    fn a_broken_tail_refuses_the_append_with_a_clear_message() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = ledger(&dir);
+        l.append("generated", Some("f.a"), None, json!({"n": 1})).unwrap();
+        l.append("generated", Some("f.a"), None, json!({"n": 2})).unwrap();
+        let path = l.path();
+        let good = std::fs::read_to_string(&path).unwrap();
+        std::fs::write(&path, good.replacen("\"n\":2", "\"n\":3", 1)).unwrap();
+        let before = std::fs::read_to_string(&path).unwrap();
+        let err = l.append("generated", Some("f.a"), None, json!({"n": 4})).unwrap_err().to_string();
+        assert!(err.contains("chain is broken") && err.contains("hoi4.image_ledger"), "{err}");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before, "nothing was appended");
+        // a line copied from another writer, with its own sequence number, is refused too
+        std::fs::write(&path, format!("{good}{}\n", good.lines().next().unwrap())).unwrap();
+        assert!(l.append("generated", Some("f.a"), None, json!({"n": 5})).is_err());
+    }
+
+    /// Two writers, each with its own handle (as two MCP processes would have), keep one chain.
+    #[test]
+    fn two_independent_writers_keep_the_chain_intact() {
+        let dir = tempfile::tempdir().unwrap();
+        let handles: Vec<_> = (0..2)
+            .map(|w| {
+                let l = ledger(&dir);
+                std::thread::spawn(move || {
+                    for i in 0..25 {
+                        l.append("generated", Some("f.a"), Some(&format!("f.a-w{w}-{i}")), json!({"writer": w, "i": i, "x": 0.1 * f64::from(i)}))
+                            .unwrap();
+                    }
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+        let r = ledger(&dir).verify().unwrap();
+        assert!(r.ok && r.entries == 50, "{r:?}");
+    }
+
+    /// Separate OS processes (this test binary, run again as children) append to one ledger at once.
+    #[test]
+    fn separate_processes_keep_the_chain_intact() {
+        if let Ok(dir) = std::env::var("LEDGER_TEST_CHILD_DIR") {
+            let l = Ledger::new(ProjectFs::new(Path::new(&dir)).unwrap(), Arc::new(FixedClock(1_793_404_800)));
+            let tag = std::env::var("LEDGER_TEST_CHILD_TAG").unwrap();
+            for i in 0..20 {
+                l.append("generated", Some("f.a"), Some(&format!("f.a-{tag}-{i}")), json!({"tag": tag, "i": i, "x": 0.1 * f64::from(i)})).unwrap();
+            }
+            return;
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let exe = std::env::current_exe().unwrap();
+        let children: Vec<_> = ["a", "b", "c"]
+            .iter()
+            .map(|tag| {
+                std::process::Command::new(&exe)
+                    .args(["--exact", "ledger::tests::separate_processes_keep_the_chain_intact", "--test-threads=1"])
+                    .env("LEDGER_TEST_CHILD_DIR", dir.path())
+                    .env("LEDGER_TEST_CHILD_TAG", tag)
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn()
+                    .unwrap()
+            })
+            .collect();
+        for mut c in children {
+            assert!(c.wait().unwrap().success());
+        }
+        let r = ledger(&dir).verify().unwrap();
+        assert!(r.ok && r.entries == 60, "{r:?}");
     }
 
     #[test]
