@@ -877,3 +877,74 @@ fn pack_references_follow_style_mode_and_the_subfamily_is_recorded() {
     assert_eq!(add.style_selection.as_ref().unwrap().style_mode, Some(imagegen_core::plan::StyleMode::Add));
     assert!(add.style_pack.is_some() && add.style_sources.is_some());
 }
+
+// ------------------------------------------------------------------ three processing faults reported by a mod's asset lead
+
+#[test]
+fn an_imported_technology_picture_takes_the_canvas_it_was_asked_for() {
+    let h = openai_harness();
+    let src = disc(600, 400, 150.0, [200, 120, 40, 255]);
+    for canvas in [[146, 54], [64, 64], [285, 56]] {
+        let made = import(&h, "technology", &src, json!({"canvas": canvas})).unwrap();
+        let out = pixels(&h, made["path"].as_str().unwrap());
+        assert_eq!([out.width, out.height], canvas, "the requested canvas is honoured");
+        let v = validated(&h, made["artifact_id"].as_str().unwrap());
+        assert_eq!(v["status"], "pass", "{canvas:?}: {v}");
+    }
+    let err = import(&h, "technology", &src, json!({"canvas": [100, 100]})).unwrap_err();
+    assert!(err.message.contains("146x54") && err.message.contains("64x64") && err.message.contains("285x56"), "{}", err.message);
+    // no canvas given: unchanged
+    let plain = import(&h, "technology", &src, json!({})).unwrap();
+    let out = pixels(&h, plain["path"].as_str().unwrap());
+    assert_eq!([out.width, out.height], ProfileSet::builtin().for_family(Family::Technology).unwrap().canvas);
+}
+
+#[test]
+fn a_raid_keeps_the_arts_colours_only_with_a_packs_keep_colours() {
+    let h = openai_harness();
+    let src = disc(256, 256, 100.0, [200, 40, 40, 255]);
+    let reddish = |img: &Rgba| img.data.chunks_exact(4).filter(|p| p[3] == 255 && p[0] > 150 && p[1] < 80 && p[2] < 80).count();
+    // default: vanilla's gold ramp, nothing red is left
+    let gold = import(&h, "raid", &src, json!({})).unwrap();
+    assert!(step_names(&gold).contains(&"gold_gradient".to_string()), "{:?}", step_names(&gold));
+    assert_eq!(reddish(&pixels(&h, gold["path"].as_str().unwrap())), 0);
+    // a pack with keep_colours on the raid family: no recolouring, the recipe and its stages are checked as usual
+    save_pack(
+        &h,
+        json!({"name": "house", "families": {"raid": {"look": "flat coloured pictograms", "form": ["A flat pictogram in its own colours."], "processing": {"keep_colours": true}}}}),
+    );
+    let kept = import(&h, "raid", &src, json!({"style_pack": "house"})).unwrap();
+    let names = step_names(&kept);
+    assert!(!names.contains(&"gold_gradient".to_string()) && names.contains(&"fit_subject".to_string()), "{names:?}");
+    assert_eq!(kept["recipe"]["id"], "raid");
+    assert!(reddish(&pixels(&h, kept["path"].as_str().unwrap())) > 100, "the red stays red");
+    let v = validated(&h, kept["artifact_id"].as_str().unwrap());
+    assert_eq!(v["status"], "pass", "{v}");
+    // the switch cannot be set on a family it does not apply to, and a raid pack lists only the switches that apply
+    let err = references(
+        &h,
+        json!({"action": "pack_save", "replace": true, "pack": {"name": "bad", "families": {"focus": {"processing": {"keep_colours": true}}}}}),
+    );
+    assert!(err.unwrap_err().message.contains("keep_colours does not apply to focus"));
+    let plan = h.engine.plan(request("raid", json!({"style_pack": "house"}))).unwrap();
+    assert_eq!(plan.style_pack.as_ref().unwrap().processing, vec!["keep_colours".to_string()]);
+}
+
+#[test]
+fn an_agency_upgrade_imported_at_its_final_size_gets_the_vignette() {
+    let h = openai_harness();
+    // an opaque square at the family's own 68x68: it used to be conformed as it was and then failed as opaque
+    let square = Rgba::filled(68, 68, [90, 110, 130, 255]);
+    let made = import(&h, "agency_upgrade", &square, json!({})).unwrap();
+    assert!(step_names(&made).contains(&"round_vignette".to_string()), "{:?}", step_names(&made));
+    let out = pixels(&h, made["path"].as_str().unwrap());
+    assert_eq!((out.width, out.height), (68, 68));
+    assert_eq!(out.alpha(0, 0), 0, "the corners are clear: a disc");
+    let v = validated(&h, made["artifact_id"].as_str().unwrap());
+    assert_eq!(v["status"], "pass", "{v}");
+    // finished art that already is a disc is still kept as it is
+    let finished = disc(68, 68, 30.0, [90, 110, 130, 255]);
+    let kept = import(&h, "agency_upgrade", &finished, json!({})).unwrap();
+    assert_eq!(step_names(&kept), vec!["conform".to_string()]);
+    assert_eq!(pixels(&h, kept["path"].as_str().unwrap()), finished);
+}

@@ -297,6 +297,25 @@ impl Engine {
         }
         let canvas = if profile.needs_mod_canvas() {
             canvas_override.ok_or_else(|| EngineError::invalid(format!("{} has no fixed canvas: pass canvas [width, height]", spec.family)))?
+        } else if let Some(c) = canvas_override.filter(|c| *c != profile.canvas) {
+            // the same canvas rule as a plan: a free canvas takes any size, a family with canvas choices (technology) one of
+            // them, and anything else is refused instead of being ignored
+            if profile.free_canvas() && (1..=4096).contains(&c[0]) && (1..=4096).contains(&c[1]) || profile.canvas_choices().contains(&c) {
+                c
+            } else {
+                let choices = if profile.canvas_choices().is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        " (or pick one of {})",
+                        profile.canvas_choices().iter().map(|c| format!("{}x{}", c[0], c[1])).collect::<Vec<_>>().join(", ")
+                    )
+                };
+                return Err(EngineError::invalid(format!(
+                    "{} has a fixed canvas of {}x{}, not {}x{}; to use another, override the profile in .hoi4-imagegen/config.toml or the kit's profiles.json{choices}",
+                    spec.family, profile.canvas[0], profile.canvas[1], c[0], c[1]
+                )));
+            }
         } else {
             // finished art of an accepted size keeps that size; anything else is fitted to the family's canvas
             let frame = [img.width / frames, img.height];

@@ -14,9 +14,9 @@
 //! |---|---|---|
 //! | `icon` v1 | transparent icons, technology, modifier icon, GUI texture | `fit_subject` (`conform` when finished art was imported at an accepted size), `grayscale` for grayscale families; technology adds `tech_overlay` when the caller asks for a tier numeral |
 //! | `bop_side` v1 | balance of power side | `fit_subject` (the emblem in colour), `bop_stages`: the grey standard (the main image), the `_improved` companion and, when asked for, the `_bad` and `_bad_improved` companions |
-//! | `raid` v1 | raid | `fit_subject`, `gold_gradient` (vanilla's gold ramp and black outline), or one `conform` for imported finished art |
+//! | `raid` v1 | raid | `fit_subject`, `gold_gradient` (vanilla's gold ramp and black outline; left out with a style pack's `keep_colours`, which keeps the art's own colours), or one `conform` for imported finished art |
 //! | `doctrine` v2 | doctrine | `fit_subject`, `doctrine_look` (black units, pale outline and glow), or one `conform` for imported finished art |
-//! | `vignette` v1 | agency upgrade | `round_vignette` (the disc in vanilla's muted palette with its darkened edge), `fit_subject`, or one `conform` for imported finished art |
+//! | `vignette` v1 | agency upgrade | `round_vignette` (the disc in vanilla's muted palette with its darkened edge), `fit_subject`, or one `conform` for imported finished art that already is a disc (clear corners); a square import at the final size gets the vignette |
 //! | `picture` v1 | opaque pictures, news, super event | `flatten_on`, `cover_resize` or `conform`, `grayscale` for news |
 //! | `report_card` v2 | report event | `report_card` or `conform` (an imported finished card) |
 //! | `phase_card` v1 | operation picture | `phase_card` (the report card on vanilla's phase picture mask) or `conform` (an imported finished card) |
@@ -408,6 +408,13 @@ pub fn counter_symbol(opts: &FinishOptions) -> Result<(String, &'static str)> {
     }
 }
 
+/// True when all four corner pixels are fully clear: the picture is a shape on transparency (a disc, a tilted card).
+fn has_clear_corners(img: &Rgba) -> bool {
+    [(0, 0), (img.width.saturating_sub(1), 0), (0, img.height.saturating_sub(1)), (img.width.saturating_sub(1), img.height.saturating_sub(1))]
+        .iter()
+        .all(|(x, y)| img.alpha(*x, *y) == 0)
+}
+
 /// What the family's processing is for `img`, the image after the caller's pre-steps, with default options.
 pub fn plan_finishing(profile: &Profile, canvas: [u32; 2], img: &Rgba, imported: bool, keyed: bool, candidate_sha256: &str) -> Result<ChainPlan> {
     plan_finishing_with(profile, canvas, img, imported, keyed, candidate_sha256, &FinishOptions::default())
@@ -472,11 +479,18 @@ pub fn plan_finishing_with(
                 // the doctrine glow reaches two pixels past the subject, so the subject sits that much further in
                 let margin = if recipe == Recipe::Doctrine { profile.margin + crate::recipes::doctrine::GLOW_PX } else { profile.margin };
                 ops = transparent_icon_ops(img, canvas, keyed, margin)?;
-                ops.push(if recipe == Recipe::Raid { Op::GoldGradient } else { Op::DoctrineLook });
+                if recipe == Recipe::Doctrine {
+                    ops.push(Op::DoctrineLook);
+                } else if !profile.processing().keep_colours {
+                    // a style pack's keep_colours leaves the raid in the art's own colours, so raids can differ by colour
+                    ops.push(Op::GoldGradient);
+                }
             }
         }
         Recipe::Vignette => {
-            if imported && accepted_single(size) {
+            // finished art at an accepted size is kept only when it already is a disc (clear corners). A square import,
+            // opaque or not, gets the vignette: otherwise it would stay a square and fail the quick check as opaque.
+            if imported && accepted_single(size) && has_clear_corners(img) {
                 ops.push(Op::Conform { width: size[0], height: size[1] });
             } else {
                 // the vignette cuts its own disc and lays clear pixels over vanilla's backdrop, so an opaque picture is
@@ -510,15 +524,7 @@ pub fn plan_finishing_with(
             }
         }
         Recipe::OperationCard => {
-            let clear_corners = [
-                (0, 0),
-                (img.width.saturating_sub(1), 0),
-                (0, img.height.saturating_sub(1)),
-                (img.width.saturating_sub(1), img.height.saturating_sub(1)),
-            ]
-            .iter()
-            .all(|(x, y)| img.alpha(*x, *y) == 0);
-            if imported && size == [85, 85] && clear_corners {
+            if imported && size == [85, 85] && has_clear_corners(img) {
                 ops.push(Op::Conform { width: 85, height: 85 });
             } else {
                 ops.push(Op::FlattenOn { background: FLATTEN_BACKGROUND });
@@ -833,6 +839,7 @@ pub fn required_stages(profile: &Profile) -> Vec<Vec<&'static str>> {
         Recipe::UnitCounter => vec![vec!["unit_glyph", "conform"], vec!["nato_frame", "conform"]],
         Recipe::DivisionSymbol => vec![vec!["unit_glyph", "conform"]],
         Recipe::LineArt => vec![vec!["line_art", "conform"]],
+        Recipe::Raid if profile.processing().keep_colours => vec![vec!["fit_subject", "conform"]],
         Recipe::Raid => vec![vec!["fit_subject", "conform"], vec!["gold_gradient", "conform"]],
         Recipe::Doctrine => vec![vec!["fit_subject", "conform"], vec!["doctrine_look", "conform"]],
         Recipe::Vignette => vec![vec!["round_vignette", "conform"], vec!["fit_subject", "conform"]],
