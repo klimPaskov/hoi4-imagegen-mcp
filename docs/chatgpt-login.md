@@ -57,21 +57,38 @@ The sign-in route asks for an image the way ChatGPT does: the request's `image_g
 
 ## Requests at once
 
-The route paces itself across every process on the machine, because a sign-in can be revoked when too many requests arrive at once. Up to three requests run at the same time, and each slot waits between its own requests. If the server signs you out, the route drops to one request at a time.
+The route paces itself across every process on the machine, because a sign-in can be revoked when too many requests arrive at once. Up to ten requests run at the same time by default, and each slot waits between its own requests. If the server signs you out, the route does not wait for hours: after you sign in again it carries on, and every sign-out lowers the number in use by one.
 
-- **Slots.** Every request the route makes takes one slot: a generation, a token refresh and the sign-in code exchange. A slot is an operating system lock on a file in the per-user data folder, next to `route-state.json`. Slot 0 is `route.lock`, the same file older versions lock, and slots 1 to 5 are `route.lock.1` to `route.lock.5`. A caller takes the first free slot. When all are busy it waits, and after 10 minutes it gives up with an error that says every slot is in use. Every process on the machine shares the same slots, and a slot is freed when its process ends, even after a crash.
-- **How many.** Three by default. Set `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` to a number from 1 to 6 to change it. A value outside that range is clamped, and 1 gives the old one-at-a-time behaviour. A project can also set it in `.hoi4-imagegen/config.toml`, and the environment variable wins:
+- **Slots.** Every request the route makes takes one slot: a generation, a token refresh and the sign-in code exchange. A slot is an operating system lock on a file in the per-user data folder, next to `route-state.json`. Slot 0 is `route.lock`, the same file older versions lock, and slot N is `route.lock.N`, created the first time a caller reaches it (there is no fixed number of slots). Versions up to 0.4.6 use only the first six, so they and a newer version never send at the same time through a shared slot, and together they never exceed the largest configured number. A caller takes the first free slot. When all are busy it waits, and after 10 minutes it gives up with an error that says every slot is in use. Every process on the machine shares the same slots, and a slot is freed when its process ends, even after a crash.
+- **How many.** Ten by default. Set `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` to change it: 1 gives the old one-at-a-time behaviour, and there is no upper limit. A project can also set it in `.hoi4-imagegen/config.toml`, and the environment variable wins:
 
   ```toml
   [providers.chatgpt_login]
-  concurrency = 2
+  concurrency = 4
   ```
 
-  Each process uses its own setting, so keep it the same for every tool on the machine.
+  A number above 10 takes effect only after you confirm it, because the more requests arrive at once the more likely OpenAI is to revoke the sign-in (it did on 2026-11-02 with several tools at once). Confirm it beside the number, or with the matching environment variable:
+
+  ```toml
+  [providers.chatgpt_login]
+  concurrency = 16
+  concurrency_confirmed = true
+  ```
+
+  ```text
+  HOI4_IMAGEGEN_CHATGPT_CONCURRENCY=16
+  HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED=1
+  ```
+
+  Without the confirmation the route uses 10, and `hoi4.image_status` (`chatgpt_login.route.concurrency.reason`) and `doctor` say so. Each process uses its own setting, so keep it the same for every tool on the machine.
 - **Pacing.** Each slot waits at least 20 seconds after its own last request. While the route runs one at a time, the gap counts from the last request of any slot, as before.
 - **Backoff.** A 429 starts a backoff of 30 seconds that doubles with every further 429, up to 5 minutes. It holds every slot.
-- **Fall back to one at a time.** A sign-out by the server (a 401, or an answer that says `token_revoked`), a 429, or the backend's usage-limit message drops the route to one request at a time on the whole machine. The reason and the time are recorded in `route-state.json` (`fallback`), so every process sees it. A caller that already holds a higher slot gives it up before its next request and waits for slot 0.
-- **When it ends.** Six hours after the last sign-out or rate limit. Every new one restarts the six hours. A new sign-in does not end it early.
+- **Fall back to one at a time.** A 429 or the backend's usage-limit message drops the route to one request at a time on the whole machine, for six hours after the last one (every new one restarts the six hours). The reason and the time are recorded in `route-state.json` (`fallback`), so every process sees it. A caller that already holds a higher slot gives it up before its next request and waits for slot 0. A sign-out by the server no longer does this (before 0.4.7 it did).
+- **Sign-outs.** When the server signs you out (a 401, or an answer that says `token_revoked`) the route records it (`revoked` in `route-state.json`), makes no more requests, and says so everywhere: sign in again with `hoi4-imagegen login`. After that it carries on. Every sign-out lowers the number of requests at once by one, down to one: from 10 to 9 at the first, then 8, and so on. That lower number is the learned limit. It is kept in `route-state.json` (`step_down`), so every process on the machine uses it, it survives a restart, and a new sign-in does not put it back. A configured number above the learned limit does not raise it. `hoi4.image_status` (`chatgpt_login.route.concurrency`: `effective`, `learned_limit`, `sign_outs_seen` and `reason`), `doctor` and `login-status` show the number in use and why. Raising it again is your choice: clear the learned limit, and the configured number applies (a number above 10 still needs the confirmation above):
+
+  ```powershell
+  hoi4-imagegen reset-concurrency
+  ```
 - **"Unable to verify model access".** The backend sometimes answers "Unable to verify model access right now" on a few requests while others succeed. It comes as an error event in the stream or in an HTTP error body, and the match ignores case. It is a temporary condition, not a terminal bad request:
   - The first answer fails that request with a retryable error. Its slot waits 60 seconds before its next request (`slot_pause` in `route-state.json`). The other slots keep running.
   - A second answer within 15 minutes of the last one, from any slot or process, drops the route to one request at a time with the reason `model_access_unverified`, through the same mechanism and warning as above. It lasts one hour after that answer, not six, because the message looked like a passing hiccup and not a sign-out or a plan limit. Every further answer within 15 minutes of the last restarts the hour. It never cuts a longer fall back short.

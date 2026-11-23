@@ -77,13 +77,38 @@ pub enum Command {
     },
     /// Print the risk note that `login` shows.
     LoginRiskNote,
+    /// Clear the learned limit that sign-outs by the server lowered the number of ChatGPT-login requests at once to, so
+    /// the configured number is used again. No project needed.
+    ResetConcurrency,
     /// Sign out of ChatGPT and remove the stored tokens. No project needed.
     Logout,
+    /// Check or repair the provenance ledger (`.hoi4-imagegen/ledger.jsonl`). Opens no providers and makes no request.
+    #[command(subcommand)]
+    Ledger(LedgerCommand),
     /// Same as `login`, `login-status` and `logout` (kept for version 0.1 scripts).
     #[command(hide = true)]
     ChatgptLogin {
         /// login, status or logout
         action: String,
+    },
+}
+
+/// `ledger` subcommands.
+#[derive(Subcommand, Debug)]
+pub enum LedgerCommand {
+    /// Check the whole hash chain and name the first bad entry. Writes nothing. Exits 1 when the chain is broken.
+    Verify,
+    /// Chain a broken ledger again after two writers appended from the same tail: the bad line and every line after it
+    /// keep their content but get new sequence numbers and links after a `chain_repair` entry that says what was found
+    /// and why. The file is copied to `.hoi4-imagegen/ledger-backups/` first. An entry changed after it was written is
+    /// never repaired. Stop every other hoi4-imagegen process of the project first.
+    Repair {
+        /// What happened, recorded in the repair entry.
+        #[arg(long)]
+        reason: String,
+        /// Only report what would change.
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -257,9 +282,59 @@ pub fn account_action(command: &Command) -> Option<(&str, bool)> {
         Command::Login { accept_risk } => Some(("login", *accept_risk)),
         Command::LoginStatus { check } => Some((if *check { "status-check" } else { "status" }, false)),
         Command::LoginRiskNote => Some(("risk-note", false)),
+        Command::ResetConcurrency => Some(("reset-concurrency", false)),
         Command::Logout => Some(("logout", false)),
         Command::ChatgptLogin { action } => Some((action.as_str(), false)),
         _ => None,
+    }
+}
+
+/// True for the ledger commands, which open no engine: they read and write only the project's ledger.
+pub fn is_ledger_command(command: &Command) -> bool {
+    matches!(command, Command::Ledger(_))
+}
+
+/// Run a ledger command. Returns the text to print and the exit code (1 when the chain is broken).
+pub fn ledger_command(cli: &Cli, clock: std::sync::Arc<dyn imagegen_core::hashing::Clock>) -> Result<(String, i32), String> {
+    let Command::Ledger(sub) = &cli.command else { return Err("not a ledger command".into()) };
+    let fs = imagegen_core::fsio::ProjectFs::new(&cli.project_root).map_err(|e| e.to_string())?;
+    let ledger = imagegen_core::ledger::Ledger::new(fs, clock);
+    match sub {
+        LedgerCommand::Verify => {
+            let r = ledger.verify().map_err(|e| e.to_string())?;
+            let text = match &r.first_bad {
+                None => format!("the ledger chain is intact: {} entries", r.entries),
+                Some((seq, why)) => format!(
+                    "the ledger chain is broken at entry {seq}: {why} ({} entries read). Run `hoi4-imagegen ledger repair --reason \"<what happened>\"` after stopping every other hoi4-imagegen process of the project",
+                    r.entries
+                ),
+            };
+            let body = if cli.json { serde_json::to_string_pretty(&r).map_err(|e| e.to_string())? } else { text };
+            Ok((body, i32::from(!r.ok)))
+        }
+        LedgerCommand::Repair { reason, dry_run } => {
+            let r = ledger.repair(reason, *dry_run).map_err(|e| e.to_string())?;
+            let text = match (r.broken_at_line, r.dry_run) {
+                (None, _) => format!("nothing to repair: the ledger chain is intact ({} entries)", r.entries_before),
+                (Some(line), true) => format!(
+                    "would repair: line {line} is bad ({}); {} entr{} would be chained again after a chain_repair entry, with a backup in {}",
+                    r.why.as_deref().unwrap_or("?"),
+                    r.moved,
+                    if r.moved == 1 { "y" } else { "ies" },
+                    r.backup.as_deref().unwrap_or("?")
+                ),
+                (Some(line), false) => format!(
+                    "repaired: line {line} was bad ({}); {} entr{} chained again after the chain_repair entry {}. The ledger before the repair is in {}",
+                    r.why.as_deref().unwrap_or("?"),
+                    r.moved,
+                    if r.moved == 1 { "y" } else { "ies" },
+                    r.repair_seq.unwrap_or(0),
+                    r.backup.as_deref().unwrap_or("?")
+                ),
+            };
+            let body = if cli.json { serde_json::to_string_pretty(&r).map_err(|e| e.to_string())? } else { text };
+            Ok((body, 0))
+        }
     }
 }
 
@@ -442,9 +517,18 @@ pub fn execute(engine: &Engine, cli: &Cli, out: &mut dyn Write) -> i32 {
             };
             Ok((dispatch(engine, tool, parsed)?, 0, None))
         }
-        Command::Login { .. } | Command::LoginStatus { .. } | Command::LoginRiskNote | Command::Logout | Command::ChatgptLogin { .. } => {
+        Command::Login { .. }
+        | Command::LoginStatus { .. }
+        | Command::LoginRiskNote
+        | Command::ResetConcurrency
+        | Command::Logout
+        | Command::ChatgptLogin { .. } => {
             let text = account(&cli.command, &*engine.env, &*engine.clock).map_err(EngineError::invalid)?;
             Ok((json!({"result": text}), 0, Some(text)))
+        }
+        Command::Ledger(_) => {
+            let (text, code) = ledger_command(cli, engine.clock.clone()).map_err(EngineError::invalid)?;
+            Ok((json!({"result": text}), code, Some(text)))
         }
     })();
     match result {
@@ -480,9 +564,9 @@ fn note_login_revocation(s: &mut Value, env: &dyn imagegen_core::config::EnvSour
 /// environment alone). The shape is `provider_chatgpt_login::route::report`. No request is made.
 #[cfg(test)]
 fn note_route_state(s: &mut Value, env: &dyn imagegen_core::config::EnvSource, now: i64) {
-    use provider_chatgpt_login::route::{configured_concurrency, report, Route};
+    use provider_chatgpt_login::route::{concurrency_setting, report, Route};
     let Some(store) = provider_chatgpt_login::store::CredentialStore::for_environment(env).ok() else { return };
-    s["chatgpt_login"]["route"] = report(&Route::new(store.state_dir()).state(), configured_concurrency(env, None), now);
+    s["chatgpt_login"]["route"] = report(&Route::new(store.state_dir()).state(), &concurrency_setting(env, None, None), now);
 }
 
 fn route_text(r: &Value) -> Option<String> {
@@ -499,6 +583,19 @@ fn route_text(r: &Value) -> Option<String> {
     }
     if let Some(m) = r["fallback"]["message"].as_str() {
         t.push_str(&format!("  warning: {m}\n"));
+    }
+    if let Some(limit) = r["concurrency"]["learned_limit"].as_u64() {
+        t.push_str(&format!(
+            "  warning: the learned limit is {limit} at once, lowered by one at each of the {} sign-outs by the server; `{}` clears it\n",
+            r["concurrency"]["sign_outs_seen"],
+            r["concurrency"]["reset"].as_str().unwrap_or("hoi4-imagegen reset-concurrency")
+        ));
+    }
+    let above = r["concurrency"]["needs_confirmation_above"].as_u64().unwrap_or(10);
+    if configured > above && r["concurrency"]["confirmed"] != json!(true) {
+        t.push_str(&format!(
+            "  warning: {configured} at once were asked for, but more than {above} needs your confirmation (concurrency_confirmed = true beside concurrency in .hoi4-imagegen/config.toml), so the route uses {above}\n"
+        ));
     }
     if let Some(m) = r["model_access_unverified"].as_object() {
         t.push_str(&format!(
@@ -940,20 +1037,17 @@ mod tests {
         note_route_state(&mut s, &env, now);
         let text = doctor_text(&s);
         assert!(text.contains("sign-in revoked by the server: YES"));
-        // the revocation dropped the route to one request at a time, and the doctor says so
-        assert!(text.contains("requests at once: 1 (configured 3)"), "{text}");
-        assert!(
-            text.contains(
-                "warning: the ChatGPT-login route dropped to one request at a time on this machine after a sign-out by the server (token_revoked)"
-            ),
-            "{text}"
-        );
-        assert_eq!(s["chatgpt_login"]["route"]["fallback"]["reason"], json!("sign_out"));
-        // six hours later it is back to three
+        // the revocation lowered the learned limit from 10 to 9, and the doctor says so
+        assert!(text.contains("requests at once: 9 (configured 10)"), "{text}");
+        assert!(text.contains("warning: the learned limit is 9 at once, lowered by one at each of the 1 sign-outs by the server"), "{text}");
+        assert!(text.contains("hoi4-imagegen reset-concurrency"), "{text}");
+        assert!(s["chatgpt_login"]["route"]["fallback"].is_null(), "no fall back to one at a time");
+        assert_eq!(s["chatgpt_login"]["route"]["concurrency"]["learned_limit"], json!(9));
+        // the learned limit does not expire
         let mut s = json!({"chatgpt_login": {"state": "signed in"}});
-        note_route_state(&mut s, &env, now - 10 + provider_chatgpt_login::route::FALLBACK_HOLD_SECS);
+        note_route_state(&mut s, &env, now - 10 + 30 * 86_400);
         let text = doctor_text(&s);
-        assert!(text.contains("requests at once: up to 3 on this machine") && !text.contains("warning:"), "{text}");
+        assert!(text.contains("requests at once: 9 (configured 10)"), "{text}");
     }
 
     #[test]
@@ -985,7 +1079,8 @@ mod tests {
         note_route_state(&mut s, &env, now);
         let text = doctor_text(&s);
         assert!(
-            text.contains("requests at once: 1 (configured 3)") && text.contains("warning: the ChatGPT-login route dropped to one request at a time"),
+            text.contains("requests at once: 1 (configured 10)")
+                && text.contains("warning: the ChatGPT-login route dropped to one request at a time"),
             "{text}"
         );
         assert!(text.contains("(model_access_unverified)"), "{text}");

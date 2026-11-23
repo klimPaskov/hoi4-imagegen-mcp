@@ -93,9 +93,13 @@ pub struct ProviderConfig {
     pub workflow: Option<String>,
     /// Environment variable holding the key, when it is not the provider's usual one.
     pub api_key_env: Option<String>,
-    /// `chatgpt_login` only: requests at once on the machine, clamped to 1..=6 (default 3). The environment
-    /// variable `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` wins over it.
+    /// `chatgpt_login` only: requests at once on the machine, at least 1 (default 10, no upper limit). A number above 10
+    /// takes effect only with `concurrency_confirmed = true`. The environment variable
+    /// `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` wins over it.
     pub concurrency: Option<i64>,
+    /// `chatgpt_login` only: the user confirms a `concurrency` above 10 (`HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED=1`
+    /// does the same). Without it the route uses 10 and `hoi4.image_status` says why.
+    pub concurrency_confirmed: Option<bool>,
 }
 
 /// Defaults.

@@ -64,7 +64,8 @@ pub fn register(
             reasons: vec![why],
         };
     }
-    match ChatGptLoginProvider::from_environment_with(env, transport, config.provider("chatgpt_login").concurrency) {
+    let login_config = config.provider("chatgpt_login");
+    match ChatGptLoginProvider::from_environment_confirmed(env, transport, login_config.concurrency, login_config.concurrency_confirmed) {
         Ok(p) => {
             let signed_in = imagegen_providers::ImageProvider::is_configured(&p);
             registry.insert(Arc::new(p));

@@ -492,8 +492,8 @@ What to know before you use it:
 * Every image runs on `gpt-6-luna`. The route asks for the highest reasoning effort the backend accepts and, when the backend refuses the named efforts, sends the request with no effort so the backend uses its default. The ledger records the effort asked for and the one the backend reported for every image. A response that reports another model, or an effort other than the one asked for, is refused and the image is not used. There is no other model and no override.
 * **The route cannot force image quality.** The pixels come from the backend's own image tool, which is ChatGPT's current image model, the latest one. The backend replaces the tool settings we send with `quality = auto` and `size = auto`, and chooses quality and size itself. One recorded probe returned a medium-quality 1337x1176 image. The ledger records what the backend reported for each image, so check the pixels in the preview.
 * A refusal by the provider's safety system is reported as a moderation block, with advice to change the brief or the references.
-* **Up to three requests at once.** The route sends at most three requests at a time on your machine, across every process. Set `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` from 1 to 6 to change it, or `concurrency` under `[providers.chatgpt_login]` in the project config. The variable wins, and 1 means one at a time. Each slot waits at least 20 seconds between its own requests.
-* After a sign-out by the server, a 429 or the backend's usage-limit message, the route drops to one request at a time on the whole machine for six hours. Generations, `doctor`, `login-status` and `hoi4.image_status` show a warning with the reason and the time while it holds.
+* **Up to ten requests at once.** The route sends at most ten requests at a time on your machine by default, across every process. Set `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY` to change it (1 means one at a time, and there is no upper limit), or `concurrency` under `[providers.chatgpt_login]` in the project config. The variable wins. A number above 10 takes effect only after you confirm it with `concurrency_confirmed = true` beside `concurrency`, or `HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED=1`; without that the route uses 10 and `hoi4.image_status` says why. Each slot waits at least 20 seconds between its own requests.
+* After a 429 or the backend's usage-limit message the route drops to one request at a time on the whole machine for six hours. A sign-out by the server does not: after you sign in again the route carries on, and every sign-out lowers the number in use by one, down to one (the learned limit), for every process until you run `hoi4-imagegen reset-concurrency`. Generations, `doctor`, `login-status` and `hoi4.image_status` show the fall back, the learned limit and the reason.
 * **"Unable to verify model access".** When the backend answers this (seen three times in three minutes on 2026-11-05, with successes in between), the failed request returns a retryable error and its slot waits 60 seconds before its next request. A second answer within 15 minutes, from any slot or process, drops the route to one request at a time for one hour after that answer, with the reason `model_access_unverified` and the same warning. Two answers more than 15 minutes apart do not. `doctor`, `login-status` and `hoi4.image_status` (`chatgpt_login.route.model_access_unverified`) show the count, the last time and the slots still paused.
 * Spend is recorded as unknown, because there is no per-image price and no usage report.
 
@@ -578,7 +578,8 @@ max_usd_per_call = 1.0
 quality = "low"                      # the cheapest tier; raise it when review says so
 
 [providers.chatgpt_login]
-concurrency = 3                      # requests at once on the machine, 1 to 6 (HOI4_IMAGEGEN_CHATGPT_CONCURRENCY wins)
+concurrency = 10                     # requests at once on the machine, at least 1, default 10 (HOI4_IMAGEGEN_CHATGPT_CONCURRENCY wins)
+concurrency_confirmed = false        # true confirms a concurrency above 10 (HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED=1 does too)
 
 [providers.comfyui]
 endpoint = "http://127.0.0.1:8188"
