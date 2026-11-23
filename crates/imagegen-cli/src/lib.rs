@@ -564,9 +564,9 @@ fn note_login_revocation(s: &mut Value, env: &dyn imagegen_core::config::EnvSour
 /// environment alone). The shape is `provider_chatgpt_login::route::report`. No request is made.
 #[cfg(test)]
 fn note_route_state(s: &mut Value, env: &dyn imagegen_core::config::EnvSource, now: i64) {
-    use provider_chatgpt_login::route::{concurrency_setting, report, Route};
+    use provider_chatgpt_login::route::{concurrency_setting, Route};
     let Some(store) = provider_chatgpt_login::store::CredentialStore::for_environment(env).ok() else { return };
-    s["chatgpt_login"]["route"] = report(&Route::new(store.state_dir()).state(), &concurrency_setting(env, None, None), now);
+    s["chatgpt_login"]["route"] = Route::new(store.state_dir()).report(&concurrency_setting(env, None, None), now);
 }
 
 fn route_text(r: &Value) -> Option<String> {
@@ -575,6 +575,9 @@ fn route_text(r: &Value) -> Option<String> {
     }
     let mut t = String::from("ChatGPT route (recorded state, no request made):\n");
     t.push_str(&format!("  sign-in revoked by the server: {}\n", if r["revoked"] == json!(true) { "YES" } else { "no" }));
+    if let Some(m) = r["sign_in"]["message"].as_str() {
+        t.push_str(&format!("  sign-in: {m}\n"));
+    }
     let (configured, effective) = (r["concurrency"]["configured"].as_u64().unwrap_or(1), r["concurrency"]["effective"].as_u64().unwrap_or(1));
     if effective < configured {
         t.push_str(&format!("  requests at once: {effective} (configured {configured})\n"));

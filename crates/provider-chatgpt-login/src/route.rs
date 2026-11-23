@@ -21,6 +21,8 @@
 //!   the same time through slot 0. A 0.4.6 or older process uses only slots 0 to 5 (its own ceiling was six), so it
 //!   and this one never send at the same time through a shared slot, no slot is ever held twice, and the total never
 //!   exceeds the largest configured number.
+//! * `route-signin.lock` is held by the one process that waits for the user's automatic sign-in (D-143), so a status
+//!   reader can tell whether the process that opened the page is still listening.
 //! * `route-state.lock` carries a short-held lock around every read and every read-modify-write of the state file,
 //!   so several slot holders never lose each other's records.
 //! * `route-state.json` holds [`RouteState`]: the last request time of each slot (for pacing), the 429 backoff, the
@@ -67,6 +69,8 @@ pub const CONCURRENCY_ENV: &str = "HOI4_IMAGEGEN_CHATGPT_CONCURRENCY";
 /// Environment variable that confirms a number above [`CONFIRMATION_ABOVE`] (`1`, `true` or `yes`). The project config
 /// confirms it with `concurrency_confirmed = true` beside `concurrency`.
 pub const CONCURRENCY_CONFIRMED_ENV: &str = "HOI4_IMAGEGEN_CHATGPT_CONCURRENCY_CONFIRMED";
+/// How long the sign-in the tool opens after a revocation keeps its callback listening (decision D-143, 2026-11-23).
+pub const AUTO_SIGN_IN_SECS: u64 = 3600;
 /// The command that clears the learned limit, so the route uses the configured number again.
 pub const RESET_COMMAND: &str = "hoi4-imagegen reset-concurrency";
 /// How long the route stays at one request at a time after the last sign-out or rate limit.
@@ -87,6 +91,7 @@ const SLEEP_SLICE: Duration = Duration::from_secs(1);
 
 const LOCK_FILE: &str = "route.lock";
 const STATE_LOCK_FILE: &str = "route-state.lock";
+const SIGN_IN_LOCK_FILE: &str = "route-signin.lock";
 const STATE_FILE: &str = "route-state.json";
 const STATE_VERSION: u32 = 2;
 
@@ -179,6 +184,27 @@ pub struct StepDown {
     pub last_sign_out_epoch: i64,
 }
 
+/// The sign-in the tool started by itself after a revocation (decision D-143): it opens the page once per revocation
+/// and waits for the user to finish it. Holds no secret, not even the address.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PendingSignIn {
+    /// The revocation this sign-in answers, in epoch seconds. One revocation never starts a second sign-in.
+    pub revoked_epoch: i64,
+    /// The same revocation, RFC 3339.
+    pub revoked_at: String,
+    /// When the page was opened (epoch seconds, then RFC 3339).
+    pub started_epoch: i64,
+    /// See `started_epoch`.
+    pub started_at: String,
+    /// When the callback stops listening (epoch seconds).
+    pub expires_epoch: i64,
+    /// The process that opened the page and waits for the callback.
+    pub owner_pid: u32,
+    /// How it ended without a sign-in, when it did: `timed_out`, or `failed: <why>`. `None` while it waits.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outcome: Option<String>,
+}
+
 /// Everything the route remembers between processes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct RouteState {
@@ -200,6 +226,9 @@ pub struct RouteState {
     /// The learned limit after sign-outs. It stays until the user resets it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub step_down: Option<StepDown>,
+    /// The sign-in the tool started after the last revocation, until a sign-in clears it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sign_in: Option<PendingSignIn>,
     /// One request at a time after a rate limit or a model-access error, if recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fallback: Option<Fallback>,
@@ -294,6 +323,33 @@ impl RouteState {
     /// The last request through any slot.
     pub fn any_last(&self) -> Option<i64> {
         self.slot_last_request.values().copied().chain(self.last_request_epoch).max()
+    }
+
+    /// Claim the one automatic sign-in of the current revocation: true for the first caller only, and only while a
+    /// revocation is recorded. A second caller, a later call of the same process and a sign-in that timed out all get
+    /// false for the same revocation, so the page is never opened twice for it.
+    pub fn claim_sign_in(&mut self, now: i64, pid: u32, window_secs: i64) -> bool {
+        let Some(r) = &self.revoked else { return false };
+        if self.sign_in.as_ref().is_some_and(|s| s.revoked_epoch == r.at_epoch) {
+            return false;
+        }
+        self.sign_in = Some(PendingSignIn {
+            revoked_epoch: r.at_epoch,
+            revoked_at: r.at.clone(),
+            started_epoch: now,
+            started_at: rfc3339_utc(now),
+            expires_epoch: now.saturating_add(window_secs),
+            owner_pid: pid,
+            outcome: None,
+        });
+        true
+    }
+
+    /// Record a sign-in that ended without the user signing in.
+    pub fn end_sign_in(&mut self, outcome: &str) {
+        if let Some(s) = self.sign_in.as_mut().filter(|s| s.outcome.is_none()) {
+            s.outcome = Some(outcome.to_string());
+        }
     }
 
     /// Record a sign-out or rate limit: one request at a time from now for [`FALLBACK_HOLD_SECS`].
@@ -491,9 +547,38 @@ pub fn report(state: &RouteState, setting: &ConcurrencySetting, now: i64) -> Val
     if let Some(f) = state.active_fallback(now) {
         reasons.push(f.message());
     }
+    let sign_in = state.sign_in.as_ref().map(|s| {
+        let (name, message) = match &s.outcome {
+            None if now < s.expires_epoch => (
+                "waiting_for_sign_in",
+                format!(
+                    "the server signed you out at {}; the sign-in page was opened at {} and the tool waits for you to finish it until {}. \
+                     If the page did not open, or this process is gone, run `hoi4-imagegen login`",
+                    s.revoked_at,
+                    s.started_at,
+                    rfc3339_utc(s.expires_epoch)
+                ),
+            ),
+            None => ("timed_out", format!("the sign-in opened at {} was not finished within an hour: run `hoi4-imagegen login`", s.started_at)),
+            Some(o) if o == "timed_out" => {
+                ("timed_out", format!("the sign-in opened at {} was not finished within an hour: run `hoi4-imagegen login`", s.started_at))
+            }
+            Some(o) => ("failed", format!("the sign-in opened at {} did not finish ({o}): run `hoi4-imagegen login`", s.started_at)),
+        };
+        json!({
+            "state": name,
+            "message": message,
+            "revoked_at": s.revoked_at,
+            "started_at": s.started_at,
+            "expires_at": rfc3339_utc(s.expires_epoch),
+            "remaining_secs": (s.expires_epoch - now).max(0),
+            "owner_pid": s.owner_pid,
+        })
+    });
     json!({
         "source": "route-state.json (recorded state only; no request was made)",
         "revoked": state.revoked.is_some(),
+        "sign_in": sign_in,
         "concurrency": {
             "configured": setting.requested,
             "source": setting.source,
@@ -584,6 +669,53 @@ impl Route {
         update_state(dir, f)
     }
 
+    /// The route's state in the shape of [`report`], with whether the process that waits for the automatic sign-in is
+    /// still listening.
+    pub fn report(&self, setting: &ConcurrencySetting, now: i64) -> Value {
+        let mut v = report(&self.state(), setting, now);
+        if v["sign_in"]["state"] == json!("waiting_for_sign_in") {
+            let alive = self.sign_in_owner_alive();
+            v["sign_in"]["owner_alive"] = json!(alive);
+            if !alive {
+                v["sign_in"]["state"] = json!("listener_stopped");
+                v["sign_in"]["message"] =
+                    json!("the process that opened the sign-in page has stopped, so nothing listens for it any more: run `hoi4-imagegen login`");
+            }
+        }
+        v
+    }
+
+    /// Hold the file lock that says a process waits for the automatic sign-in. Dropping the file releases it.
+    pub fn hold_sign_in_lock(&self) -> Option<File> {
+        let dir = self.dir.as_deref()?;
+        fs::create_dir_all(dir).ok()?;
+        let file = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join(SIGN_IN_LOCK_FILE)).ok()?;
+        file.try_lock().ok()?;
+        Some(file)
+    }
+
+    /// Whether a process holds [`Route::hold_sign_in_lock`].
+    pub fn sign_in_owner_alive(&self) -> bool {
+        let Some(dir) = self.dir.as_deref() else { return false };
+        let Ok(file) = OpenOptions::new().read(true).write(true).open(dir.join(SIGN_IN_LOCK_FILE)) else { return false };
+        match file.try_lock() {
+            Ok(()) => {
+                let _ = file.unlock();
+                false
+            }
+            Err(TryLockError::WouldBlock) => true,
+            Err(_) => false,
+        }
+    }
+
+    /// Claim the automatic sign-in of the current revocation (see [`RouteState::claim_sign_in`]). True for one caller
+    /// only, across every process of the machine.
+    pub fn claim_sign_in(&self, now: i64, pid: u32, window_secs: i64) -> Result<bool, String> {
+        let mut won = false;
+        self.update(|st| won = st.claim_sign_in(now, pid, window_secs))?;
+        Ok(won)
+    }
+
     /// Clear the learned limit, so the route uses the configured number again (the user's choice to raise it).
     pub fn reset_concurrency(&self) -> Result<bool, String> {
         let mut had = false;
@@ -598,6 +730,7 @@ impl Route {
         self.update(|st| {
             st.revoked = None;
             st.rate_limit = None;
+            st.sign_in = None;
         })
     }
 

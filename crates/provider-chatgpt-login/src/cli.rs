@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use imagegen_core::config::{EnvSource, ProcessEnv};
-use imagegen_core::hashing::{Clock, SystemClock};
+use imagegen_core::hashing::{rfc3339_utc, Clock, SystemClock};
 use imagegen_providers::transport::{send, HostPolicy, HttpTransport, UreqTransport};
 use imagegen_providers::types::{CallContext, CancelToken, RealSleeper};
 
@@ -103,6 +103,64 @@ pub fn start_login(env: &dyn EnvSource, mode: PluginMode, open: &mut dyn FnMut(&
     Ok(StartedLogin { url, timeout_secs: SIGN_IN_TIMEOUT.as_secs() })
 }
 
+/// How the tool answers a revocation by itself (decision D-143): it opens the sign-in page once and waits for the user.
+/// It never types, stores or asks for a credential, and never opens the page a second time for the same revocation.
+#[derive(Clone)]
+pub struct AutoSignIn {
+    /// Opens an address in the user's browser.
+    pub open: Arc<dyn Fn(&str) + Send + Sync>,
+    /// The callback port (the registered [`CALLBACK_PORT`] in production).
+    pub port: u16,
+    /// How long the callback keeps listening ([`route::AUTO_SIGN_IN_SECS`] in production).
+    pub timeout: Duration,
+    /// Where to record that the risk note was accepted when the sign-in lands, as `login` does.
+    pub consent_file: Option<std::path::PathBuf>,
+}
+
+impl AutoSignIn {
+    /// The production setting: the default browser, the registered callback port and an hour. `None` when the
+    /// environment says no browser is wanted (`HOI4_IMAGEGEN_NO_BROWSER` or `HOI4_IMAGEGEN_NO_AUTO_SIGN_IN`).
+    pub fn for_environment(env: &dyn EnvSource) -> Option<Self> {
+        if env.get("HOI4_IMAGEGEN_NO_BROWSER").is_some() || env.get("HOI4_IMAGEGEN_NO_AUTO_SIGN_IN").is_some() {
+            return None;
+        }
+        Some(AutoSignIn {
+            open: Arc::new(open_browser),
+            port: CALLBACK_PORT,
+            timeout: Duration::from_secs(route::AUTO_SIGN_IN_SECS),
+            consent_file: consent::record_file(env),
+        })
+    }
+}
+
+/// Start the automatic sign-in of a revocation the caller has claimed: bind the callback, open the page, and wait in the
+/// background for the user to finish it. The wait ends with the sign-in (which clears the revocation and this record),
+/// with the timeout, or with a failure, and the end is recorded so the page is not opened again for this revocation.
+pub fn start_auto_sign_in(cfg: &AutoSignIn, store: CredentialStore, route: Route, transport: Arc<dyn HttpTransport>, clock: Arc<dyn Clock>) {
+    let end = |route: &Route, why: String| {
+        let _ = route.update(|s| s.end_sign_in(&why));
+    };
+    let pending = match begin(cfg.port) {
+        Ok(p) => p,
+        Err(e) => return end(&route, format!("failed: {e}")),
+    };
+    let lock = route.hold_sign_in_lock();
+    (cfg.open)(&pending.url);
+    let (timeout, consent_file) = (cfg.timeout, cfg.consent_file.clone());
+    std::thread::spawn(move || {
+        let _lock = lock;
+        match finish(pending, &store, &*transport, &*clock, timeout) {
+            Ok(_) => {
+                if let Some(file) = consent_file {
+                    let _ = consent::record_to(&file, &clock.now_rfc3339());
+                }
+            }
+            Err(e) if e.starts_with("timed out") => end(&route, "timed_out".into()),
+            Err(e) => end(&route, format!("failed: {e}")),
+        }
+    });
+}
+
 /// What [`start_login`] returns.
 #[derive(Debug, Clone)]
 pub struct StartedLogin {
@@ -188,7 +246,16 @@ pub fn status_text_at(store: &CredentialStore, now: i64) -> Result<String, Strin
         ),
         None => String::new(),
     };
-    let warning = format!("{}{lowered}", route.active_fallback(now).map(|f| format!("\nwarning: {}", f.message())).unwrap_or_default());
+    let sign_in = match route.sign_in.as_ref() {
+        Some(s) if s.outcome.is_none() && now < s.expires_epoch => format!(
+            "\nsign-in: the sign-in page was opened at {} and the tool is waiting for you to sign in until {} (finish the page, or run `hoi4-imagegen login`)",
+            s.started_at,
+            rfc3339_utc(s.expires_epoch)
+        ),
+        Some(s) => format!("\nsign-in: the page opened at {} was not finished: run `hoi4-imagegen login`", s.started_at),
+        None => String::new(),
+    };
+    let warning = format!("{}{lowered}{sign_in}", route.active_fallback(now).map(|f| format!("\nwarning: {}", f.message())).unwrap_or_default());
     if let Some(msg) = route.revoked_message() {
         return Ok(format!("{msg}\nno request is made until you sign in again{warning}\nstored in: {}", store.location()));
     }

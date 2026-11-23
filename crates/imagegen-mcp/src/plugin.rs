@@ -67,6 +67,9 @@ pub fn register(
     let login_config = config.provider("chatgpt_login");
     match ChatGptLoginProvider::from_environment_confirmed(env, transport, login_config.concurrency, login_config.concurrency_confirmed) {
         Ok(p) => {
+            // only the MCP server lives long enough to wait for the browser (decision D-143)
+            let p =
+                p.with_auto_sign_in(if mode == RunMode::LocalStdio { provider_chatgpt_login::cli::AutoSignIn::for_environment(env) } else { None });
             let signed_in = imagegen_providers::ImageProvider::is_configured(&p);
             registry.insert(Arc::new(p));
             PluginReport {
